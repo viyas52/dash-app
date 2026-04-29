@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Finance — Setup Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0f0f12; --card: #1a1a20; --surface: #141418;
+            --text1: #e8e8f0; --text2: #8888a0; --text3: #555568;
+            --border: rgba(255,255,255,0.06); --borderh: rgba(255,255,255,0.12);
+            --green: #1d9e75; --green-bg: rgba(29,158,117,0.12);
+            --red: #e24b4a; --red-bg: rgba(226,75,74,0.12);
+            --purple: #534ab7; --purple-bg: rgba(83,74,183,0.12);
+            --amber: #ba7517; --amber-bg: rgba(186,117,23,0.12);
+        }
+        body {
+            font-family: 'Inter', sans-serif; background: var(--bg);
+            color: var(--text1); max-width: 600px; margin: 0 auto;
+            padding: 20px 16px 60px; -webkit-font-smoothing: antialiased;
+        }
+        h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 4px; }
+        .subtitle { font-size: 13px; color: var(--text2); margin-bottom: 32px; }
+        h2 {
+            font-size: 16px; font-weight: 600; margin: 32px 0 16px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .step-num {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--purple-bg); color: var(--purple);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; flex-shrink: 0;
+        }
+        p.desc { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.6; }
+        .card {
+            background: var(--card); border: 0.5px solid var(--border);
+            border-radius: 12px; padding: 16px; margin-bottom: 12px;
+        }
+        .card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 8px; }
+        pre {
+            background: var(--surface); border: 0.5px solid var(--border);
+            border-radius: 8px; padding: 14px; font-size: 12px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            overflow-x: auto; line-height: 1.6; color: var(--text1);
+            white-space: pre-wrap; word-break: break-all;
+        }
+        .copy-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 8px; border: 0.5px solid var(--borderh);
+            background: var(--card); color: var(--text2); font-size: 12px;
+            font-weight: 500; cursor: pointer; margin-top: 8px; transition: all 0.15s;
+        }
+        .copy-btn:hover { color: var(--text1); border-color: var(--text3); }
+        .copy-btn.copied { color: var(--green); border-color: var(--green); }
+        .info {
+            background: var(--purple-bg); border-radius: 8px;
+            padding: 12px 14px; font-size: 12px; color: var(--text2);
+            line-height: 1.6; margin: 12px 0;
+        }
+        .info strong { color: var(--text1); font-weight: 500; }
+        .warn {
+            background: var(--amber-bg); border-radius: 8px;
+            padding: 12px 14px; font-size: 12px; color: var(--text2); line-height: 1.6;
+        }
+        .warn strong { color: var(--amber); font-weight: 500; }
+        .success-box {
+            background: var(--green-bg); border-radius: 8px;
+            padding: 12px 14px; font-size: 12px; color: var(--green); line-height: 1.6;
+        }
+        ol, ul { padding-left: 20px; margin: 8px 0; }
+        li { font-size: 13px; color: var(--text2); line-height: 1.8; }
+        li strong { color: var(--text1); font-weight: 500; }
+        code {
+            background: var(--surface); padding: 2px 6px; border-radius: 4px;
+            font-size: 11px; font-family: 'SF Mono', monospace;
+        }
+        .test-section {
+            background: var(--card); border: 0.5px solid var(--border);
+            border-radius: 12px; padding: 20px; margin: 20px 0;
+        }
+        .test-section h3 { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+        .test-section .test-sub { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+        textarea {
+            width: 100%; padding: 12px; border: 0.5px solid var(--borderh);
+            border-radius: 8px; font-size: 13px; font-family: 'SF Mono', monospace;
+            background: var(--surface); color: var(--text1); resize: vertical;
+            min-height: 80px; outline: none; line-height: 1.5;
+        }
+        textarea:focus { border-color: var(--purple); }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-group input {
+            width: 100%; padding: 10px 14px; border: 0.5px solid var(--borderh);
+            border-radius: 8px; font-size: 13px; font-family: 'SF Mono', monospace;
+            background: var(--surface); color: var(--text1); outline: none;
+        }
+        .form-group input:focus { border-color: var(--purple); }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 6px; padding: 12px 20px; border-radius: 8px;
+            font-size: 14px; font-weight: 500; border: none; cursor: pointer;
+            transition: all 0.15s; min-height: 44px; margin-top: 12px;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: var(--text1); color: var(--bg); }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-secondary { background: var(--surface); color: var(--text2); border: 0.5px solid var(--borderh); }
+        .result {
+            margin-top: 12px; padding: 14px; border-radius: 8px;
+            font-size: 12px; line-height: 1.6; display: none;
+        }
+        .result.success { background: var(--green-bg); color: var(--green); display: block; }
+        .result.error { background: var(--red-bg); color: var(--red); display: block; }
+        .result.parsed { background: var(--surface); border: 0.5px solid var(--border); color: var(--text1); display: block; }
+        .divider { height: 0.5px; background: var(--border); margin: 32px 0; }
+        a { color: var(--purple); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<h1>Setup guide</h1>
+<p class="subtitle">Cloud Function + Tasker → auto-capture ICICI SMS</p>
+
+<!-- ═══ STEP 1: DEPLOY CLOUD FUNCTION ═══ -->
+<h2><span class="step-num">1</span> Deploy the Cloud Function</h2>
+<p class="desc">
+    Open a terminal in your project folder and run these commands. Make sure you have the
+    <a href="https://firebase.google.com/docs/cli#install_the_firebase_cli" target="_blank">Firebase CLI</a> installed.
+</p>
+
+<div class="card">
+    <div class="card-title">Install Firebase CLI (if not installed)</div>
+    <pre id="cli-install">npm install -g firebase-tools</pre>
+    <button class="copy-btn" onclick="copyText('cli-install', this)">Copy</button>
+</div>
+
+<div class="card">
+    <div class="card-title">Login + deploy</div>
+    <pre id="deploy-cmd">cd "D:\Projects\Claude Projects\Personal Finance Tracker"
+firebase login
+cd functions
+npm install
+cd ..
+firebase deploy --only functions</pre>
+    <button class="copy-btn" onclick="copyText('deploy-cmd', this)">Copy</button>
+</div>
+
+<div class="info">
+    <strong>After deploy:</strong> Firebase will print your function URL. It'll look like:<br>
+    <code>https://parsesms-XXXXX-uc.a.run.app</code> (asia-south1 region)<br><br>
+    Copy that URL — you'll need it for Tasker in Step 3.
+</div>
+
+<div class="card">
+    <div class="card-title">Your API key (set in functions/index.js)</div>
+    <pre id="api-key-display">myfinance_viyas_2026</pre>
+    <button class="copy-btn" onclick="copyText('api-key-display', this)">Copy</button>
+</div>
+
+<div class="warn">
+    <strong>Want a different API key?</strong> Open <code>functions/index.js</code>, change the <code>API_KEY</code> value on line 8, then redeploy.
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══ STEP 2: TEST THE FUNCTION ═══ -->
+<h2><span class="step-num">2</span> Test the Cloud Function</h2>
+<p class="desc">
+    After deploying, paste your function URL below and test with a sample SMS.
+</p>
+
+<div class="test-section">
+    <h3>Cloud Function test</h3>
+    <div class="test-sub">Send a sample SMS to your deployed function</div>
+
+    <div class="form-group">
+        <label>Function URL</label>
+        <input type="text" id="func-url" placeholder="https://parsesms-XXXXX-uc.a.run.app">
+    </div>
+    <div class="form-group">
+        <label>API Key</label>
+        <input type="text" id="func-key" value="myfinance_viyas_2026">
+    </div>
+    <div class="form-group">
+        <label>SMS Text</label>
+        <textarea id="test-sms">ICICI Bank Acct XX472 debited for Rs 260.00 on 26-Apr-26; MR KATHIRAVAN R credited. UPI:648210939989. Call 18002662 for dispute. SMS BLOCK 472 to 9215676766.</textarea>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="testFunction()">Send to Cloud Function</button>
+        <button class="btn btn-secondary" onclick="loadCreditSample()">Try credit SMS</button>
+    </div>
+    <div class="result" id="test-result"></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══ STEP 3: TASKER SETUP ═══ -->
+<h2><span class="step-num">3</span> Set up Tasker</h2>
+
+<div class="info">
+    <strong>Install</strong> <a href="https://play.google.com/store/apps/details?id=net.dinglisch.android.taskerm" target="_blank">Tasker</a> from Play Store (₹350, one-time). Grant SMS permission when prompted.
+</div>
+
+<div class="card">
+    <div class="card-title">Profile: SMS trigger</div>
+    <ol>
+        <li>Open Tasker → <strong>Profiles</strong> tab → <strong>+</strong> → <strong>Event</strong></li>
+        <li>Select <strong>Phone → Received Text</strong></li>
+        <li>Set <strong>Type:</strong> <code>SMS</code></li>
+        <li>Set <strong>Sender:</strong> <code>ICICI</code></li>
+        <li>Leave Content empty</li>
+        <li>Hit back ← to save</li>
+    </ol>
+</div>
+
+<div class="card">
+    <div class="card-title">Task: Send SMS to Cloud Function</div>
+    <ol>
+        <li>Tasker prompts you to create a task → name it <strong>SendToFirebase</strong></li>
+        <li>Add action → <strong>Net → HTTP Request</strong></li>
+        <li>Set the fields:</li>
+    </ol>
+    <pre id="tasker-config">Method:  POST
+
+URL:     YOUR_FUNCTION_URL_HERE
+         (paste the URL from Step 1)
+
+Headers: Content-Type: application/json
+         x-api-key: myfinance_viyas_2026
+
+Body:    {"sms": "%evtprm1"}</pre>
+    <button class="copy-btn" onclick="copyText('tasker-config', this)">Copy</button>
+</div>
+
+<div class="info">
+    <strong>What's <code>%evtprm1</code>?</strong> That's Tasker's variable for the SMS body text. It auto-fills with the actual SMS content when triggered.
+</div>
+
+<div class="card">
+    <div class="card-title">Optional: Add a notification on success</div>
+    <ol>
+        <li>Add action → <strong>Alert → Flash</strong></li>
+        <li>Set Text: <code>Transaction saved!</code></li>
+    </ol>
+    <p style="font-size:12px; color:var(--text3); margin-top:8px;">This shows a brief toast on your phone whenever a transaction is auto-captured.</p>
+</div>
+
+<div class="card">
+    <div class="card-title">Final checklist</div>
+    <ul>
+        <li>Hit <strong>back ←</strong> until you see the profile listed</li>
+        <li>Make sure the profile toggle is <strong>ON</strong> (green)</li>
+        <li>Tap the <strong>checkmark ✓</strong> to save</li>
+    </ul>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══ STEP 4: VERIFY ═══ -->
+<h2><span class="step-num">4</span> Verify end-to-end</h2>
+<p class="desc">
+    Use the test button in Step 2 to send a sample transaction, then open My Finance to confirm it shows up.
+</p>
+
+<div class="success-box">
+    <strong>The flow once everything is set up:</strong><br>
+    Bank SMS arrives → Tasker intercepts → POSTs to Cloud Function → Function parses + writes to Firestore → My Finance shows it in uncategorized queue → You tap to categorize
+</div>
+
+<div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+    <a href="index.html" class="btn btn-primary" style="text-decoration:none;">Open My Finance</a>
+    <a href="https://console.firebase.google.com/project/home-expense-tracker-8a5c9/firestore/data/~2Fpersonal_transactions" target="_blank" class="btn btn-secondary" style="text-decoration:none;">View Firestore</a>
+</div>
+
+<script>
+async function testFunction() {
+    var url = document.getElementById('func-url').value.trim();
+    var key = document.getElementById('func-key').value.trim();
+    var sms = document.getElementById('test-sms').value.trim();
+    var res = document.getElementById('test-result');
+
+    if (!url) { res.className='result error'; res.textContent='Enter your Cloud Function URL first'; return; }
+    if (!sms) { res.className='result error'; res.textContent='Enter SMS text'; return; }
+
+    res.className='result parsed'; res.textContent='Sending...';
+
+    try {
+        var resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key
+            },
+            body: JSON.stringify({ sms: sms })
+        });
+        var data = await resp.json();
+
+        if (resp.ok && data.status === 'saved') {
+            res.className='result success';
+            res.innerHTML = '<strong>Transaction saved to Firestore!</strong><br><br>' +
+                'Type: ' + data.type + '<br>' +
+                'Amount: ₹' + Number(data.amount).toLocaleString('en-IN') + '<br>' +
+                'Date: ' + data.date + '<br>' +
+                'Recipient: ' + (data.recipient || '—') + '<br>' +
+                'Doc ID: ' + data.id + '<br><br>' +
+                'Open My Finance to see it in the uncategorized queue.';
+        } else if (resp.ok && data.status === 'skipped') {
+            res.className='result error';
+            res.textContent='SMS not recognized: ' + data.reason;
+        } else {
+            res.className='result error';
+            res.textContent='Error (' + resp.status + '): ' + JSON.stringify(data);
+        }
+    } catch(e) {
+        res.className='result error';
+        res.textContent='Request failed: ' + e.message + '. Make sure the URL is correct and the function is deployed.';
+    }
+}
+
+function loadCreditSample() {
+    document.getElementById('test-sms').value = 'ICICI Bank Account XX472 credited:Rs. 51,764.00 on 28-Apr-26. Info NEFT-HDFCH00958770854-BA CON. Available Balance is Rs. 1,28,055.18.';
+}
+
+function copyText(id, btn) {
+    var text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+}
+</script>
+
+</body>
+</html>
