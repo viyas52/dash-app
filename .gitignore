@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+push_log.txt
+push.bat
+.DS_Store
+Thumbs.db
