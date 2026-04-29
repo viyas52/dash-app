@@ -4,8 +4,8 @@
     "description": "Track personal income, expenses and investments",
     "start_url": "./index.html",
     "display": "standalone",
-    "background_color": "#0f0f12",
-    "theme_color": "#6366f1",
+    "background_color": "#EDEBE6",
+    "theme_color": "#EDEBE6",
     "orientation": "portrait",
     "icons": [
         {

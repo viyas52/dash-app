@@ -1,91 +1,61 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>My Finance</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f0f12">
+    <meta name="theme-color" content="#EDEBE6">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --bg: #f7f7f8;
+            --bg: #EDEBE6;
             --bg-card: #ffffff;
-            --bg-surface: #f0f0f2;
-            --bg-input: #ffffff;
-            --text-1: #111118;
-            --text-2: #6b6b80;
-            --text-3: #9c9cb0;
-            --border: rgba(0,0,0,0.06);
-            --border-h: rgba(0,0,0,0.12);
-            --green: #1d9e75;
-            --green-bg: #e1f5ee;
-            --green-text: #085041;
-            --red: #e24b4a;
-            --red-bg: #fcebeb;
-            --red-text: #791f1f;
-            --purple: #534ab7;
-            --purple-bg: #eeedfe;
-            --purple-text: #26215c;
-            --blue: #185fa5;
-            --blue-bg: #e6f1fb;
-            --blue-text: #042c53;
-            --amber: #ba7517;
-            --amber-bg: #faeeda;
-            --amber-text: #412402;
-            --coral: #d85a30;
-            --coral-bg: #faece7;
-            --pink: #d4537e;
-            --pink-bg: #fbeaf0;
-            --gray: #888780;
-            --gray-bg: #f1efe8;
-            --radius: 12px;
-            --radius-sm: 8px;
-            --radius-pill: 20px;
-            --shadow: 0 1px 2px rgba(0,0,0,0.04);
-        }
-
-        [data-theme="dark"] {
-            --bg: #0f0f12;
-            --bg-card: #1a1a20;
-            --bg-surface: #141418;
-            --bg-input: #1a1a20;
-            --text-1: #e8e8f0;
-            --text-2: #8888a0;
-            --text-3: #555568;
-            --border: rgba(255,255,255,0.06);
-            --border-h: rgba(255,255,255,0.12);
-            --green-bg: rgba(29,158,117,0.12);
-            --green-text: #5dcaa5;
-            --red-bg: rgba(226,75,74,0.12);
-            --red-text: #f09595;
-            --purple-bg: rgba(83,74,183,0.12);
-            --purple-text: #afa9ec;
-            --blue-bg: rgba(24,95,165,0.12);
-            --blue-text: #85b7eb;
-            --amber-bg: rgba(186,117,23,0.12);
-            --amber-text: #fac775;
-            --coral-bg: rgba(216,90,48,0.12);
-            --pink-bg: rgba(212,83,126,0.12);
-            --gray-bg: rgba(136,135,128,0.12);
-            --shadow: 0 1px 2px rgba(0,0,0,0.2);
+            --border: #E0DDD7;
+            --border-light: #F0EDE8;
+            --text-1: #0D0D0D;
+            --text-2: #444;
+            --text-3: #888;
+            --green: #22C55E;
+            --red: #FF3B30;
+            --orange: #FF9500;
+            --blue: #007AFF;
+            --purple: #5856D6;
+            --gray: #8E8E93;
+            --radius: 16px;
+            --radius-sm: 12px;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
             color: var(--text-1);
             min-height: 100vh;
             max-width: 480px;
             margin: 0 auto;
             -webkit-font-smoothing: antialiased;
-            padding-bottom: 80px;
-            transition: background 0.3s, color 0.3s;
+            padding-bottom: 82px;
+        }
+
+        .mono { font-family: 'Space Mono', monospace; }
+        .label {
+            font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
+            text-transform: uppercase; color: var(--text-3);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* ─── CARDS ─── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
         }
 
         /* ─── TOP BAR ─── */
@@ -93,159 +63,145 @@
             display: flex; justify-content: space-between; align-items: flex-start;
             padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 0;
         }
-        .greeting { font-size: 13px; color: var(--text-3); font-weight: 400; }
-        .app-name { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin-top: 2px; }
+        .greeting { font-size: 11px; color: var(--text-3); font-weight: 400; font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
+        .app-name { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; color: var(--text-1); }
         .month-pill {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 14px; border-radius: var(--radius-pill);
-            font-size: 12px; font-weight: 500; color: var(--text-2);
-            border: 0.5px solid var(--border-h); cursor: pointer;
-            background: var(--bg-card); transition: border-color 0.15s;
+            display: flex; align-items: center; gap: 6px;
+            border: 1px solid #D8D5CF; border-radius: 20px; padding: 6px 12px;
+            font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+            color: var(--text-1); cursor: pointer; background: var(--bg-card);
         }
-        .month-pill:hover { border-color: var(--text-3); }
-        .month-pill svg { width: 12px; height: 12px; }
         .month-pill select {
             appearance: none; border: none; background: none;
             font: inherit; color: inherit; cursor: pointer; outline: none;
-            padding-right: 2px;
         }
+        .month-pill svg { width: 12px; height: 12px; }
 
-        /* ─── HERO ─── */
-        .hero { text-align: center; padding: 28px 20px 8px; }
-        .hero-label {
-            font-size: 12px; color: var(--text-3);
-            letter-spacing: 0.5px; text-transform: uppercase; font-weight: 400;
-        }
+        /* ─── HERO / DONUT ─── */
+        .hero { text-align: center; padding: 20px 20px 8px; }
+        .hero-label { font-size: 10px; color: var(--text-3); letter-spacing: 0.12em; text-transform: uppercase; font-family: 'Space Mono', monospace; }
         .hero-amount {
-            font-size: 38px; font-weight: 600; letter-spacing: -1.5px;
-            margin: 6px 0 4px; line-height: 1;
+            font-size: 36px; font-weight: 700; letter-spacing: -1.5px;
+            margin: 6px 0 4px; line-height: 1; font-family: 'Space Mono', monospace;
         }
-        .hero-sub { font-size: 13px; color: var(--text-2); font-weight: 400; }
-        .hero-sub .g { color: var(--green); }
-        .hero-sub .r { color: var(--red); }
+        .hero-sub { font-size: 12px; color: var(--text-3); font-weight: 400; }
+        .hero-sub .g { color: var(--green); font-weight: 500; }
+        .hero-sub .r { color: var(--red); font-weight: 500; }
 
-        /* ─── RING ─── */
-        .ring-wrap { position: relative; width: 140px; height: 140px; margin: 20px auto 0; }
-        .ring-wrap svg { width: 140px; height: 140px; transform: rotate(-90deg); }
-        .ring-track { fill: none; stroke: var(--border); stroke-width: 6; }
-        .ring-fill { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
-        .ring-fill.spending { stroke: var(--red); }
-        .ring-fill.investing { stroke: var(--purple); }
-        .ring-center {
+        .donut-wrap { position: relative; width: 160px; height: 160px; margin: 16px auto 0; }
+        .donut-wrap svg { width: 160px; height: 160px; transform: rotate(-90deg); }
+        .donut-track { fill: none; stroke: #E8E6E1; stroke-width: 12; }
+        .donut-fill {
+            fill: none; stroke: var(--text-1); stroke-width: 12; stroke-linecap: round;
+            transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);
+        }
+        .donut-center {
             position: absolute; inset: 0;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
         }
-        .ring-pct { font-size: 20px; font-weight: 600; }
-        .ring-lbl { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+        .donut-pct { font-size: 24px; font-weight: 700; font-family: 'Space Mono', monospace; }
+        .donut-lbl { font-size: 10px; color: var(--text-3); margin-top: 2px; font-family: 'Space Mono', monospace; letter-spacing: 0.08em; }
 
-        /* ─── STATS GRID ─── */
-        .stats {
-            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px; padding: 20px 20px 0;
-        }
-        .stat {
-            background: var(--bg-card); border-radius: var(--radius);
-            padding: 14px 16px; border: 0.5px solid var(--border);
-        }
-        .stat-label {
-            font-size: 11px; color: var(--text-3);
-            text-transform: uppercase; letter-spacing: 0.3px; font-weight: 400;
-        }
-        .stat-val {
-            font-size: 20px; font-weight: 600; margin-top: 4px;
-            letter-spacing: -0.5px;
-        }
+        /* ─── STAT CARDS ─── */
+        .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px 20px 0; }
+        .stat-card { padding: 14px 16px; }
+        .stat-card .label { margin-bottom: 6px; }
+        .stat-val { font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace; }
         .stat-val.inc { color: var(--green); }
-        .stat-val.inv { color: var(--purple); }
-        .stat-val.sav { color: var(--blue); }
+        .stat-val.inv { color: var(--blue); }
+        .stat-val.sav { color: var(--purple); }
 
         /* ─── UNCATEGORIZED BANNER ─── */
-        .uncat-banner {
+        .notif-strip {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 12px 16px; margin: 16px 20px 0;
             display: flex; align-items: center; gap: 10px;
-            padding: 12px 14px; margin: 16px 20px 0;
-            border-radius: var(--radius); cursor: pointer;
-            border: 0.5px solid var(--amber);
-            background: var(--amber-bg); transition: opacity 0.15s;
+            cursor: pointer; transition: transform 0.12s;
         }
-        .uncat-banner:hover { opacity: 0.85; }
-        .uncat-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
-        .uncat-txt { font-size: 13px; font-weight: 500; flex: 1; color: var(--amber-text); }
-        .uncat-arrow { font-size: 14px; color: var(--amber-text); opacity: 0.6; }
+        .notif-strip:active { transform: scale(0.98); }
+        .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+        .notif-txt { font-size: 13px; font-weight: 500; flex: 1; color: var(--text-1); }
+        .notif-count {
+            font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+            background: var(--orange); color: #fff; border-radius: 10px; padding: 2px 8px;
+        }
+
+        /* ─── SPENDING BADGES ─── */
+        .badge-section { padding: 0 20px; margin-top: 20px; }
+        .badge-section .label { margin-bottom: 10px; }
+        .badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tag-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+            padding: 5px 12px; font-size: 11px; color: var(--text-2); font-weight: 500;
+        }
+        .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
         /* ─── SECTION HEADERS ─── */
         .sec-head {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; margin: 24px 0 12px;
+            padding: 0 20px; margin: 20px 0 10px;
         }
-        .sec-title { font-size: 14px; font-weight: 500; }
+        .sec-title { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; }
         .sec-link {
-            font-size: 12px; color: var(--text-3); cursor: pointer;
-            font-weight: 400; transition: color 0.15s;
+            font-size: 11px; color: var(--text-3); cursor: pointer;
+            font-weight: 500; font-family: 'Space Mono', monospace;
         }
-        .sec-link:hover { color: var(--text-1); }
-
-        /* ─── CATEGORY BADGES ─── */
-        .badge-row { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px; }
-        .cat-badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 5px 12px; border-radius: var(--radius-pill);
-            font-size: 11px; font-weight: 500;
-            border: 0.5px solid var(--border);
-            background: var(--bg-card); color: var(--text-2);
-        }
-        .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
         /* ─── TRANSACTION ROWS ─── */
         .txn-section { padding: 0 20px; }
+        .txn-card { padding: 0 16px; margin-bottom: 12px; }
         .date-label {
-            font-size: 11px; font-weight: 500; color: var(--text-3);
-            text-transform: uppercase; letter-spacing: 0.4px;
-            margin: 16px 0 8px; padding-left: 2px;
+            font-size: 10px; font-weight: 500; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.1em;
+            margin: 14px 0 6px; font-family: 'Space Mono', monospace;
         }
-        .txn {
+        .txn-row {
             display: flex; align-items: center; gap: 12px;
-            padding: 12px 0;
-            border-bottom: 0.5px solid var(--border);
+            padding: 14px 0; border-bottom: 1px solid var(--border-light);
+            cursor: pointer; transition: opacity 0.12s;
         }
-        .txn:last-child { border-bottom: none; }
-        .txn-ico {
-            width: 36px; height: 36px; border-radius: var(--radius-sm);
+        .txn-row:last-child { border-bottom: none; }
+        .txn-row:active { opacity: 0.6; }
+        .txn-icon {
+            width: 40px; height: 40px; border-radius: var(--radius-sm);
             display: flex; align-items: center; justify-content: center;
-            font-size: 14px; flex-shrink: 0;
+            flex-shrink: 0; font-size: 16px;
         }
         .txn-mid { flex: 1; min-width: 0; }
-        .txn-name {
-            font-size: 14px; font-weight: 500;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .txn-cat { font-size: 11px; color: var(--text-3); margin-top: 1px; font-weight: 400; }
+        .txn-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .txn-cat { font-size: 11px; color: var(--text-3); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
+        .txn-cat .cat-dot { width: 5px; height: 5px; border-radius: 50%; }
+        .txn-cat .uncat-label { color: var(--orange); }
         .txn-right { text-align: right; flex-shrink: 0; }
-        .txn-amt { font-size: 14px; font-weight: 500; white-space: nowrap; }
+        .txn-amt { font-size: 13px; font-weight: 700; font-family: 'Space Mono', monospace; }
         .txn-amt.cr { color: var(--green); }
-        .txn-date { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+        .txn-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
         .txn-actions { display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
-        .txn:hover .txn-actions { opacity: 1; }
+        .txn-row:hover .txn-actions { opacity: 1; }
         .txn-act {
             width: 32px; height: 32px; border: none; background: none;
-            color: var(--text-3); cursor: pointer; border-radius: var(--radius-sm);
+            color: var(--text-3); cursor: pointer; border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.15s;
         }
-        .txn-act:hover { background: var(--bg-surface); color: var(--text-1); }
-        .txn-act.del:hover { color: var(--red); background: var(--red-bg); }
+        .txn-act:hover { background: var(--border-light); color: var(--text-1); }
+        .txn-act.del:hover { color: var(--red); background: #FFF0F0; }
         .txn-act svg { width: 14px; height: 14px; }
 
         /* ─── SHOW MORE ─── */
         .show-toggle {
             display: flex; align-items: center; justify-content: center;
             gap: 6px; width: 100%; padding: 12px; margin-top: 8px;
-            background: var(--bg-card); border: 0.5px solid var(--border);
-            border-radius: var(--radius-sm); color: var(--text-2);
-            font-size: 12px; font-weight: 500; cursor: pointer;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); color: var(--text-3);
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            font-family: 'Space Mono', monospace; letter-spacing: 0.04em;
             transition: all 0.15s;
         }
-        .show-toggle:hover { border-color: var(--border-h); color: var(--text-1); }
+        .show-toggle:hover { border-color: var(--text-3); }
         .show-toggle svg { width: 14px; height: 14px; transition: transform 0.2s; }
         .show-toggle.expanded svg { transform: rotate(180deg); }
 
@@ -253,39 +209,39 @@
         .empty-state {
             text-align: center; padding: 48px 20px;
             background: var(--bg-card); border-radius: var(--radius);
-            border: 0.5px solid var(--border);
+            border: 1px solid var(--border);
         }
         .empty-ico {
             width: 48px; height: 48px; border-radius: 50%;
-            background: var(--bg-surface);
+            background: var(--border-light);
             display: flex; align-items: center; justify-content: center;
             margin: 0 auto 14px;
         }
         .empty-ico svg { width: 20px; height: 20px; color: var(--text-3); }
-        .empty-state h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+        .empty-state h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
         .empty-state p { font-size: 12px; color: var(--text-3); }
 
         /* ─── FAB ─── */
         .fab {
-            position: fixed; bottom: 88px; right: max(20px, calc(50% - 220px));
-            width: 48px; height: 48px; border-radius: 50%;
+            position: fixed; bottom: 96px; right: max(20px, calc(50% - 220px));
+            width: 52px; height: 52px; border-radius: 16px;
             background: var(--text-1); color: var(--bg);
             border: none; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             z-index: 90; transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
         }
         .fab:hover { transform: scale(1.06); }
         .fab:active { transform: scale(0.95); }
-        .fab svg { width: 20px; height: 20px; }
+        .fab svg { width: 22px; height: 22px; }
 
         /* ─── BOTTOM NAV ─── */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0;
-            background: var(--bg-card);
-            border-top: 0.5px solid var(--border);
+            background: var(--bg);
+            border-top: 1px solid #D8D5CF;
             display: flex; justify-content: center;
-            padding: 8px 0 calc(env(safe-area-inset-bottom, 0px) + 8px);
+            padding: 12px 0 calc(env(safe-area-inset-bottom, 0px) + 12px);
             z-index: 100;
         }
         .nav-inner {
@@ -294,13 +250,12 @@
         }
         .nav-item {
             display: flex; flex-direction: column; align-items: center;
-            gap: 3px; cursor: pointer; border: none; background: none;
-            padding: 4px 12px;
+            gap: 4px; cursor: pointer; border: none; background: none;
+            padding: 4px 16px; opacity: 0.35; transition: opacity 0.15s;
         }
-        .nav-item svg { width: 20px; height: 20px; color: var(--text-3); transition: color 0.15s; }
-        .nav-item span { font-size: 10px; color: var(--text-3); font-weight: 400; transition: color 0.15s; }
-        .nav-item.active svg { color: var(--text-1); }
-        .nav-item.active span { color: var(--text-1); font-weight: 500; }
+        .nav-item.active { opacity: 1; }
+        .nav-item svg { width: 22px; height: 22px; color: var(--text-1); }
+        .nav-label { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: var(--text-1); }
 
         /* ─── VIEWS ─── */
         .view { display: none; }
@@ -309,7 +264,7 @@
         /* ─── MODAL ─── */
         .modal-overlay {
             position: fixed; inset: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.4);
             backdrop-filter: blur(4px);
             z-index: 150; display: none;
             align-items: flex-end; justify-content: center;
@@ -317,7 +272,7 @@
         .modal-overlay.active { display: flex; }
         .modal {
             background: var(--bg-card);
-            border-radius: 16px 16px 0 0;
+            border-radius: 20px 20px 0 0;
             width: 100%; max-width: 480px;
             max-height: 85vh; overflow-y: auto;
             padding: 24px 20px 40px;
@@ -330,8 +285,8 @@
         }
         .modal-head h2 { font-size: 18px; font-weight: 600; }
         .modal-close {
-            width: 36px; height: 36px; border-radius: 50%; border: none;
-            background: var(--bg-surface); color: var(--text-2); cursor: pointer;
+            width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+            background: var(--bg); color: var(--text-2); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
         .modal-close:hover { color: var(--text-1); }
@@ -339,194 +294,220 @@
         /* ─── FORM ─── */
         .form-group { margin-bottom: 14px; }
         .form-group label {
-            display: block; font-size: 11px; font-weight: 500;
+            display: block; font-size: 10px; font-weight: 500;
             color: var(--text-3); margin-bottom: 6px;
-            text-transform: uppercase; letter-spacing: 0.3px;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            font-family: 'Space Mono', monospace;
         }
         .form-group input, .form-group select {
             width: 100%; padding: 10px 14px;
-            border: 0.5px solid var(--border-h);
-            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            border-radius: 10px;
             font-size: 14px; font-weight: 500;
-            color: var(--text-1); background: var(--bg-input);
+            color: var(--text-1); background: var(--bg-card);
+            font-family: 'DM Sans', sans-serif;
             min-height: 44px; outline: none; transition: border-color 0.15s;
         }
-        .form-group input:focus, .form-group select:focus {
-            border-color: var(--purple);
-        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--text-1); }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .btn {
             display: inline-flex; align-items: center; justify-content: center;
-            gap: 6px; padding: 12px 20px; border-radius: var(--radius-sm);
-            font-size: 14px; font-weight: 500; border: none; cursor: pointer;
+            gap: 6px; padding: 13px 20px; border-radius: 10px;
+            font-size: 13px; font-weight: 600; border: none; cursor: pointer;
             transition: all 0.15s; min-height: 44px; width: 100%;
+            font-family: 'DM Sans', sans-serif;
         }
         .btn:active { transform: scale(0.97); }
         .btn-primary { background: var(--text-1); color: var(--bg); }
         .btn-primary:hover { opacity: 0.85; }
         .btn-primary:disabled { opacity: 0.15; cursor: not-allowed; }
 
-        /* ─── CATEGORIZE (in-card) ─── */
+        /* ─── UNCATEGORIZED VIEW ─── */
         .uncat-page { padding: 0 20px; }
         .uncat-page-head {
             display: flex; align-items: center; gap: 12px;
             margin-bottom: 16px;
         }
         .back-btn {
-            width: 36px; height: 36px; border-radius: 50%;
-            border: 0.5px solid var(--border-h); background: var(--bg-card);
+            width: 36px; height: 36px; border-radius: 10px;
+            border: 1px solid var(--border); background: var(--bg-card);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; flex-shrink: 0; color: var(--text-1);
-            transition: border-color 0.15s;
         }
         .back-btn:hover { border-color: var(--text-3); }
         .back-btn svg { width: 16px; height: 16px; }
         .uncat-page-title { font-size: 18px; font-weight: 600; flex: 1; }
         .uncat-count-pill {
-            font-size: 12px; font-weight: 500; padding: 3px 10px;
-            border-radius: var(--radius-pill);
-            background: var(--amber-bg); color: var(--amber-text);
+            font-size: 11px; font-weight: 700; padding: 3px 10px;
+            border-radius: 20px; font-family: 'Space Mono', monospace;
+            background: var(--orange); color: #fff;
         }
         .uncat-hint { font-size: 12px; color: var(--text-3); margin-bottom: 16px; line-height: 1.5; }
+
         .uncat-card {
-            background: var(--bg-card); border: 0.5px solid var(--border);
-            border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 18px; overflow: hidden; margin-bottom: 12px;
             transition: all 0.3s ease;
         }
-        .uncat-card:hover { border-color: var(--border-h); }
-        .uncat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-        .uncat-name { font-size: 16px; font-weight: 500; }
-        .uncat-meta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
-        .uncat-amt { font-size: 20px; font-weight: 500; letter-spacing: -0.5px; }
+        .uncat-header { padding: 16px 18px 12px; border-bottom: 1px solid var(--border-light); }
+        .uncat-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .uncat-name { font-size: 15px; font-weight: 500; }
+        .uncat-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+        .uncat-amt { font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace; }
         .uncat-amt.dr { color: var(--text-1); }
         .uncat-amt.cr { color: var(--green); }
         .uncat-type-label { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 2px; }
 
-        .type-row {
-            display: flex; gap: 4px; margin-bottom: 10px;
-            background: var(--bg-surface); border-radius: var(--radius-sm); padding: 3px;
+        .type-toggle {
+            display: flex; gap: 0; border: 1px solid var(--border); border-radius: 10px;
+            overflow: hidden; margin: 14px 18px 0;
         }
         .type-btn {
-            flex: 1; padding: 7px; border: none; border-radius: 6px;
-            font-size: 11px; font-weight: 500; cursor: pointer;
-            background: transparent; color: var(--text-3); transition: all 0.15s;
+            flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; background: transparent; color: var(--text-3);
+            border: none; font-family: 'DM Sans', sans-serif;
         }
-        .type-btn.active {
-            background: var(--bg-card); color: var(--text-1);
-            box-shadow: var(--shadow);
-        }
+        .type-btn.active { background: var(--text-1); color: #fff; }
+
         .cat-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-            gap: 6px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 6px; padding: 14px 18px 0;
         }
-        .cat-chip {
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-            padding: 10px 6px; border-radius: var(--radius-sm);
-            border: 0.5px solid var(--border); background: var(--bg-card);
-            cursor: pointer; transition: all 0.15s;
+        .cat-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 12px 8px;
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            background: #FAFAF8; cursor: pointer;
+            transition: all 0.15s; flex: 1; min-width: 80px;
         }
-        .cat-chip:hover { border-color: var(--border-h); background: var(--bg-surface); }
-        .cat-chip.selected { border-color: var(--purple); background: var(--purple-bg); }
-        .cat-chip-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .cat-chip-label { font-size: 11px; font-weight: 500; color: var(--text-2); text-align: center; }
-        .cat-chip.selected .cat-chip-label { color: var(--purple-text); }
+        .cat-btn:hover { border-color: var(--text-1); background: #F5F3EE; }
+        .cat-btn.selected { border-color: var(--text-1); background: var(--text-1); }
+        .cat-btn.selected .cat-label { color: #fff; }
+        .cat-btn .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .cat-label { font-size: 10px; font-weight: 500; color: var(--text-2); text-align: center; }
+
         .confirm-btn {
-            width: 100%; padding: 12px; margin-top: 12px; border: none;
-            border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
-            cursor: pointer; background: var(--text-1); color: var(--bg);
-            opacity: 0.15; pointer-events: none; transition: all 0.2s;
+            width: calc(100% - 36px); margin: 14px 18px 16px; padding: 13px;
+            text-align: center; font-family: 'Space Mono', monospace;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+            color: var(--text-3); cursor: pointer;
+            border: none; background: transparent; transition: all 0.15s;
         }
-        .confirm-btn.ready { opacity: 1; pointer-events: auto; }
-        .confirm-btn.ready:hover { opacity: 0.85; }
-        .confirm-btn.ready:active { transform: scale(0.98); }
+        .confirm-btn.ready { color: var(--text-1); background: var(--border-light); border-radius: 10px; }
+        .confirm-btn.done { color: var(--green); }
 
         .done-state { text-align: center; padding: 48px 20px; display: none; }
         .done-ico {
             width: 48px; height: 48px; border-radius: 50%;
-            background: var(--green-bg);
+            background: #E8F8EE;
             display: flex; align-items: center; justify-content: center;
             margin: 0 auto 12px;
         }
         .done-ico svg { width: 20px; height: 20px; color: var(--green); }
-        .done-txt { font-size: 15px; font-weight: 500; }
+        .done-txt { font-size: 15px; font-weight: 600; }
         .done-sub { font-size: 12px; color: var(--text-3); margin-top: 4px; }
-
-        /* ─── SETTINGS VIEW ─── */
-        .settings-section { padding: 0 20px; }
-        .settings-group { margin-bottom: 24px; }
-        .settings-group-title {
-            font-size: 11px; font-weight: 500; color: var(--text-3);
-            text-transform: uppercase; letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-        .setting-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 0; border-bottom: 0.5px solid var(--border);
-        }
-        .setting-row:last-child { border-bottom: none; }
-        .setting-label { font-size: 14px; font-weight: 500; }
-        .setting-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-        .setting-input {
-            width: 100px; padding: 8px 12px;
-            border: 0.5px solid var(--border-h); border-radius: var(--radius-sm);
-            font-size: 14px; font-weight: 500; text-align: right;
-            color: var(--text-1); background: var(--bg-input);
-            outline: none;
-        }
-        .setting-input:focus { border-color: var(--purple); }
-        .toggle {
-            position: relative; width: 44px; height: 24px;
-            border-radius: 12px; background: var(--bg-surface);
-            border: 0.5px solid var(--border-h);
-            cursor: pointer; transition: all 0.3s;
-        }
-        .toggle.on { background: var(--green); border-color: var(--green); }
-        .toggle::after {
-            content: ''; position: absolute; top: 2px; left: 2px;
-            width: 18px; height: 18px; border-radius: 50%;
-            background: white; transition: transform 0.3s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-        }
-        .toggle.on::after { transform: translateX(20px); }
 
         /* ─── STATS VIEW ─── */
         .stats-view-section { padding: 0 20px; }
-        .stats-view-title { font-size: 22px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.3px; }
-        .chart-card {
-            background: var(--bg-card); border-radius: var(--radius);
-            padding: 20px; border: 0.5px solid var(--border); margin-bottom: 16px;
+        .stats-view-title { font-size: 24px; font-weight: 600; margin-bottom: 16px; letter-spacing: -0.02em; }
+
+        .period-toggle { display: flex; gap: 6px; margin-bottom: 16px; }
+        .period-btn {
+            padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border);
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            background: transparent; color: var(--text-3);
+            font-family: 'DM Sans', sans-serif; transition: all 0.15s;
         }
-        .chart-title { font-size: 14px; font-weight: 500; margin-bottom: 16px; }
-        .chart-container { position: relative; height: 200px; margin-bottom: 12px; }
-        .chart-legend { display: flex; flex-wrap: wrap; gap: 8px; }
-        .legend-item {
-            display: inline-flex; align-items: center; gap: 5px;
-            font-size: 11px; font-weight: 500; color: var(--text-2);
+        .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+
+        .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 100px; margin-bottom: 12px; }
+        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .bar-track { width: 100%; background: var(--border-light); border-radius: 6px; overflow: hidden; height: 80px; display: flex; align-items: flex-end; }
+        .bar-fill { width: 100%; border-radius: 6px; transition: height 0.8s cubic-bezier(0.4,0,0.2,1); }
+        .bar-label { font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace; }
+
+        .cat-breakdown { margin-bottom: 12px; }
+        .spend-bar-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+        .spend-bar-row:last-child { border-bottom: none; }
+        .spend-bar-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+        .spend-bar-info { flex: 1; }
+        .spend-bar-name { font-size: 13px; font-weight: 500; }
+        .spend-bar-track { height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+        .spend-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+        .spend-bar-amt { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; }
+
+        .portfolio-row {
+            display: flex; align-items: center; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
         }
-        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .portfolio-row:last-child { border-bottom: none; }
 
         /* ─── HISTORY BARS ─── */
         .history-month {
-            background: var(--bg-surface); border-radius: var(--radius-sm);
-            padding: 14px; margin-bottom: 8px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 14px; margin-bottom: 8px;
         }
         .history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .history-name { font-size: 13px; font-weight: 500; }
-        .history-total { font-size: 14px; font-weight: 600; }
-        .history-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .history-total { font-size: 14px; font-weight: 700; font-family: 'Space Mono', monospace; }
+        .history-bar-bg { height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
         .history-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-        .history-meta {
-            display: flex; gap: 12px; margin-top: 6px;
-            font-size: 11px; color: var(--text-3);
+        .history-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--text-3); font-family: 'Space Mono', monospace; }
+
+        /* ─── SETTINGS VIEW ─── */
+        .settings-section { padding: 0 20px; }
+        .setting-group-label { margin: 16px 0 8px; }
+        .setting-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 0; border-bottom: 1px solid var(--border-light);
         }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 14px; font-weight: 500; color: var(--text-1); }
+        .setting-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+        .setting-input {
+            width: 100px; padding: 8px 12px;
+            border: 1px solid var(--border); border-radius: 10px;
+            font-size: 14px; font-weight: 700; text-align: right;
+            color: var(--text-1); background: var(--bg-card);
+            font-family: 'Space Mono', monospace;
+            outline: none;
+        }
+        .setting-input:focus { border-color: var(--text-1); }
+
+        .toggle {
+            width: 44px; height: 26px; border-radius: 13px;
+            background: #D8D5CF; position: relative; cursor: pointer;
+            transition: background 0.2s; flex-shrink: 0;
+        }
+        .toggle.on { background: var(--text-1); }
+        .toggle::after {
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #fff; transition: left 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .toggle.on::after { left: 21px; }
+
+        .profile-card {
+            display: flex; align-items: center; gap: 14px;
+        }
+        .profile-avatar {
+            width: 48px; height: 48px; border-radius: 16px;
+            background: var(--text-1); display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .profile-avatar span { font-family: 'Space Mono', monospace; font-size: 18px; font-weight: 700; color: #fff; }
+        .profile-name { font-size: 16px; font-weight: 600; }
+        .profile-email { font-size: 12px; color: var(--text-3); margin-top: 2px; }
 
         /* ─── TOAST ─── */
         .toast {
-            position: fixed; bottom: 90px; left: 50%;
+            position: fixed; bottom: 96px; left: 50%;
             transform: translateX(-50%) translateY(20px);
             background: var(--text-1); color: var(--bg);
-            padding: 10px 24px; border-radius: var(--radius-pill);
+            padding: 10px 24px; border-radius: 20px;
             font-size: 13px; font-weight: 500;
+            font-family: 'DM Sans', sans-serif;
             opacity: 0; transition: all 0.3s ease;
             z-index: 300; pointer-events: none; white-space: nowrap;
         }
@@ -537,9 +518,21 @@
         .skel-val { height: 24px; width: 60%; }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
 
+        /* ─── ANIMATIONS ─── */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-up { animation: fadeUp 0.4s ease forwards; }
+
+        /* ─── DOT MATRIX ─── */
+        .dot-matrix { display: flex; justify-content: center; gap: 3px; margin-bottom: 8px; opacity: 0.12; }
+        .dm { width: 4px; height: 4px; border-radius: 50%; background: var(--text-1); }
+        .brand-mark {
+            text-align: center; padding: 24px 0 16px;
+        }
+        .brand-text { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text-3); letter-spacing: 0.18em; }
+
         @media (max-width: 380px) {
-            .hero-amount { font-size: 32px; }
-            .stat-val { font-size: 18px; }
+            .hero-amount { font-size: 28px; }
+            .stat-val { font-size: 16px; }
         }
     </style>
 </head>
@@ -549,7 +542,7 @@
 <div class="top-bar">
     <div>
         <div class="greeting" id="greeting"></div>
-        <div class="app-name">My finance</div>
+        <div class="app-name">My Finance</div>
     </div>
     <div class="month-pill">
         <select id="month-select" onchange="loadMonth()"></select>
@@ -564,63 +557,60 @@
         <div class="hero-label">Spent this month</div>
         <div class="hero-amount" id="hero-spent"><div class="skel skel-val" style="margin:8px auto;"></div></div>
         <div class="hero-sub" id="hero-sub"></div>
-        <div class="ring-wrap">
-            <svg viewBox="0 0 140 140">
-                <circle class="ring-track" cx="70" cy="70" r="58"/>
-                <circle class="ring-fill spending" id="ring-spending" cx="70" cy="70" r="58"
-                    stroke-dasharray="364.4" stroke-dashoffset="364.4"/>
-                <circle class="ring-track" cx="70" cy="70" r="48"/>
-                <circle class="ring-fill investing" id="ring-investing" cx="70" cy="70" r="48"
-                    stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+        <div class="donut-wrap">
+            <svg viewBox="0 0 160 160">
+                <circle class="donut-track" cx="80" cy="80" r="66"/>
+                <circle class="donut-fill" id="donut-ring" cx="80" cy="80" r="66"
+                    stroke-dasharray="414.7" stroke-dashoffset="414.7"/>
             </svg>
-            <div class="ring-center">
-                <div class="ring-pct" id="ring-pct">0%</div>
-                <div class="ring-lbl">budget used</div>
+            <div class="donut-center">
+                <div class="donut-pct" id="donut-pct">0%</div>
+                <div class="donut-lbl">of budget</div>
             </div>
         </div>
     </div>
 
     <!-- Stats -->
-    <div class="stats">
-        <div class="stat">
-            <div class="stat-label">Income</div>
+    <div class="stat-row">
+        <div class="card stat-card">
+            <div class="label">Income</div>
             <div class="stat-val inc" id="s-income"><div class="skel skel-val"></div></div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Invested</div>
+        <div class="card stat-card">
+            <div class="label">Invested</div>
             <div class="stat-val inv" id="s-invest"><div class="skel skel-val"></div></div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Spent</div>
+        <div class="card stat-card">
+            <div class="label">Spent</div>
             <div class="stat-val" id="s-expense"><div class="skel skel-val"></div></div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Net saved</div>
+        <div class="card stat-card">
+            <div class="label">Net saved</div>
             <div class="stat-val sav" id="s-saved"><div class="skel skel-val"></div></div>
         </div>
     </div>
 
     <!-- Uncategorized Banner -->
-    <div id="uncat-banner" style="display:none;" class="uncat-banner" onclick="showUncategorized()">
-        <div class="uncat-dot"></div>
-        <div class="uncat-txt" id="uncat-banner-txt">0 uncategorized</div>
-        <div class="uncat-arrow">&rarr;</div>
+    <div id="uncat-banner" style="display:none;" class="notif-strip" onclick="showUncategorized()">
+        <div class="notif-dot"></div>
+        <div class="notif-txt" id="uncat-banner-txt">0 uncategorized</div>
+        <div class="notif-count" id="uncat-banner-count">0</div>
     </div>
 
     <!-- Spending Breakdown -->
-    <div id="spending-badges-section" style="display:none;">
-        <div class="sec-head">
-            <div class="sec-title">Spending breakdown</div>
-        </div>
-        <div class="badge-row" id="spending-badges"></div>
+    <div id="spending-badges-section" style="display:none;" class="badge-section">
+        <div class="label">Spending</div>
+        <div class="badge-row" id="spending-badges" style="margin-top:10px;"></div>
     </div>
 
     <!-- Transactions -->
-    <div class="sec-head" style="margin-top:24px;">
+    <div class="sec-head" style="margin-top:20px;">
         <div class="sec-title">Recent</div>
         <div class="sec-link" id="txn-count-label">0 transactions</div>
     </div>
-    <div class="txn-section" id="txn-list"></div>
+    <div class="txn-section" id="txn-list-wrap">
+        <div class="card txn-card" id="txn-list" style="display:none;"></div>
+    </div>
     <div class="txn-section">
         <div class="empty-state" id="no-entries" style="display:none;">
             <div class="empty-ico">
@@ -629,6 +619,12 @@
             <h3>No transactions yet</h3>
             <p>Tap + to add one manually</p>
         </div>
+    </div>
+
+    <!-- Branding -->
+    <div class="brand-mark">
+        <div class="dot-matrix" id="dot-matrix"></div>
+        <div class="brand-text">MY · FINANCE</div>
     </div>
 </div>
 
@@ -640,7 +636,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </button>
             <div class="uncat-page-title">Uncategorized</div>
-            <div class="uncat-count-pill" id="uncat-pill">0 left</div>
+            <div class="uncat-count-pill" id="uncat-pill">0</div>
         </div>
         <div class="uncat-hint">Tap a category to sort each transaction.</div>
         <div id="uncat-cards"></div>
@@ -657,25 +653,31 @@
 <!-- ═══ STATS VIEW ═══ -->
 <div class="view" id="view-stats">
     <div class="stats-view-section" style="padding-top:16px;">
-        <div class="stats-view-title">Stats</div>
+        <div class="stats-view-title">Analytics</div>
 
-        <div class="chart-card" id="chart-spending-section" style="display:none;">
-            <div class="chart-title">Spending breakdown</div>
-            <div class="chart-container"><canvas id="chart-spending"></canvas></div>
-            <div class="chart-legend" id="chart-spending-legend"></div>
+        <!-- Monthly bar chart -->
+        <div class="card" id="monthly-bars-section" style="margin-bottom:16px;">
+            <div class="label" style="margin-bottom:16px;">Monthly Spending</div>
+            <div class="bar-chart" id="monthly-bars"></div>
         </div>
 
-        <div class="chart-card" id="chart-invest-section" style="display:none;">
-            <div class="chart-title">Investment split</div>
-            <div class="chart-container"><canvas id="chart-invest"></canvas></div>
-            <div class="chart-legend" id="chart-invest-legend"></div>
+        <!-- Category breakdown -->
+        <div class="card cat-breakdown" id="cat-breakdown-section" style="display:none;">
+            <div class="label" style="margin-bottom:12px;">By Category</div>
+            <div id="cat-breakdown-list"></div>
+        </div>
+
+        <!-- Portfolio -->
+        <div class="card" id="portfolio-section" style="margin-bottom:16px; display:none;">
+            <div class="label" style="margin-bottom:12px;">Portfolio</div>
+            <div id="portfolio-list"></div>
         </div>
 
         <div class="sec-head" style="padding:0; margin-top:8px;">
-            <div class="sec-title">Monthly history</div>
+            <div class="sec-title">History</div>
         </div>
         <div id="history-list"></div>
-        <div id="no-history" style="text-align:center; padding:32px 0; color:var(--text-3); font-size:13px;">No history yet</div>
+        <div id="no-history" style="text-align:center; padding:32px 0; color:var(--text-3); font-size:13px; font-family:'Space Mono', monospace;">No history yet</div>
     </div>
 </div>
 
@@ -684,28 +686,43 @@
     <div class="settings-section" style="padding-top:16px;">
         <div class="stats-view-title">Settings</div>
 
-        <div class="settings-group">
-            <div class="settings-group-title">Appearance</div>
-            <div class="setting-row">
-                <div><div class="setting-label">Dark mode</div><div class="setting-desc">Switch theme</div></div>
-                <div class="toggle on" id="theme-toggle" onclick="toggleTheme()"></div>
+        <!-- Profile -->
+        <div class="card" style="margin-bottom:12px;">
+            <div class="profile-card">
+                <div class="profile-avatar"><span>V</span></div>
+                <div>
+                    <div class="profile-name">Viyas</div>
+                    <div class="profile-email">viyas.ventures@gmail.com</div>
+                </div>
             </div>
         </div>
 
-        <div class="settings-group">
-            <div class="settings-group-title">Budget</div>
-            <div class="setting-row">
-                <div><div class="setting-label">Monthly budget</div><div class="setting-desc">Spending limit (excl. investments)</div></div>
+        <!-- Budget -->
+        <div class="label setting-group-label">Budget</div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="setting-row" style="border-bottom:none;">
+                <div><div class="setting-label">Monthly Budget</div><div class="setting-desc">Used for spending ring</div></div>
                 <input type="number" class="setting-input" id="settings-budget" value="25000" min="0" onchange="updateBudget()">
             </div>
         </div>
 
-        <div class="settings-group">
-            <div class="settings-group-title">About</div>
+        <!-- About -->
+        <div class="label setting-group-label">About</div>
+        <div class="card" style="margin-bottom:24px;">
             <div class="setting-row">
-                <div><div class="setting-label">My Finance</div><div class="setting-desc">v2.0 — Built by Viyas</div></div>
-                <span style="font-size:12px; font-weight:500; color:var(--text-3);">PWA</span>
+                <div><div class="setting-label">Version</div></div>
+                <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">3.0.0</span>
             </div>
+            <div class="setting-row" style="border-bottom:none;">
+                <div><div class="setting-label">My Finance</div><div class="setting-desc">Built by Viyas</div></div>
+                <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">PWA</span>
+            </div>
+        </div>
+
+        <!-- Branding -->
+        <div class="brand-mark">
+            <div class="dot-matrix" id="dot-matrix-settings"></div>
+            <div class="brand-text">MY · FINANCE</div>
         </div>
     </div>
 </div>
@@ -759,15 +776,15 @@
     <div class="nav-inner">
         <button class="nav-item active" data-view="home" onclick="switchView('home')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-            <span>Home</span>
+            <span class="nav-label">Home</span>
         </button>
         <button class="nav-item" data-view="stats" onclick="switchView('stats')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span>Stats</span>
+            <span class="nav-label">Stats</span>
         </button>
         <button class="nav-item" data-view="settings" onclick="switchView('settings')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-            <span>Settings</span>
+            <span class="nav-label">Settings</span>
         </button>
     </div>
 </div>
@@ -777,32 +794,31 @@
 <script>
 /* ─── CONFIG ─── */
 let BUDGET = parseInt(localStorage.getItem('pft_budget')) || 25000;
-let darkMode = localStorage.getItem('pft_dark') !== 'false';
 
 const SPENDING_CATS = [
-    { name: "Food", color: "#e24b4a" },
-    { name: "Bill", color: "#ef9f27" },
-    { name: "Transport", color: "#378add" },
-    { name: "Health", color: "#1d9e75" },
-    { name: "Apparel", color: "#7f77dd" },
-    { name: "Hair Cut", color: "#d4537e" },
-    { name: "Culture", color: "#534ab7" },
-    { name: "Household", color: "#5dcaa5" },
-    { name: "Gaming", color: "#993556" },
-    { name: "Gift", color: "#ba7517" },
-    { name: "Miscellaneous", color: "#888780" }
+    { name: "Food", color: "#FF3B30" },
+    { name: "Bill", color: "#FF9500" },
+    { name: "Transport", color: "#007AFF" },
+    { name: "Health", color: "#22C55E" },
+    { name: "Apparel", color: "#5856D6" },
+    { name: "Hair Cut", color: "#FF2D55" },
+    { name: "Culture", color: "#AF52DE" },
+    { name: "Household", color: "#30B0C7" },
+    { name: "Gaming", color: "#FF6482" },
+    { name: "Gift", color: "#FF9F0A" },
+    { name: "Miscellaneous", color: "#8E8E93" }
 ];
 const INVEST_CATS = [
-    { name: "Mutual Fund", color: "#534ab7" },
-    { name: "PPF", color: "#378add" },
-    { name: "SIP Transfer", color: "#1d9e75" },
-    { name: "Fixed Deposit", color: "#ef9f27" },
-    { name: "Stocks", color: "#e24b4a" }
+    { name: "Mutual Fund", color: "#5856D6" },
+    { name: "PPF", color: "#007AFF" },
+    { name: "SIP Transfer", color: "#22C55E" },
+    { name: "Fixed Deposit", color: "#FF9500" },
+    { name: "Stocks", color: "#FF3B30" }
 ];
 const INCOME_CATS = [
-    { name: "Salary", color: "#1d9e75" },
-    { name: "Refund", color: "#378add" },
-    { name: "Other Income", color: "#888780" }
+    { name: "Salary", color: "#22C55E" },
+    { name: "Refund", color: "#007AFF" },
+    { name: "Other Income", color: "#8E8E93" }
 ];
 const ALL_CATS = { spending: SPENDING_CATS, investment: INVEST_CATS, income: INCOME_CATS };
 
@@ -811,7 +827,7 @@ function getCatInfo(name) {
         const f = list.find(c => c.name === name);
         if (f) return f;
     }
-    return { name, color: "#888780" };
+    return { name, color: "#8E8E93" };
 }
 
 const firebaseConfig = {
@@ -824,19 +840,14 @@ const firebaseConfig = {
 };
 
 let db = null, firebaseReady = false, editingId = null;
-let spendingChart = null, investChart = null;
 let currentEntries = [], uncatEntries = [], uncatState = {};
 
-/* ─── THEME ─── */
-function initTheme() {
-    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-    const t = document.getElementById('theme-toggle');
-    if (t) t.classList.toggle('on', darkMode);
-}
-function toggleTheme() {
-    darkMode = !darkMode;
-    localStorage.setItem('pft_dark', darkMode);
-    initTheme();
+/* ─── DOT MATRIX ─── */
+function initDots() {
+    ['dot-matrix', 'dot-matrix-settings'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = Array(24).fill(0).map(() => '<div class="dm"></div>').join('');
+    });
 }
 
 /* ─── GREETING ─── */
@@ -855,7 +866,7 @@ function switchView(name) {
     });
     const fab = document.getElementById('fab-btn');
     fab.style.display = (name === 'home' || name === 'uncat') ? '' : 'none';
-    if (name === 'stats') { buildCharts(); loadHistory(); }
+    if (name === 'stats') { buildStats(); loadHistory(); }
 }
 
 function showUncategorized() {
@@ -939,37 +950,35 @@ function updateDashboard(entries) {
     });
 
     const netSaved = totalIncome - totalExpense - totalInvest;
-    const fmt = n => n.toLocaleString('en-IN');
+    const f = n => n.toLocaleString('en-IN');
 
-    document.getElementById('hero-spent').textContent = fmt(totalExpense);
+    document.getElementById('hero-spent').textContent = '₹' + f(totalExpense);
     const left = BUDGET - totalExpense;
     const sub = document.getElementById('hero-sub');
     if (left >= 0) {
-        sub.innerHTML = 'of ' + fmt(BUDGET) + ' budget &middot; <span class="g">' + fmt(left) + ' left</span>';
+        sub.innerHTML = 'of ₹' + f(BUDGET) + ' · <span class="g">₹' + f(left) + ' left</span>';
     } else {
-        sub.innerHTML = 'of ' + fmt(BUDGET) + ' budget &middot; <span class="r">' + fmt(Math.abs(left)) + ' over</span>';
+        sub.innerHTML = 'of ₹' + f(BUDGET) + ' · <span class="r">₹' + f(Math.abs(left)) + ' over</span>';
     }
 
-    document.getElementById('s-income').textContent = fmt(totalIncome);
-    document.getElementById('s-expense').textContent = fmt(totalExpense);
-    document.getElementById('s-invest').textContent = fmt(totalInvest);
+    document.getElementById('s-income').textContent = '₹' + f(totalIncome);
+    document.getElementById('s-expense').textContent = '₹' + f(totalExpense);
+    document.getElementById('s-invest').textContent = '₹' + f(totalInvest);
     const savedEl = document.getElementById('s-saved');
-    savedEl.textContent = netSaved < 0 ? '-' + fmt(Math.abs(netSaved)) : fmt(netSaved);
+    savedEl.textContent = netSaved < 0 ? '-₹' + f(Math.abs(netSaved)) : '₹' + f(netSaved);
 
-    // Ring
+    // Donut ring
     const pct = Math.min(100, Math.round((totalExpense / BUDGET) * 100));
-    const spendOffset = 364.4 - (364.4 * pct / 100);
-    document.getElementById('ring-spending').style.strokeDashoffset = spendOffset;
-    const invPct = totalIncome > 0 ? Math.min(100, Math.round((totalInvest / totalIncome) * 100)) : 0;
-    const invOffset = 301.6 - (301.6 * invPct / 100);
-    document.getElementById('ring-investing').style.strokeDashoffset = invOffset;
-    document.getElementById('ring-pct').textContent = pct + '%';
+    const ringOffset = 414.7 - (414.7 * pct / 100);
+    document.getElementById('donut-ring').style.strokeDashoffset = ringOffset;
+    document.getElementById('donut-pct').textContent = pct + '%';
 
     // Uncategorized banner
     const banner = document.getElementById('uncat-banner');
     if (uncatEntries.length > 0) {
         banner.style.display = 'flex';
         document.getElementById('uncat-banner-txt').textContent = uncatEntries.length + ' uncategorized';
+        document.getElementById('uncat-banner-count').textContent = uncatEntries.length;
     } else { banner.style.display = 'none'; }
 
     // Spending badges
@@ -985,7 +994,7 @@ function updateDashboard(entries) {
         document.getElementById('spending-badges').innerHTML = sorted.map(([cat, amt]) => {
             const info = getCatInfo(cat);
             const p = Math.round(amt / total * 100);
-            return '<div class="cat-badge"><div class="cat-dot" style="background:' + info.color + '"></div>' + cat + ' ' + p + '%</div>';
+            return '<div class="tag-pill"><div class="tag-dot" style="background:' + info.color + '"></div>' + cat + ' ' + p + '%</div>';
         }).join('');
     } else { badgeSection.style.display = 'none'; }
 
@@ -997,8 +1006,8 @@ function updateDashboard(entries) {
     const noMsg = document.getElementById('no-entries');
     window._allCategorized = categorized;
     window._txnExpanded = false;
-    if (categorized.length === 0) { container.innerHTML = ''; noMsg.style.display = 'block'; }
-    else { noMsg.style.display = 'none'; renderTxnList(categorized, false); }
+    if (categorized.length === 0) { container.style.display = 'none'; noMsg.style.display = 'block'; }
+    else { noMsg.style.display = 'none'; container.style.display = 'block'; renderTxnList(categorized, false); }
 }
 
 /* ─── TRANSACTION LIST ─── */
@@ -1016,11 +1025,11 @@ function renderTxnList(entries, expanded) {
         const rows = groups[date].map(e => {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
-            return '<div class="txn">' +
-                '<div class="txn-ico" style="background:' + info.color + '18"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + info.color + '" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div>' +
+            return '<div class="txn-row">' +
+                '<div class="txn-icon" style="background:' + info.color + '18;color:' + info.color + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div>' +
                 '<div class="txn-mid"><div class="txn-name">' + esc(e.note || e.category) + '</div>' +
-                '<div class="txn-cat">' + esc(e.category) + '</div></div>' +
-                '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + fmt(e.amount || 0) + '</div>' +
+                '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(e.category) + '</div></div>' +
+                '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +
                 '<div class="txn-actions">' +
                 '<button class="txn-act" onclick="editEntry(\'' + e.id + '\',\'' + esc(e.date||'') + '\',\'' + esc(e.category||'') + '\',\'' + esc(e.note||'') + '\',' + (e.amount||0) + ',\'' + (e.type||'debit') + '\',\'' + (e.category_type||'spending') + '\')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
@@ -1033,8 +1042,8 @@ function renderTxnList(entries, expanded) {
     if (hasMore) {
         const rem = entries.length - TXN_LIMIT;
         html += expanded
-            ? '<button class="show-toggle expanded" onclick="toggleTxnView()">Show less <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 15l7-7 7 7"/></svg></button>'
-            : '<button class="show-toggle" onclick="toggleTxnView()">Show ' + rem + ' more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg></button>';
+            ? '<button class="show-toggle expanded" onclick="toggleTxnView()">SHOW LESS <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 15l7-7 7 7"/></svg></button>'
+            : '<button class="show-toggle" onclick="toggleTxnView()">SHOW ' + rem + ' MORE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg></button>';
     }
     container.innerHTML = html;
 }
@@ -1152,32 +1161,32 @@ function renderUncatCards() {
 
     if (uncatEntries.length === 0) {
         container.innerHTML = '';
-        pill.textContent = '0 left';
+        pill.textContent = '0';
         done.style.display = 'block';
         return;
     }
 
     done.style.display = 'none';
-    pill.textContent = uncatEntries.length + ' left';
+    pill.textContent = uncatEntries.length;
 
     container.innerHTML = uncatEntries.map((e, i) => {
         uncatState[i] = { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null };
         const isCredit = e.type === 'credit';
         return '<div class="uncat-card" id="ucard-' + i + '">' +
-            '<div class="uncat-top"><div>' +
+            '<div class="uncat-header"><div class="uncat-top"><div>' +
             '<div class="uncat-name">' + esc(e.note || e.recipient || 'Unknown') + '</div>' +
             '<div class="uncat-meta">' + fmtDate(e.date) + (e.upi_ref ? ' · UPI:' + e.upi_ref : '') + '</div>' +
             '</div><div>' +
-            '<div class="uncat-amt ' + (isCredit ? 'cr' : 'dr') + '">' + (isCredit ? '+' : '-') + fmt(e.amount || 0) + '</div>' +
+            '<div class="uncat-amt ' + (isCredit ? 'cr' : 'dr') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
             '<div class="uncat-type-label">' + (isCredit ? 'Credit' : 'Debit') + '</div>' +
-            '</div></div>' +
-            '<div class="type-row">' +
+            '</div></div></div>' +
+            '<div class="type-toggle">' +
             '<button class="type-btn' + (uncatState[i].type === 'spending' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'spending\')">Spending</button>' +
             '<button class="type-btn' + (uncatState[i].type === 'investment' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'investment\')">Investment</button>' +
             '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
             '</div>' +
             '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
-            '<button class="confirm-btn" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">Confirm</button>' +
+            '<button class="confirm-btn" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">CONFIRM</button>' +
             '</div>';
     }).join('');
 }
@@ -1186,9 +1195,9 @@ function renderCatChips(i) {
     const list = ALL_CATS[uncatState[i].type] || SPENDING_CATS;
     return list.map(c => {
         const sel = uncatState[i].sel === c.name ? ' selected' : '';
-        return '<div class="cat-chip' + sel + '" onclick="pickUncat(' + i + ',\'' + c.name + '\')">' +
-            '<div class="cat-chip-dot" style="background:' + c.color + '"></div>' +
-            '<div class="cat-chip-label">' + c.name + '</div></div>';
+        return '<div class="cat-btn' + sel + '" onclick="pickUncat(' + i + ',\'' + c.name + '\')">' +
+            '<div class="cat-dot" style="background:' + c.color + '"></div>' +
+            '<div class="cat-label">' + c.name + '</div></div>';
     }).join('');
 }
 
@@ -1201,7 +1210,7 @@ function switchUncatType(i, type) {
     });
     document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
     const btn = document.getElementById('ubtn-' + i);
-    btn.classList.remove('ready'); btn.textContent = 'Confirm';
+    btn.classList.remove('ready'); btn.textContent = 'CONFIRM';
 }
 
 function pickUncat(i, name) {
@@ -1209,7 +1218,7 @@ function pickUncat(i, name) {
     document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
     const btn = document.getElementById('ubtn-' + i);
     btn.classList.add('ready');
-    btn.textContent = 'Confirm — ' + name;
+    btn.textContent = 'CONFIRM — ' + name.toUpperCase();
 }
 
 async function confirmUncat(i) {
@@ -1228,14 +1237,14 @@ async function confirmUncat(i) {
         card.style.overflow = 'hidden';
         setTimeout(() => {
             card.style.maxHeight = '0';
-            card.style.padding = '0 20px';
+            card.style.padding = '0';
             card.style.marginBottom = '0';
             card.style.borderWidth = '0';
         }, 200);
 
         uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
         const pill = document.getElementById('uncat-pill');
-        pill.textContent = uncatEntries.length + ' left';
+        pill.textContent = uncatEntries.length;
         showToast('Saved as ' + s.sel);
 
         if (uncatEntries.length === 0) {
@@ -1248,49 +1257,53 @@ async function confirmUncat(i) {
     } catch (err) { showToast("Failed to categorize"); console.error(err); }
 }
 
-/* ─── CHARTS (Stats view) ─── */
-function buildCharts() {
+/* ─── STATS VIEW ─── */
+function buildStats() {
     const categorized = currentEntries.filter(e => e.category && e.category_type);
-    buildChart('spending', categorized.filter(e => e.category_type === 'spending'), SPENDING_CATS, 'chart-spending', 'chart-spending-legend', 'chart-spending-section');
-    buildChart('invest', categorized.filter(e => e.category_type === 'investment'), INVEST_CATS, 'chart-invest', 'chart-invest-legend', 'chart-invest-section');
-}
 
-function buildChart(type, entries, catDefs, canvasId, legendId, sectionId) {
-    const section = document.getElementById(sectionId);
-    const totals = {};
-    entries.forEach(e => { totals[e.category] = (totals[e.category] || 0) + (e.amount || 0); });
-    const active = catDefs.filter(c => totals[c.name] > 0).sort((a, b) => totals[b.name] - totals[a.name]);
-    if (active.length === 0) { section.style.display = 'none'; return; }
+    // Category breakdown
+    const spendingEntries = categorized.filter(e => e.category_type === 'spending');
+    const breakdownSection = document.getElementById('cat-breakdown-section');
+    if (spendingEntries.length > 0) {
+        breakdownSection.style.display = 'block';
+        const totals = {};
+        spendingEntries.forEach(e => { totals[e.category] = (totals[e.category] || 0) + (e.amount || 0); });
+        const total = Object.values(totals).reduce((s, v) => s + v, 0);
+        const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
-    section.style.display = 'block';
-    const total = active.reduce((s, c) => s + totals[c.name], 0);
-    const chartRef = type === 'spending' ? spendingChart : investChart;
-    if (chartRef) chartRef.destroy();
+        document.getElementById('cat-breakdown-list').innerHTML = sorted.map(([cat, amt]) => {
+            const info = getCatInfo(cat);
+            const pct = Math.round(amt / total * 100);
+            return '<div class="spend-bar-row">' +
+                '<div class="spend-bar-dot" style="background:' + info.color + '"></div>' +
+                '<div class="spend-bar-info"><div class="spend-bar-name">' + cat + '</div>' +
+                '<div class="spend-bar-track"><div class="spend-bar-fill" style="width:' + pct + '%;background:' + info.color + '"></div></div></div>' +
+                '<div class="spend-bar-amt">₹' + fmt(amt) + '</div></div>';
+        }).join('');
+    } else { breakdownSection.style.display = 'none'; }
 
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    const chart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: active.map(c => c.name),
-            datasets: [{ data: active.map(c => totals[c.name]), backgroundColor: active.map(c => c.color), borderWidth: 0, hoverOffset: 6, borderRadius: 4 }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, cutout: '78%',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: darkMode ? '#2a2a35' : '#1a1a22',
-                    padding: 12, cornerRadius: 8, titleFont: { size: 13 }, bodyFont: { size: 13 },
-                    callbacks: { label: ctx => ' ₹' + ctx.parsed.toLocaleString('en-IN') + ' (' + Math.round(ctx.parsed / total * 100) + '%)' }
-                }
-            }
-        }
-    });
-    if (type === 'spending') spendingChart = chart; else investChart = chart;
+    // Portfolio
+    const investEntries = categorized.filter(e => e.category_type === 'investment');
+    const portfolioSection = document.getElementById('portfolio-section');
+    if (investEntries.length > 0) {
+        portfolioSection.style.display = 'block';
+        const totals = {};
+        investEntries.forEach(e => { totals[e.category] = (totals[e.category] || 0) + (e.amount || 0); });
+        const totalInv = Object.values(totals).reduce((s, v) => s + v, 0);
+        const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
-    document.getElementById(legendId).innerHTML = active.map(c =>
-        '<div class="legend-item"><div class="legend-dot" style="background:' + c.color + '"></div>' + c.name + ' ' + Math.round(totals[c.name] / total * 100) + '%</div>'
-    ).join('');
+        let html = sorted.map(([cat, amt]) => {
+            const info = getCatInfo(cat);
+            return '<div class="portfolio-row">' +
+                '<div style="width:10px;height:10px;border-radius:2px;background:' + info.color + ';flex-shrink:0"></div>' +
+                '<div style="flex:1"><div style="font-size:13px;font-weight:500">' + cat + '</div></div>' +
+                '<div style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:700">₹' + fmt(amt) + '</div></div>';
+        }).join('');
+        html += '<div style="padding-top:12px;display:flex;justify-content:space-between">' +
+            '<span style="font-size:12px;color:var(--text-3)">Total invested</span>' +
+            '<span style="font-family:\'Space Mono\',monospace;font-size:14px;font-weight:700;color:var(--blue)">₹' + fmt(totalInv) + '</span></div>';
+        document.getElementById('portfolio-list').innerHTML = html;
+    } else { portfolioSection.style.display = 'none'; }
 }
 
 /* ─── HISTORY ─── */
@@ -1303,6 +1316,10 @@ async function loadHistory() {
         const months = {};
         all.forEach(e => { const k = e.date ? e.date.substring(0, 7) : 'unknown'; if (!months[k]) months[k] = []; months[k].push(e); });
         const sorted = Object.keys(months).sort().reverse();
+
+        // Build monthly bars for stats
+        buildMonthlyBars(months, sorted);
+
         const container = document.getElementById('history-list');
         const noMsg = document.getElementById('no-history');
         if (sorted.length === 0) { container.innerHTML = ''; noMsg.style.display = 'block'; return; }
@@ -1313,16 +1330,36 @@ async function loadHistory() {
             const expense = entries.filter(e => e.category_type === 'spending').reduce((s, e) => s + (e.amount || 0), 0);
             const invest = entries.filter(e => e.category_type === 'investment').reduce((s, e) => s + (e.amount || 0), 0);
             const pct = Math.min(100, Math.round(expense / BUDGET * 100));
-            const color = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : 'var(--purple)';
+            const color = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--text-1)';
             const [y, m] = key.split('-');
             const label = new Date(y, m - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
             return '<div class="history-month"><div class="history-head">' +
                 '<div class="history-name">' + label + '</div>' +
-                '<div class="history-total" style="color:' + color + '">' + fmt(expense) + '</div></div>' +
+                '<div class="history-total" style="color:' + color + '">₹' + fmt(expense) + '</div></div>' +
                 '<div class="history-bar-bg"><div class="history-bar-fill" style="width:' + pct + '%; background:' + color + ';"></div></div>' +
-                '<div class="history-meta"><span>In: ' + fmt(income) + '</span><span>Inv: ' + fmt(invest) + '</span></div></div>';
+                '<div class="history-meta"><span>In: ₹' + fmt(income) + '</span><span>Inv: ₹' + fmt(invest) + '</span></div></div>';
         }).join('');
     } catch (err) { console.error("History failed:", err); }
+}
+
+function buildMonthlyBars(months, sorted) {
+    const container = document.getElementById('monthly-bars');
+    const now = new Date();
+    const recentMonths = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        const label = d.toLocaleDateString('en-IN', { month: 'short' });
+        const entries = months[key] || [];
+        const expense = entries.filter(e => e.category_type === 'spending').reduce((s, e) => s + (e.amount || 0), 0);
+        recentMonths.push({ key, label, expense, isCurrent: i === 0 });
+    }
+    const maxV = Math.max(...recentMonths.map(m => m.expense), 1);
+    container.innerHTML = recentMonths.map((m, idx) =>
+        '<div class="bar-col">' +
+        '<div class="bar-track"><div class="bar-fill" style="height:' + (m.expense > 0 ? Math.round((m.expense/maxV)*100) : 4) + '%;background:' + (m.isCurrent ? 'var(--text-1)' : '#D8D5CF') + ';transition-delay:' + (idx*0.08) + 's"></div></div>' +
+        '<span class="bar-label" style="' + (m.isCurrent ? 'color:var(--text-1);font-weight:700' : '') + '">' + m.label + '</span></div>'
+    ).join('');
 }
 
 /* ─── BUDGET ─── */
@@ -1358,7 +1395,7 @@ function showToast(msg) {
 /* ─── INIT ─── */
 document.getElementById('settings-budget').value = BUDGET;
 setGreeting();
-initTheme();
+initDots();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 initFirebase();
 </script>
