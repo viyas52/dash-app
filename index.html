@@ -179,17 +179,7 @@
         .txn-amt.cr { color: var(--green); }
         .txn-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 
-        .txn-actions { display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
-        .txn-row:hover .txn-actions { opacity: 1; }
-        .txn-act {
-            width: 32px; height: 32px; border: none; background: none;
-            color: var(--text-3); cursor: pointer; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.15s;
-        }
-        .txn-act:hover { background: var(--border-light); color: var(--text-1); }
-        .txn-act.del:hover { color: var(--red); background: #FFF0F0; }
-        .txn-act svg { width: 14px; height: 14px; }
+        .txn-row { -webkit-tap-highlight-color: transparent; }
 
         /* ─── SHOW MORE ─── */
         .show-toggle {
@@ -321,6 +311,11 @@
         .btn-primary { background: var(--text-1); color: var(--bg); }
         .btn-primary:hover { opacity: 0.85; }
         .btn-primary:disabled { opacity: 0.15; cursor: not-allowed; }
+        .btn-danger {
+            background: transparent; color: var(--red);
+            border: 1px solid var(--border); margin-top: 10px;
+        }
+        .btn-danger:hover { background: #FFF0F0; border-color: var(--red); }
 
         /* ─── UNCATEGORIZED VIEW ─── */
         .uncat-page { padding: 0 20px; }
@@ -768,6 +763,7 @@
             <input type="text" id="add-note" placeholder="e.g. Swiggy, SIP transfer">
         </div>
         <button class="btn btn-primary" id="modal-btn" onclick="addEntry()">Add transaction</button>
+        <button class="btn btn-danger" id="modal-delete-btn" style="display:none;" onclick="deleteFromModal()">Delete transaction</button>
     </div>
 </div>
 
@@ -878,11 +874,11 @@ function showUncategorized() {
 async function initFirebase() {
     try {
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-        const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, where }
+        const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, setDoc, query, orderBy, where }
             = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app);
-        window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, where };
+        window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, setDoc, query, orderBy, where };
         firebaseReady = true;
         populateMonths();
         loadMonth();
@@ -1025,16 +1021,13 @@ function renderTxnList(entries, expanded) {
         const rows = groups[date].map(e => {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
-            return '<div class="txn-row">' +
+            return '<div class="txn-row" onclick="rowTap(\'' + e.id + '\')">' +
                 '<div class="txn-icon" style="background:' + info.color + '18;color:' + info.color + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div>' +
                 '<div class="txn-mid"><div class="txn-name">' + esc(e.note || e.category) + '</div>' +
                 '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(e.category) + '</div></div>' +
                 '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +
-                '<div class="txn-actions">' +
-                '<button class="txn-act" onclick="editEntry(\'' + e.id + '\',\'' + esc(e.date||'') + '\',\'' + esc(e.category||'') + '\',\'' + esc(e.note||'') + '\',' + (e.amount||0) + ',\'' + (e.type||'debit') + '\',\'' + (e.category_type||'spending') + '\')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
-                '<button class="txn-act del" onclick="deleteEntry(\'' + e.id + '\')" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>' +
-                '</div></div>';
+                '</div>';
         }).join('');
         return '<div class="date-label">' + fmtDateFull(date) + '</div>' + rows;
     }).join('');
@@ -1066,6 +1059,7 @@ function openAddModal() {
     document.getElementById('modal-title').textContent = 'Add transaction';
     document.getElementById('modal-btn').textContent = 'Add transaction';
     document.getElementById('modal-btn').onclick = addEntry;
+    document.getElementById('modal-delete-btn').style.display = 'none';
     document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('add-amount').value = '';
     document.getElementById('add-note').value = '';
@@ -1075,11 +1069,18 @@ function openAddModal() {
     document.body.style.overflow = 'hidden';
 }
 
+function rowTap(id) {
+    const e = (window._allCategorized || []).find(x => x.id === id);
+    if (!e) return;
+    editEntry(e.id, e.date || '', e.category || '', e.note || '', e.amount || 0, e.type || 'debit', e.category_type || 'spending');
+}
+
 function editEntry(id, date, category, note, amount, type, catType) {
     editingId = id;
     document.getElementById('modal-title').textContent = 'Edit transaction';
     document.getElementById('modal-btn').textContent = 'Save changes';
     document.getElementById('modal-btn').onclick = saveEditedEntry;
+    document.getElementById('modal-delete-btn').style.display = '';
     document.getElementById('add-date').value = date;
     document.getElementById('add-amount').value = amount;
     document.getElementById('add-type').value = type === 'credit' ? 'credit' : catType === 'investment' ? 'investment' : 'debit';
@@ -1088,6 +1089,19 @@ function editEntry(id, date, category, note, amount, type, catType) {
     document.getElementById('add-note').value = note;
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
+}
+
+async function deleteFromModal() {
+    if (!editingId) return;
+    if (!confirm("Delete this transaction?")) return;
+    const id = editingId;
+    closeAddModal();
+    try {
+        const { deleteDoc, doc } = window.fb;
+        await deleteDoc(doc(db, "personal_transactions", id));
+        showToast("Deleted");
+        loadMonth();
+    } catch (err) { showToast("Delete failed"); console.error(err); }
 }
 
 function closeAddModal(e) {
@@ -1140,16 +1154,6 @@ async function saveEditedEntry() {
         closeAddModal();
         loadMonth();
     } catch (err) { showToast("Update failed"); console.error(err); }
-}
-
-async function deleteEntry(id) {
-    if (!confirm("Delete this transaction?")) return;
-    try {
-        const { deleteDoc, doc } = window.fb;
-        await deleteDoc(doc(db, "personal_transactions", id));
-        showToast("Deleted");
-        loadMonth();
-    } catch (err) { showToast("Delete failed"); }
 }
 
 /* ─── CATEGORIZE (in-card) ─── */
@@ -1221,14 +1225,33 @@ function pickUncat(i, name) {
     btn.textContent = 'CONFIRM — ' + name.toUpperCase();
 }
 
+function normalizeKey(s) {
+    return (s || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
 async function confirmUncat(i) {
     const s = uncatState[i];
     if (!s || !s.sel) return;
+    const entry = uncatEntries[i];
     try {
-        const { doc, updateDoc } = window.fb;
+        const { doc, updateDoc, setDoc } = window.fb;
         await updateDoc(doc(db, "personal_transactions", s.id), {
             category: s.sel, category_type: s.type
         });
+
+        // Remember rule for future SMSes from this recipient (debits only — credit source is noisy).
+        if (entry && entry.type === 'debit' && entry.recipient) {
+            const key = normalizeKey(entry.recipient);
+            if (key) {
+                await setDoc(doc(db, "personal_rules", key), {
+                    match: key,
+                    recipient: entry.recipient,
+                    category: s.sel,
+                    category_type: s.type,
+                    last_used: new Date().toISOString()
+                });
+            }
+        }
 
         const card = document.getElementById('ucard-' + i);
         card.style.opacity = '0';
