@@ -774,6 +774,7 @@
                 <option value="debit">Expense</option>
                 <option value="credit">Income</option>
                 <option value="investment">Investment</option>
+                <option value="transfer">Transfer</option>
             </select>
         </div>
         <div class="form-group">
@@ -839,10 +840,13 @@ const INCOME_CATS = [
     { name: "Refund", color: "#007AFF" },
     { name: "Other Income", color: "#8E8E93" }
 ];
-const ALL_CATS = { spending: SPENDING_CATS, investment: INVEST_CATS, income: INCOME_CATS };
+const TRANSFER_CATS = [
+    { name: "Self Transfer", color: "#8E8E93" }
+];
+const ALL_CATS = { spending: SPENDING_CATS, investment: INVEST_CATS, income: INCOME_CATS, transfer: TRANSFER_CATS };
 
 function getCatInfo(name) {
-    for (const list of [SPENDING_CATS, INVEST_CATS, INCOME_CATS]) {
+    for (const list of [SPENDING_CATS, INVEST_CATS, INCOME_CATS, TRANSFER_CATS]) {
         const f = list.find(c => c.name === name);
         if (f) return f;
     }
@@ -980,7 +984,8 @@ function updateDashboard(entries) {
         if (!e.category || !e.category_type) { uncatEntries.push(e); return; }
         if (e.category_type === 'income') totalIncome += e.amount || 0;
         else if (e.category_type === 'investment') totalInvest += e.amount || 0;
-        else totalExpense += e.amount || 0;
+        else if (e.category_type === 'spending') totalExpense += e.amount || 0;
+        // 'transfer' is intentionally excluded from all totals — it's just money moving between own accounts.
     });
 
     const netSaved = totalIncome - totalExpense - totalInvest;
@@ -1094,7 +1099,10 @@ function toggleTxnView() {
 function updateFormCats() {
     const type = document.getElementById('add-type').value;
     const sel = document.getElementById('add-category');
-    const cats = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : SPENDING_CATS;
+    const cats = type === 'credit' ? INCOME_CATS
+              : type === 'investment' ? INVEST_CATS
+              : type === 'transfer' ? TRANSFER_CATS
+              : SPENDING_CATS;
     sel.innerHTML = cats.map(c => '<option value="' + c.name + '">' + c.name + '</option>').join('');
 }
 
@@ -1127,7 +1135,12 @@ function editEntry(id, date, category, note, amount, type, catType) {
     document.getElementById('modal-delete-btn').style.display = '';
     document.getElementById('add-date').value = date;
     document.getElementById('add-amount').value = amount;
-    document.getElementById('add-type').value = type === 'credit' ? 'credit' : catType === 'investment' ? 'investment' : 'debit';
+    let typeOpt;
+    if (catType === 'transfer') typeOpt = 'transfer';
+    else if (catType === 'investment') typeOpt = 'investment';
+    else if (type === 'credit') typeOpt = 'credit';
+    else typeOpt = 'debit';
+    document.getElementById('add-type').value = typeOpt;
     updateFormCats();
     document.getElementById('add-category').value = category;
     document.getElementById('add-note').value = note;
@@ -1180,7 +1193,10 @@ async function addEntry() {
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
 
     const type = typeVal === 'credit' ? 'credit' : 'debit';
-    const category_type = typeVal === 'credit' ? 'income' : typeVal === 'investment' ? 'investment' : 'spending';
+    const category_type = typeVal === 'credit' ? 'income'
+                       : typeVal === 'investment' ? 'investment'
+                       : typeVal === 'transfer' ? 'transfer'
+                       : 'spending';
 
     try {
         const { collection, addDoc } = window.fb;
@@ -1205,7 +1221,10 @@ async function saveEditedEntry() {
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
 
     const type = typeVal === 'credit' ? 'credit' : 'debit';
-    const category_type = typeVal === 'credit' ? 'income' : typeVal === 'investment' ? 'investment' : 'spending';
+    const category_type = typeVal === 'credit' ? 'income'
+                       : typeVal === 'investment' ? 'investment'
+                       : typeVal === 'transfer' ? 'transfer'
+                       : 'spending';
 
     try {
         const { doc, updateDoc } = window.fb;
@@ -1299,8 +1318,8 @@ async function confirmUncat(i) {
             category: s.sel, category_type: s.type
         });
 
-        // Remember rule for future SMSes from this recipient (debits only — credit source is noisy).
-        if (entry && entry.type === 'debit' && entry.recipient) {
+        // Remember rule for future SMSes from this recipient (debits only, not for transfers).
+        if (entry && entry.type === 'debit' && entry.recipient && s.type !== 'transfer') {
             const key = normalizeKey(entry.recipient);
             if (key) {
                 await setDoc(doc(db, "personal_rules", key), {
