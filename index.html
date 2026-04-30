@@ -111,6 +111,9 @@
         .stat-val.inc { color: var(--green); }
         .stat-val.inv { color: var(--blue); }
         .stat-val.sav { color: var(--purple); }
+        .stat-progress { height: 3px; background: var(--border-light); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .stat-progress-fill { height: 100%; border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+        .stat-meta { font-size: 10px; color: var(--text-3); margin-top: 4px; font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
 
         /* ─── UNCATEGORIZED BANNER ─── */
         .notif-strip {
@@ -441,7 +444,11 @@
         .history-month {
             background: var(--bg-card); border: 1px solid var(--border);
             border-radius: var(--radius-sm); padding: 14px; margin-bottom: 8px;
+            cursor: pointer; transition: opacity 0.12s, border-color 0.12s;
+            -webkit-tap-highlight-color: transparent;
         }
+        .history-month:active { opacity: 0.6; }
+        .history-month:hover { border-color: var(--text-3); }
         .history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .history-name { font-size: 13px; font-weight: 500; }
         .history-total { font-size: 14px; font-weight: 700; font-family: 'Space Mono', monospace; }
@@ -500,13 +507,22 @@
             position: fixed; bottom: 96px; left: 50%;
             transform: translateX(-50%) translateY(20px);
             background: var(--text-1); color: var(--bg);
-            padding: 10px 24px; border-radius: 20px;
+            padding: 10px 16px 10px 20px; border-radius: 20px;
             font-size: 13px; font-weight: 500;
             font-family: 'DM Sans', sans-serif;
             opacity: 0; transition: all 0.3s ease;
             z-index: 300; pointer-events: none; white-space: nowrap;
+            display: flex; align-items: center; gap: 14px;
         }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+        .toast-action {
+            background: none; border: none; color: var(--orange);
+            font: inherit; font-weight: 700; cursor: pointer;
+            padding: 4px 6px; letter-spacing: 0.04em;
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            text-transform: uppercase;
+        }
+        .toast-action:hover { color: #FFB04A; }
 
         /* ─── SKELETON ─── */
         .skel { animation: pulse 1.5s ease-in-out infinite; background: var(--border); border-radius: 6px; }
@@ -574,6 +590,8 @@
         <div class="card stat-card">
             <div class="label">Invested</div>
             <div class="stat-val inv" id="s-invest"><div class="skel skel-val"></div></div>
+            <div class="stat-progress"><div class="stat-progress-fill" id="invest-progress" style="width:0%;background:var(--blue);"></div></div>
+            <div class="stat-meta" id="invest-meta"></div>
         </div>
         <div class="card stat-card">
             <div class="label">Spent</div>
@@ -692,12 +710,16 @@
             </div>
         </div>
 
-        <!-- Budget -->
-        <div class="label setting-group-label">Budget</div>
+        <!-- Targets -->
+        <div class="label setting-group-label">Targets</div>
         <div class="card" style="margin-bottom:12px;">
-            <div class="setting-row" style="border-bottom:none;">
+            <div class="setting-row">
                 <div><div class="setting-label">Monthly Budget</div><div class="setting-desc">Used for spending ring</div></div>
                 <input type="number" class="setting-input" id="settings-budget" value="25000" min="0" onchange="updateBudget()">
+            </div>
+            <div class="setting-row" style="border-bottom:none;">
+                <div><div class="setting-label">Investment Target</div><div class="setting-desc">Used for invested progress bar</div></div>
+                <input type="number" class="setting-input" id="settings-invest-target" value="22000" min="0" onchange="updateInvestTarget()">
             </div>
         </div>
 
@@ -790,6 +812,7 @@
 <script>
 /* ─── CONFIG ─── */
 let BUDGET = parseInt(localStorage.getItem('pft_budget')) || 25000;
+let INVEST_TARGET = parseInt(localStorage.getItem('pft_invest_target')) || 22000;
 
 const SPENDING_CATS = [
     { name: "Food", color: "#FF3B30" },
@@ -868,6 +891,21 @@ function switchView(name) {
 function showUncategorized() {
     renderUncatCards();
     switchView('uncat');
+}
+
+function jumpToMonth(key) {
+    const sel = document.getElementById('month-select');
+    if (![...sel.options].some(o => o.value === key)) {
+        // Older than the 12-month rolling window — inject it.
+        const [y, m] = key.split('-').map(Number);
+        const label = new Date(y, m - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+        const opt = document.createElement('option');
+        opt.value = key; opt.textContent = label;
+        sel.appendChild(opt);
+    }
+    sel.value = key;
+    switchView('home');
+    loadMonth();
 }
 
 /* ─── FIREBASE ─── */
@@ -962,6 +1000,12 @@ function updateDashboard(entries) {
     document.getElementById('s-invest').textContent = '₹' + f(totalInvest);
     const savedEl = document.getElementById('s-saved');
     savedEl.textContent = netSaved < 0 ? '-₹' + f(Math.abs(netSaved)) : '₹' + f(netSaved);
+
+    // Investment target progress
+    const investPct = INVEST_TARGET > 0 ? Math.min(100, Math.round((totalInvest / INVEST_TARGET) * 100)) : 0;
+    document.getElementById('invest-progress').style.width = investPct + '%';
+    document.getElementById('invest-progress').style.background = investPct >= 100 ? 'var(--green)' : 'var(--blue)';
+    document.getElementById('invest-meta').textContent = investPct + '% of ₹' + f(INVEST_TARGET);
 
     // Donut ring
     const pct = Math.min(100, Math.round((totalExpense / BUDGET) * 100));
@@ -1093,13 +1137,29 @@ function editEntry(id, date, category, note, amount, type, catType) {
 
 async function deleteFromModal() {
     if (!editingId) return;
-    if (!confirm("Delete this transaction?")) return;
     const id = editingId;
+    // Snapshot the doc first so Undo can restore it (auto-IDs lose their original ID; SMS-imported docs keep theirs).
+    const snapshot = (window._allCategorized || []).find(x => x.id === id) || (uncatEntries || []).find(x => x.id === id);
     closeAddModal();
     try {
-        const { deleteDoc, doc } = window.fb;
+        const { deleteDoc, doc, setDoc, addDoc, collection } = window.fb;
         await deleteDoc(doc(db, "personal_transactions", id));
-        showToast("Deleted");
+        showToast("Deleted", {
+            label: "Undo",
+            fn: async () => {
+                if (!snapshot) { showToast("Nothing to restore"); return; }
+                const { id: oldId, ...data } = snapshot;
+                try {
+                    if (data.dedup_key) {
+                        await setDoc(doc(db, "personal_transactions", data.dedup_key), data);
+                    } else {
+                        await addDoc(collection(db, "personal_transactions"), data);
+                    }
+                    showToast("Restored");
+                    loadMonth();
+                } catch (e) { showToast("Restore failed"); console.error(e); }
+            }
+        });
         loadMonth();
     } catch (err) { showToast("Delete failed"); console.error(err); }
 }
@@ -1356,7 +1416,7 @@ async function loadHistory() {
             const color = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--text-1)';
             const [y, m] = key.split('-');
             const label = new Date(y, m - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-            return '<div class="history-month"><div class="history-head">' +
+            return '<div class="history-month" onclick="jumpToMonth(\'' + key + '\')"><div class="history-head">' +
                 '<div class="history-name">' + label + '</div>' +
                 '<div class="history-total" style="color:' + color + '">₹' + fmt(expense) + '</div></div>' +
                 '<div class="history-bar-bg"><div class="history-bar-fill" style="width:' + pct + '%; background:' + color + ';"></div></div>' +
@@ -1396,6 +1456,16 @@ function updateBudget() {
     }
 }
 
+function updateInvestTarget() {
+    const val = parseInt(document.getElementById('settings-invest-target').value);
+    if (val > 0) {
+        INVEST_TARGET = val;
+        localStorage.setItem('pft_invest_target', val);
+        loadMonth();
+        showToast('Target: ₹' + fmt(val));
+    }
+}
+
 /* ─── UTILS ─── */
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fmt(n) { return n.toLocaleString('en-IN'); }
@@ -1409,14 +1479,33 @@ function fmtDateFull(s) {
     const [y, m, d] = s.split('-');
     return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-function showToast(msg) {
+let _toastTimer = null;
+function showToast(msg, action) {
     const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
+    if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+    t.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    t.appendChild(span);
+    const duration = action ? 5000 : 2500;
+    if (action) {
+        const btn = document.createElement('button');
+        btn.className = 'toast-action';
+        btn.textContent = action.label;
+        btn.onclick = () => {
+            t.classList.remove('show');
+            if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+            action.fn();
+        };
+        t.appendChild(btn);
+    }
+    t.classList.add('show');
+    _toastTimer = setTimeout(() => { t.classList.remove('show'); _toastTimer = null; }, duration);
 }
 
 /* ─── INIT ─── */
 document.getElementById('settings-budget').value = BUDGET;
+document.getElementById('settings-invest-target').value = INVEST_TARGET;
 setGreeting();
 initDots();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
