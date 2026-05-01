@@ -692,11 +692,47 @@
         }
         .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
 
-        .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 100px; margin-bottom: 12px; }
-        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-        .bar-track { width: 100%; background: var(--border-light); border-radius: 6px; overflow: hidden; height: 80px; display: flex; align-items: flex-end; }
-        .bar-fill { width: 100%; border-radius: 6px; transition: height 0.8s cubic-bezier(0.4,0,0.2,1); }
-        .bar-label { font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace; }
+        /* Period tabs */
+        .period-tabs { display: flex; gap: 6px; padding: 0 0 12px; }
+        .period-btn {
+            padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border);
+            background: transparent; font-size: 12px; font-weight: 600;
+            color: var(--text-3); cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+
+        /* Line chart */
+        .line-chart-svg { width: 100%; overflow: visible; display: block; }
+        .line-chart-labels { display: flex; justify-content: space-between; padding: 4px 0 2px; }
+        .line-chart-label { font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace; text-align: center; flex: 1; }
+        .line-chart-label.active { color: var(--text-1); font-weight: 700; }
+        .line-dot-tip {
+            position: absolute; background: var(--text-1); color: #fff;
+            font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700;
+            padding: 3px 6px; border-radius: 6px; pointer-events: none;
+            transform: translate(-50%, -130%); white-space: nowrap;
+        }
+
+        /* Category drill-down */
+        .spend-bar-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-light); cursor: pointer; }
+        .spend-bar-row:last-child { border-bottom: none; }
+        .spend-bar-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+        .spend-bar-info { flex: 1; }
+        .spend-bar-name { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        .spend-bar-track { height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+        .spend-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+        .spend-bar-amt { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; }
+        .spend-bar-chev { color: var(--text-3); transition: transform 0.2s; margin-left: auto; }
+        /* Sub-breakdown panel */
+        .sub-breakdown { background: var(--bg); border-radius: 10px; padding: 8px 10px; margin-top: 4px; }
+        .sub-breakdown-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-light); }
+        .sub-breakdown-row:last-child { border-bottom: none; }
+        .sub-breakdown-name { flex: 1; font-size: 12px; font-weight: 500; color: var(--text-2); }
+        .sub-breakdown-bar { flex: 2; height: 3px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+        .sub-breakdown-fill { height: 100%; border-radius: 2px; }
+        .sub-breakdown-pct { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--text-3); min-width: 32px; text-align: right; }
+        .sub-breakdown-amt { font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700; }
 
         .cat-breakdown { margin-bottom: 12px; }
         .chart-toggle { display: flex; gap: 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -1045,16 +1081,26 @@
     <div class="stats-view-section" style="padding-top:16px;">
         <div class="stats-view-title">Analytics</div>
 
-        <!-- Monthly bar chart -->
+        <!-- Period tabs -->
+        <div class="period-tabs" id="period-tabs">
+            <button class="period-btn active" data-period="monthly" onclick="setStatsPeriod('monthly',this)">Monthly</button>
+            <button class="period-btn" data-period="weekly" onclick="setStatsPeriod('weekly',this)">Weekly</button>
+            <button class="period-btn" data-period="annual" onclick="setStatsPeriod('annual',this)">Annual</button>
+        </div>
+
+        <!-- Line chart (replaces bar chart) -->
         <div class="card" id="monthly-bars-section" style="margin-bottom:16px;">
-            <div class="label" style="margin-bottom:16px;">Monthly Spending</div>
-            <div class="bar-chart" id="monthly-bars"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <div class="label" id="chart-period-label">Monthly Spending</div>
+                <div id="chart-total-badge" style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--text-1);"></div>
+            </div>
+            <div id="line-chart-wrap"></div>
         </div>
 
         <!-- Category breakdown -->
         <div class="card cat-breakdown" id="cat-breakdown-section" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <div class="label">By Category</div>
+                <div class="label" id="breakdown-label">By Category</div>
                 <div class="chart-toggle">
                     <button class="chart-toggle-btn active" id="chart-bar-btn" onclick="switchChartView('bar')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
@@ -2519,21 +2565,63 @@ async function confirmUncat(i) {
 }
 
 /* ─── STATS VIEW ─── */
-function buildStats() {
-    const categorized = currentEntries.filter(e => e.category && e.category_type);
+let _statsPeriod = 'monthly';
+let _catDrillOpen = null;
+let _chartView = 'bar';
 
-    // Category breakdown (spending only, sub-cats grouped under parent)
+function setStatsPeriod(period, btn) {
+    _statsPeriod = period;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildStats();
+}
+
+function getEntriesForPeriod() {
+    if (_statsPeriod === 'monthly') return currentEntries;
+    if (_statsPeriod === 'weekly') {
+        const now = new Date();
+        const day = now.getDay(); // 0=Sun
+        const weekStart = new Date(now); weekStart.setDate(now.getDate() - day); weekStart.setHours(0,0,0,0);
+        const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+        const ws = weekStart.toISOString().split('T')[0];
+        const we = weekEnd.toISOString().split('T')[0];
+        return currentEntries.filter(e => e.date >= ws && e.date < we);
+    }
+    if (_statsPeriod === 'annual') {
+        // Use all loaded history data
+        return (window._allHistoryEntries || []);
+    }
+    return currentEntries;
+}
+
+function buildStats() {
+    const periodEntries = getEntriesForPeriod();
+    const categorized = periodEntries.filter(e => e.category && e.category_type);
+
+    // Update chart label
+    const labelEl = document.getElementById('chart-period-label');
+    const breakdownLabel = document.getElementById('breakdown-label');
+    if (labelEl) labelEl.textContent = _statsPeriod === 'annual' ? 'Annual Spending' : _statsPeriod === 'weekly' ? 'This Week' : 'Monthly Spending';
+    if (breakdownLabel) breakdownLabel.textContent = _statsPeriod === 'annual' ? 'Annual by Category' : _statsPeriod === 'weekly' ? 'This Week by Category' : 'By Category';
+
+    // Category breakdown (spending only)
     const spendingEntries = categorized.filter(e => e.category_type === 'spending');
     const breakdownSection = document.getElementById('cat-breakdown-section');
     if (spendingEntries.length > 0) {
         breakdownSection.style.display = 'block';
         const totals = {};
+        const subTotals = {}; // cat → { sub: amount }
         spendingEntries.forEach(e => {
             const cat = resolveParentCat(e.category);
             totals[cat] = (totals[cat] || 0) + (e.amount || 0);
+            if (e.sub_category) {
+                if (!subTotals[cat]) subTotals[cat] = {};
+                subTotals[cat][e.sub_category] = (subTotals[cat][e.sub_category] || 0) + (e.amount || 0);
+            }
         });
-        window._catTotals = totals; // store for pie chart
-        renderCatBreakdown(totals);
+        window._catTotals = totals;
+        window._subTotals = subTotals;
+        renderCatBreakdown(totals, subTotals);
     } else { breakdownSection.style.display = 'none'; }
 
     // Portfolio
@@ -2550,7 +2638,7 @@ function buildStats() {
             return '<div class="portfolio-row">' +
                 '<div style="width:10px;height:10px;border-radius:2px;background:' + info.color + ';flex-shrink:0"></div>' +
                 '<div style="flex:1"><div style="font-size:13px;font-weight:500">' + cat + '</div></div>' +
-                '<div style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:700">₹' + fmt(amt) + '</div></div>';
+                '<div style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:700">₹' + fmt(totalInv) + '</div></div>';
         }).join('');
         html += '<div style="padding-top:12px;display:flex;justify-content:space-between">' +
             '<span style="font-size:12px;color:var(--text-3)">Total invested</span>' +
@@ -2559,7 +2647,6 @@ function buildStats() {
     } else { portfolioSection.style.display = 'none'; }
 }
 
-let _chartView = 'bar';
 function switchChartView(mode) {
     _chartView = mode;
     document.getElementById('chart-bar-btn').classList.toggle('active', mode === 'bar');
@@ -2569,19 +2656,48 @@ function switchChartView(mode) {
     if (mode === 'pie' && window._catTotals) drawPieChart(window._catTotals);
 }
 
-function renderCatBreakdown(totals) {
+function toggleCatDrill(cat) {
+    _catDrillOpen = _catDrillOpen === cat ? null : cat;
+    renderCatBreakdown(window._catTotals, window._subTotals);
+}
+
+function renderCatBreakdown(totals, subTotals) {
+    subTotals = subTotals || {};
     const total = Object.values(totals).reduce((s, v) => s + v, 0);
     const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
     document.getElementById('cat-breakdown-list').innerHTML = sorted.map(([cat, amt]) => {
         const info = getCatInfo(cat);
         const pct = Math.round(amt / total * 100);
-        return '<div class="spend-bar-row">' +
+        const isOpen = _catDrillOpen === cat;
+        const subs = subTotals[cat] || {};
+        const hasSubs = Object.keys(subs).length > 0;
+        let subHtml = '';
+        if (isOpen && hasSubs) {
+            const subSorted = Object.entries(subs).sort((a, b) => b[1] - a[1]);
+            subHtml = '<div class="sub-breakdown">' +
+                subSorted.map(([s, sv]) => {
+                    const sp = Math.round(sv / amt * 100);
+                    return '<div class="sub-breakdown-row">' +
+                        '<div class="sub-breakdown-name">' + s + '</div>' +
+                        '<div class="sub-breakdown-bar"><div class="sub-breakdown-fill" style="width:' + sp + '%;background:' + info.color + '"></div></div>' +
+                        '<div class="sub-breakdown-pct">' + sp + '%</div>' +
+                        '<div class="sub-breakdown-amt">₹' + fmt(sv) + '</div></div>';
+                }).join('') +
+                '</div>';
+        }
+        return '<div class="spend-bar-row" onclick="' + (hasSubs ? 'toggleCatDrill(\'' + cat + '\')' : '') + '" style="flex-wrap:wrap;">' +
             '<div class="spend-bar-dot" style="background:' + info.color + '"></div>' +
-            '<div class="spend-bar-info"><div class="spend-bar-name">' + cat + '</div>' +
-            '<div class="spend-bar-track"><div class="spend-bar-fill" style="width:' + pct + '%;background:' + info.color + '"></div></div></div>' +
-            '<div class="spend-bar-amt">₹' + fmt(amt) + '</div></div>';
+            '<div class="spend-bar-info" style="width:100%;display:flex;flex-direction:column;">' +
+                '<div class="spend-bar-name">' + cat +
+                    (hasSubs ? '<svg class="spend-bar-chev" style="transform:' + (isOpen ? 'rotate(180deg)' : '') + '" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' : '') +
+                    '<span style="margin-left:auto;font-family:\'Space Mono\',monospace;font-size:12px;font-weight:700;">₹' + fmt(amt) + '</span>' +
+                    '<span style="font-size:11px;color:var(--text-3);font-family:\'Space Mono\',monospace;">' + pct + '%</span>' +
+                '</div>' +
+                '<div class="spend-bar-track" style="margin-top:6px;"><div class="spend-bar-fill" style="width:' + pct + '%;background:' + info.color + '"></div></div>' +
+                subHtml +
+            '</div>' +
+        '</div>';
     }).join('');
-    // Also refresh pie if currently showing
     if (_chartView === 'pie') drawPieChart(totals);
 }
 
@@ -2602,23 +2718,14 @@ function drawPieChart(totals) {
     entries.forEach(([cat, amt]) => {
         const info = getCatInfo(cat);
         const slice = (amt / total) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(W / 2, H / 2);
-        ctx.arc(W / 2, H / 2, R, angle, angle + slice);
-        ctx.closePath();
-        ctx.fillStyle = info.color;
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W/2, H/2);
+        ctx.arc(W/2, H/2, R, angle, angle + slice);
+        ctx.closePath(); ctx.fillStyle = info.color; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
         angle += slice;
     });
-    // Centre hole (donut)
-    ctx.beginPath();
-    ctx.arc(W / 2, H / 2, R * 0.52, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-    // Legend
+    ctx.beginPath(); ctx.arc(W/2, H/2, R*0.52, 0, Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
     document.getElementById('cat-pie-legend').innerHTML = entries.map(([cat, amt]) => {
         const info = getCatInfo(cat);
         const pct = Math.round(amt / total * 100);
@@ -2630,6 +2737,62 @@ function drawPieChart(totals) {
     }).join('');
 }
 
+/* ─── LINE CHART ─── */
+function buildLineChart(points, labels, activeIdx) {
+    const wrap = document.getElementById('line-chart-wrap');
+    if (!wrap || points.length < 2) { if (wrap) wrap.innerHTML = ''; return; }
+    const W = 320, H = 100, PAD = 16;
+    const maxV = Math.max(...points, 1);
+    const minV = 0;
+    const xStep = (W - PAD * 2) / (points.length - 1);
+    const yScale = v => H - PAD - (v / maxV) * (H - PAD * 2);
+
+    const pts = points.map((v, i) => ({ x: PAD + i * xStep, y: yScale(v), v }));
+
+    // Smooth bezier path
+    let pathD = 'M ' + pts[0].x + ' ' + pts[0].y;
+    for (let i = 1; i < pts.length; i++) {
+        const cp1x = pts[i-1].x + xStep * 0.45;
+        const cp1y = pts[i-1].y;
+        const cp2x = pts[i].x - xStep * 0.45;
+        const cp2y = pts[i].y;
+        pathD += ' C ' + cp1x + ' ' + cp1y + ' ' + cp2x + ' ' + cp2y + ' ' + pts[i].x + ' ' + pts[i].y;
+    }
+    const fillD = pathD + ' L ' + pts[pts.length-1].x + ' ' + H + ' L ' + pts[0].x + ' ' + H + ' Z';
+
+    const total = points.reduce((s, v) => s + v, 0);
+    const badge = document.getElementById('chart-total-badge');
+    if (badge) badge.textContent = total > 0 ? '₹' + fmt(total) : '';
+
+    wrap.innerHTML =
+        '<div style="position:relative;">' +
+        '<svg class="line-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px;">' +
+        '<defs>' +
+        '<linearGradient id="lgfill" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="var(--text-1)" stop-opacity="0.18"/>' +
+        '<stop offset="100%" stop-color="var(--text-1)" stop-opacity="0"/>' +
+        '</linearGradient></defs>' +
+        '<path d="' + fillD + '" fill="url(#lgfill)"/>' +
+        '<path d="' + pathD + '" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        pts.map((p, i) => {
+            const isActive = i === activeIdx;
+            const r = isActive ? 5 : 3;
+            const fill = isActive ? 'var(--text-1)' : p.v > 0 ? 'var(--text-1)' : '#D8D5CF';
+            const stroke = 'white';
+            const sw = isActive ? 2 : 1.5;
+            let tip = '';
+            if (isActive && p.v > 0) {
+                tip = '<text x="' + p.x + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="9" font-family="Space Mono,monospace" fill="var(--text-1)" font-weight="700">₹' + fmt(p.v) + '</text>';
+            }
+            return tip + '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"/>';
+        }).join('') +
+        '</svg>' +
+        '</div>' +
+        '<div class="line-chart-labels">' +
+        labels.map((l, i) => '<span class="line-chart-label' + (i === activeIdx ? ' active' : '') + '">' + l + '</span>').join('') +
+        '</div>';
+}
+
 /* ─── HISTORY ─── */
 async function loadHistory() {
     if (!firebaseReady) return;
@@ -2637,12 +2800,13 @@ async function loadHistory() {
         const { collection, getDocs } = window.fb;
         const snap = await getDocs(collection(db, "personal_transactions"));
         const all = []; snap.forEach(d => all.push(d.data()));
-        const months = {};
-        all.forEach(e => { const k = e.date ? e.date.substring(0, 7) : 'unknown'; if (!months[k]) months[k] = []; months[k].push(e); });
-        const sorted = Object.keys(months).sort().reverse();
+        window._allHistoryEntries = all; // for annual period view
 
-        // Build monthly bars for stats
-        buildMonthlyBars(months, sorted);
+        const months = {};
+        all.forEach(e => { const k = e.date ? e.date.substring(0,7) : 'unknown'; if (!months[k]) months[k]=[]; months[k].push(e); });
+        const sorted = Object.keys(months).filter(k=>k!=='unknown').sort().reverse();
+
+        buildLineChartFromHistory(months);
 
         const container = document.getElementById('history-list');
         const noMsg = document.getElementById('no-history');
@@ -2650,40 +2814,36 @@ async function loadHistory() {
         noMsg.style.display = 'none';
         container.innerHTML = sorted.map(key => {
             const entries = months[key];
-            const income = entries.filter(e => e.category_type === 'income').reduce((s, e) => s + (e.amount || 0), 0);
-            const expense = entries.filter(e => e.category_type === 'spending').reduce((s, e) => s + (e.amount || 0), 0);
-            const invest = entries.filter(e => e.category_type === 'investment').reduce((s, e) => s + (e.amount || 0), 0);
+            const income  = entries.filter(e => e.category_type === 'income').reduce((s,e) => s+(e.amount||0), 0);
+            const expense = entries.filter(e => e.category_type === 'spending').reduce((s,e) => s+(e.amount||0), 0);
+            const invest  = entries.filter(e => e.category_type === 'investment').reduce((s,e) => s+(e.amount||0), 0);
             const pct = Math.min(100, Math.round(expense / BUDGET * 100));
             const color = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--text-1)';
             const [y, m] = key.split('-');
-            const label = new Date(y, m - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-            return '<div class="history-month" onclick="jumpToMonth(\'' + key + '\')"><div class="history-head">' +
-                '<div class="history-name">' + label + '</div>' +
-                '<div class="history-total" style="color:' + color + '">₹' + fmt(expense) + '</div></div>' +
-                '<div class="history-bar-bg"><div class="history-bar-fill" style="width:' + pct + '%; background:' + color + ';"></div></div>' +
+            const label = new Date(y, m-1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+            return '<div class="history-month" onclick="jumpToMonth(\'' + key + '\')">' +
+                '<div class="history-head"><div class="history-name">' + label + '</div><div class="history-total" style="color:' + color + '">₹' + fmt(expense) + '</div></div>' +
+                '<div class="history-bar-bg"><div class="history-bar-fill" style="width:' + pct + '%;background:' + color + ';"></div></div>' +
                 '<div class="history-meta"><span>In: ₹' + fmt(income) + '</span><span>Inv: ₹' + fmt(invest) + '</span></div></div>';
         }).join('');
-    } catch (err) { console.error("History failed:", err); }
+    } catch(err) { console.error("History failed:", err); }
 }
 
-function buildMonthlyBars(months, sorted) {
-    const container = document.getElementById('monthly-bars');
+function buildLineChartFromHistory(months) {
     const now = new Date();
-    const recentMonths = [];
+    const curKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    const points = [], labels = [];
+    let activeIdx = 5;
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        const label = d.toLocaleDateString('en-IN', { month: 'short' });
+        const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+        const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
         const entries = months[key] || [];
-        const expense = entries.filter(e => e.category_type === 'spending').reduce((s, e) => s + (e.amount || 0), 0);
-        recentMonths.push({ key, label, expense, isCurrent: i === 0 });
+        const expense = entries.filter(e => e.category_type==='spending').reduce((s,e) => s+(e.amount||0), 0);
+        points.push(expense);
+        labels.push(d.toLocaleDateString('en-IN', { month: 'short' }));
+        if (key === curKey) activeIdx = 5 - i;
     }
-    const maxV = Math.max(...recentMonths.map(m => m.expense), 1);
-    container.innerHTML = recentMonths.map((m, idx) =>
-        '<div class="bar-col">' +
-        '<div class="bar-track"><div class="bar-fill" style="height:' + (m.expense > 0 ? Math.round((m.expense/maxV)*100) : 4) + '%;background:' + (m.isCurrent ? 'var(--text-1)' : '#D8D5CF') + ';transition-delay:' + (idx*0.08) + 's"></div></div>' +
-        '<span class="bar-label" style="' + (m.isCurrent ? 'color:var(--text-1);font-weight:700' : '') + '">' + m.label + '</span></div>'
-    ).join('');
+    buildLineChart(points, labels, activeIdx);
 }
 
 /* ─── BUDGET / SLIDERS ─── */
