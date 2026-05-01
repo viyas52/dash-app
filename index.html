@@ -265,7 +265,8 @@
             -webkit-tap-highlight-color: transparent;
         }
         .acct-chip.active {
-            background: var(--text-1); color: #fff; border-color: var(--text-1);
+            background: var(--chip-color, var(--text-1)); color: #fff;
+            border-color: var(--chip-color, var(--text-1));
         }
         .acct-chip:active { transform: scale(0.95); }
 
@@ -536,8 +537,8 @@
             transition: all 0.15s; -webkit-tap-highlight-color: transparent;
         }
         .bank-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .bank-chip.active { border-width: 2px; color: var(--text-1); background: var(--bg); }
-        .bank-chip.none-chip { font-style: italic; color: var(--text-3); }
+        .bank-chip.active { border-width: 2px; }
+        /* colour set inline when active */
 
         /* Modal type row */
         .type-row { display: flex; gap: 6px; }
@@ -992,9 +993,9 @@
     <!-- Account filter -->
     <div class="acct-filter" id="acct-filter">
         <button class="acct-chip active" onclick="setAcctFilter('all',this)">All</button>
-        <button class="acct-chip" onclick="setAcctFilter('ICICI',this)">ICICI ••2472</button>
-        <button class="acct-chip" onclick="setAcctFilter('HDFC',this)">HDFC ••2065</button>
-        <button class="acct-chip" onclick="setAcctFilter('CUB',this)">CUB ••4745</button>
+        <button class="acct-chip" onclick="setAcctFilter('icici',this)" style="--chip-color:#FF6B00">ICICI ••2472</button>
+        <button class="acct-chip" onclick="setAcctFilter('hdfc',this)"  style="--chip-color:#004C8F">HDFC ••2065</button>
+        <button class="acct-chip" onclick="setAcctFilter('cub',this)"   style="--chip-color:#7B3F9E">CUB ••4745</button>
     </div>
     <div class="txn-section" id="txn-list-wrap">
         <div class="card txn-card" id="txn-list" style="display:none;"></div>
@@ -1123,10 +1124,16 @@
             <label>Note</label>
             <input type="text" id="add-note" placeholder="e.g. Swiggy, SIP transfer">
         </div>
-        <div class="form-group">
-            <label>Account</label>
+        <div class="form-group" id="bank-field-wrap">
+            <label id="bank-field-label">Account</label>
             <div class="bank-chips" id="modal-bank-chips"></div>
-            <input type="hidden" id="add-bank" value="">
+            <input type="hidden" id="add-bank" value="icici">
+        </div>
+        <!-- Self-transfer: to-account (shown only for Transfer type) -->
+        <div class="form-group" id="bank-to-field-wrap" style="display:none;">
+            <label>To Account</label>
+            <div class="bank-chips" id="modal-bank-to-chips"></div>
+            <input type="hidden" id="add-bank-to" value="">
         </div>
         <button class="btn btn-primary" id="modal-btn" onclick="addEntry()">Add transaction</button>
         <button class="btn btn-danger" id="modal-delete-btn" style="display:none;" onclick="deleteFromModal()">Delete transaction</button>
@@ -2009,6 +2016,7 @@ function setModalType(val, btn) {
     document.getElementById('add-type').value = val;
     document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b === btn));
     updateFormCats();
+    updateBankFieldsForType();
 }
 
 function openAddModal() {
@@ -2020,12 +2028,13 @@ function openAddModal() {
     document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('add-amount').value = '';
     document.getElementById('add-note').value = '';
-    document.getElementById('add-bank').value = '';
+    document.getElementById('add-bank').value = 'icici'; // ICICI is primary
+    document.getElementById('add-bank-to').value = '';
     // Reset type to Expense
     document.getElementById('add-type').value = 'debit';
     document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b.dataset.val === 'debit'));
     updateFormCats();
-    renderModalBankChips();
+    updateBankFieldsForType();
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -2063,8 +2072,9 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
     document.getElementById('modal-cat-selected').textContent = selLabel;
     updateFormCats(true); // preserve the selection
     document.getElementById('add-note').value = note;
-    document.getElementById('add-bank').value = bank || '';
-    renderModalBankChips();
+    document.getElementById('add-bank').value = bank || 'icici';
+    document.getElementById('add-bank-to').value = '';
+    updateBankFieldsForType();
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -2104,20 +2114,49 @@ function closeAddModal(e) {
     document.body.style.overflow = '';
 }
 
-function renderModalBankChips() {
-    const el = document.getElementById('modal-bank-chips');
+function renderModalBankChips(targetEl, hiddenId, excludeId) {
+    // targetEl = element id string, hiddenId = hidden input id, excludeId = account to hide (for "to" picker)
+    const el = document.getElementById(targetEl);
     if (!el) return;
-    const cur = document.getElementById('add-bank').value;
-    let html = '<div class="bank-chip none-chip' + (!cur ? ' active' : '') + '" onclick="setModalBank(\'\',this)" style="border-color:' + (!cur ? 'var(--text-3)' : 'var(--border)') + '">No account</div>';
-    html += LINKED_ACCOUNTS.map(a =>
-        '<div class="bank-chip' + (cur === a.id ? ' active' : '') + '" onclick="setModalBank(\'' + a.id + '\',this)" style="' + (cur === a.id ? 'border-color:' + a.color + ';' : '') + '">' +
-        '<div class="bank-chip-dot" style="background:' + a.color + '"></div>' + a.name.split(' ')[0] + ' ···' + a.last4 + '</div>'
-    ).join('');
-    el.innerHTML = html;
+    const cur = document.getElementById(hiddenId).value;
+    el.innerHTML = LINKED_ACCOUNTS
+        .filter(a => a.id !== excludeId)
+        .map(a => {
+            const isSel = cur === a.id;
+            return '<div class="bank-chip' + (isSel ? ' active' : '') + '" ' +
+                'onclick="setModalBank(\'' + a.id + '\',\'' + hiddenId + '\',\'' + targetEl + '\',\'' + (excludeId||'') + '\')" ' +
+                'style="' + (isSel ? 'border-color:' + a.color + ';background:' + a.color + ';color:#fff;' : '') + '">' +
+                '<div class="bank-chip-dot" style="background:' + (isSel ? '#fff' : a.color) + '"></div>' +
+                a.name.split(' ')[0] + ' ···' + a.last4 + '</div>';
+        }).join('');
 }
-function setModalBank(id, btn) {
-    document.getElementById('add-bank').value = id;
-    renderModalBankChips();
+function setModalBank(id, hiddenId, targetEl, excludeId) {
+    document.getElementById(hiddenId).value = id;
+    renderModalBankChips(targetEl, hiddenId, excludeId);
+    // If this is the FROM bank, re-render TO bank excluding same account
+    if (hiddenId === 'add-bank') {
+        const toBankWrap = document.getElementById('bank-to-field-wrap');
+        if (toBankWrap && toBankWrap.style.display !== 'none') {
+            if (document.getElementById('add-bank-to').value === id) {
+                document.getElementById('add-bank-to').value = '';
+            }
+            renderModalBankChips('modal-bank-to-chips', 'add-bank-to', id);
+        }
+    }
+}
+function updateBankFieldsForType() {
+    const typeVal = document.getElementById('add-type').value;
+    const isTransfer = typeVal === 'transfer';
+    document.getElementById('bank-to-field-wrap').style.display = isTransfer ? '' : 'none';
+    document.getElementById('bank-field-label').textContent = isTransfer ? 'From Account' : 'Account';
+    const fromBank = document.getElementById('add-bank').value;
+    renderModalBankChips('modal-bank-chips', 'add-bank', '');
+    if (isTransfer) {
+        if (document.getElementById('add-bank-to').value === fromBank) {
+            document.getElementById('add-bank-to').value = '';
+        }
+        renderModalBankChips('modal-bank-to-chips', 'add-bank-to', fromBank);
+    }
 }
 
 async function addEntry() {
@@ -2132,31 +2171,70 @@ async function addEntry() {
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
     if (!category) { showToast("Pick a category"); return; }
 
-    const type = typeVal === 'credit' ? 'credit' : 'debit';
     const category_type = typeVal === 'credit' ? 'income'
                        : typeVal === 'investment' ? 'investment'
                        : typeVal === 'transfer' ? 'transfer'
                        : 'spending';
 
-    // Auto-adjust account balance
-    if (bank) {
-        const curBal = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
-        const newBal = type === 'credit' ? curBal + amount : curBal - amount;
-        localStorage.setItem('pft_bal_' + bank, newBal);
-        localStorage.setItem('pft_bal_upd_' + bank, new Date().toISOString());
-    }
+    const now = new Date().toISOString();
+    const baseNote = note || (sub_category ? category + ' · ' + sub_category : category);
 
     try {
         const { collection, addDoc } = window.fb;
-        await addDoc(collection(db, "personal_transactions"), {
-            date, amount, type, category, sub_category, category_type,
-            bank: bank || null,
-            note: note || (sub_category ? category + ' · ' + sub_category : category),
-            recipient: '', upi_ref: '',
-            created_at: new Date().toISOString()
-        });
+
+        if (typeVal === 'transfer') {
+            // Self-transfer: two transactions — debit from, credit to
+            const bankTo = document.getElementById('add-bank-to').value || null;
+            if (!bankTo || bankTo === bank) { showToast("Pick a different To account"); return; }
+
+            // Debit from-account
+            await addDoc(collection(db, "personal_transactions"), {
+                date, amount, type: 'debit', category, sub_category, category_type: 'transfer',
+                bank: bank || null, bank_to: bankTo,
+                note: baseNote + ' → ' + (LINKED_ACCOUNTS.find(a=>a.id===bankTo)?.name.split(' ')[0] || bankTo),
+                recipient: '', upi_ref: '', created_at: now
+            });
+            // Credit to-account
+            await addDoc(collection(db, "personal_transactions"), {
+                date, amount, type: 'credit', category, sub_category, category_type: 'transfer',
+                bank: bankTo, bank_from: bank || null,
+                note: baseNote + ' ← ' + (LINKED_ACCOUNTS.find(a=>a.id===bank)?.name.split(' ')[0] || bank),
+                recipient: '', upi_ref: '', created_at: now
+            });
+
+            // Update balances: from-account down, to-account up
+            if (bank) {
+                const b1 = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+                localStorage.setItem('pft_bal_' + bank, b1 - amount);
+                localStorage.setItem('pft_bal_upd_' + bank, now);
+            }
+            if (bankTo) {
+                const b2 = parseFloat(localStorage.getItem('pft_bal_' + bankTo)) || 0;
+                localStorage.setItem('pft_bal_' + bankTo, b2 + amount);
+                localStorage.setItem('pft_bal_upd_' + bankTo, now);
+            }
+        } else {
+            const type = typeVal === 'credit' ? 'credit' : 'debit';
+
+            // Update account balance
+            if (bank) {
+                const curBal = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+                const newBal = type === 'credit' ? curBal + amount : curBal - amount;
+                localStorage.setItem('pft_bal_' + bank, newBal);
+                localStorage.setItem('pft_bal_upd_' + bank, now);
+            }
+
+            await addDoc(collection(db, "personal_transactions"), {
+                date, amount, type, category, sub_category, category_type,
+                bank: bank || null,
+                note: baseNote,
+                recipient: '', upi_ref: '', created_at: now
+            });
+        }
+
         showToast("Added");
         closeAddModal();
+        loadLinkedAccounts(); // refresh balances in settings
         loadMonth();
     } catch (err) { showToast("Add failed"); console.error(err); }
 }
