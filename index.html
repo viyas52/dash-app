@@ -2101,32 +2101,67 @@ function reverseBalance(txn) {
 async function deleteFromModal() {
     if (!editingId) return;
     const id = editingId;
-    const snapshot = (window._allCategorized || []).find(x => x.id === id) || (uncatEntries || []).find(x => x.id === id);
+    const allTxns = [...(window._allCategorized || []), ...(uncatEntries || [])];
+    const snapshot = allTxns.find(x => x.id === id);
     closeAddModal();
     try {
-        const { deleteDoc, doc, setDoc, addDoc, collection } = window.fb;
+        const { deleteDoc, doc, setDoc, addDoc, collection, query, where, getDocs } = window.fb;
+
+        // If it's a self-transfer, find and delete the paired leg too
+        let pairedSnapshot = null;
+        if (snapshot && snapshot.category_type === 'transfer' && snapshot.created_at) {
+            // Paired leg has same created_at, same amount, opposite type
+            pairedSnapshot = allTxns.find(x =>
+                x.id !== id &&
+                x.category_type === 'transfer' &&
+                x.created_at === snapshot.created_at &&
+                x.amount === snapshot.amount
+            );
+            // If not in memory, query Firestore
+            if (!pairedSnapshot) {
+                try {
+                    const snap = await getDocs(query(
+                        collection(db, "personal_transactions"),
+                        where("created_at", "==", snapshot.created_at),
+                        where("category_type", "==", "transfer")
+                    ));
+                    snap.forEach(d => { if (d.id !== id) pairedSnapshot = { id: d.id, ...d.data() }; });
+                } catch(e) { /* ignore query errors */ }
+            }
+        }
+
+        // Delete primary
         await deleteDoc(doc(db, "personal_transactions", id));
-        // Reverse balance effect of deleted transaction
         reverseBalance(snapshot);
-        showToast("Deleted", {
+
+        // Delete paired leg if found
+        if (pairedSnapshot) {
+            await deleteDoc(doc(db, "personal_transactions", pairedSnapshot.id));
+            reverseBalance(pairedSnapshot);
+        }
+
+        const deletedCount = pairedSnapshot ? 2 : 1;
+        showToast(deletedCount === 2 ? "Both transfer entries deleted" : "Deleted", {
             label: "Undo",
             fn: async () => {
-                if (!snapshot) { showToast("Nothing to restore"); return; }
-                const { id: oldId, ...data } = snapshot;
                 try {
-                    if (data.dedup_key) {
-                        await setDoc(doc(db, "personal_transactions", data.dedup_key), data);
-                    } else {
-                        await addDoc(collection(db, "personal_transactions"), data);
+                    const toRestore = [snapshot, pairedSnapshot].filter(Boolean);
+                    for (const s of toRestore) {
+                        const { id: oldId, ...data } = s;
+                        if (data.dedup_key) {
+                            await setDoc(doc(db, "personal_transactions", data.dedup_key), data);
+                        } else {
+                            await addDoc(collection(db, "personal_transactions"), data);
+                        }
+                        // Re-apply balance
+                        if (data.bank) {
+                            const cur = parseFloat(localStorage.getItem('pft_bal_' + data.bank)) || 0;
+                            const restored = data.type === 'credit' ? cur + data.amount : cur - data.amount;
+                            localStorage.setItem('pft_bal_' + data.bank, restored);
+                            localStorage.setItem('pft_bal_upd_' + data.bank, new Date().toISOString());
+                        }
                     }
-                    // Re-apply balance on undo
-                    if (data.bank) {
-                        const cur = parseFloat(localStorage.getItem('pft_bal_' + data.bank)) || 0;
-                        const restored = data.type === 'credit' ? cur + data.amount : cur - data.amount;
-                        localStorage.setItem('pft_bal_' + data.bank, restored);
-                        localStorage.setItem('pft_bal_upd_' + data.bank, new Date().toISOString());
-                        loadLinkedAccounts();
-                    }
+                    loadLinkedAccounts();
                     showToast("Restored");
                     loadMonth();
                 } catch (e) { showToast("Restore failed"); console.error(e); }
