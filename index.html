@@ -402,7 +402,6 @@
 
         /* ─── SWIPE DOTS ─── */
         .swipe-dots {
-            position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 5px; align-items: center;
         }
         .swipe-dot {
@@ -411,27 +410,14 @@
         }
         .swipe-dot.active { width: 16px; border-radius: 3px; background: var(--text-1); opacity: 1; }
 
-        /* ─── BOTTOM NAV ─── */
+        /* ─── BOTTOM DOTS BAR ─── */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0;
-            background: var(--bg);
-            border-top: 1px solid #D8D5CF;
             display: flex; align-items: center; justify-content: center;
-            padding: 12px 0 calc(env(safe-area-inset-bottom, 0px) + 12px);
-            z-index: 100;
+            padding: 10px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);
+            z-index: 100; pointer-events: none;
         }
-        .nav-inner {
-            display: flex; gap: 48px; max-width: 480px; width: 100%;
-            justify-content: center;
-        }
-        .nav-item {
-            display: flex; flex-direction: column; align-items: center;
-            gap: 4px; cursor: pointer; border: none; background: none;
-            padding: 4px 20px; opacity: 0.35; transition: opacity 0.15s;
-        }
-        .nav-item.active { opacity: 1; }
-        .nav-item svg { width: 22px; height: 22px; color: var(--text-1); }
-        .nav-label { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: var(--text-1); }
+        body { padding-bottom: 40px; }
 
         /* ─── VIEWS ─── */
         .view { display: none; }
@@ -1128,17 +1114,11 @@
     </div>
 </div>
 
-<!-- ═══ BOTTOM NAV ═══ -->
+<!-- ═══ BOTTOM DOTS ═══ -->
 <div class="bottom-nav">
-    <div class="nav-inner">
-        <button class="nav-item active" data-view="home" onclick="switchView('home')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-            <span class="nav-label">Home</span>
-        </button>
-        <button class="nav-item" data-view="uncat" onclick="switchView('uncat')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span class="nav-label">Uncat</span>
-        </button>
+    <div class="swipe-dots" id="swipe-dots">
+        <div class="swipe-dot active" id="dot-home"></div>
+        <div class="swipe-dot" id="dot-stats"></div>
     </div>
 </div>
 
@@ -1544,6 +1524,10 @@ function switchView(name) {
     });
     const fab = document.getElementById('fab-btn');
     fab.style.display = (name === 'home' || name === 'uncat') ? '' : 'none';
+    const dHome = document.getElementById('dot-home');
+    const dStats = document.getElementById('dot-stats');
+    if (dHome) dHome.classList.toggle('active', name === 'home' || name === 'uncat');
+    if (dStats) dStats.classList.toggle('active', name === 'stats');
     if (name === 'stats') { buildStats(); loadHistory(); }
 }
 
