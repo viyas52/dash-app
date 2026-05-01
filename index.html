@@ -898,8 +898,10 @@
             </select>
         </div>
         <div class="form-group">
-            <label>Category</label>
-            <select id="add-category"></select>
+            <label>Category <span id="modal-cat-selected" style="color:var(--text-1);text-transform:none;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;"></span></label>
+            <input type="hidden" id="add-category">
+            <input type="hidden" id="add-sub-category">
+            <div id="modal-cat-grid" class="cat-grid" style="padding:0;"></div>
         </div>
         <div class="form-group">
             <label>Note</label>
@@ -1281,19 +1283,95 @@ function toggleTxnView() {
 }
 
 /* ─── ADD / EDIT ─── */
-function updateFormCats() {
+let _modalCatState = { expanded: null, cat: null, sub: null };
+
+function updateFormCats(preserveSel) {
     const type = document.getElementById('add-type').value;
-    const sel = document.getElementById('add-category');
     const cats = type === 'credit' ? INCOME_CATS
               : type === 'investment' ? INVEST_CATS
               : type === 'transfer' ? TRANSFER_CATS
               : SPENDING_CATS;
-    let opts = '';
-    cats.forEach(c => {
-        opts += '<option value="' + c.name + '">' + c.name + '</option>';
-        if (c.subs) c.subs.forEach(s => { opts += '<option value="' + s + '"> · ' + s + '</option>'; });
-    });
-    sel.innerHTML = opts;
+    if (!preserveSel) {
+        _modalCatState = { expanded: null, cat: null, sub: null };
+        document.getElementById('add-category').value = '';
+        document.getElementById('add-sub-category').value = '';
+        document.getElementById('modal-cat-selected').textContent = '';
+    }
+    renderModalCatGrid(cats);
+}
+
+function renderModalCatGrid(cats) {
+    const st = _modalCatState;
+    let html = '<div class="cat-grid-inner">';
+    html += cats.map(c => {
+        const isSel = st.cat === c.name;
+        const isExp = st.expanded === c.name;
+        const borderCol = (isSel || isExp) ? c.color : 'var(--border)';
+        const bgCol = (isSel || isExp) && c.bg ? c.bg : '#FAFAF8';
+        const txtCol = (isSel || isExp) ? c.color : 'var(--text-2)';
+        const icon = getCatIcon(c.name);
+        return '<div class="cat-btn" style="border-color:' + borderCol + ';background:' + bgCol + '" ' +
+            'onclick="modalPickCat(\'' + c.name + '\')">' +
+            '<div style="width:20px;height:20px;color:' + ((isSel || isExp) ? c.color : '#888') + '">' + icon + '</div>' +
+            '<div class="cat-label" style="color:' + txtCol + '">' + c.name + '</div></div>';
+    }).join('');
+    html += '</div>';
+
+    // Sub-pills
+    if (st.expanded) {
+        const type = document.getElementById('add-type').value;
+        const cats2 = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
+        const exp = cats2.find(c => c.name === st.expanded);
+        if (exp && exp.subs && exp.subs.length > 0) {
+            html += '<div class="sub-pills" style="background:' + (exp.bg || '#F5F3EE') + ';border:1px solid ' + exp.color + '44;margin-top:8px;">' +
+                '<div class="sub-pills-label" style="color:' + exp.color + '">' + exp.name.toUpperCase() + ' ·</div>' +
+                '<div class="sub-pills-row">' +
+                exp.subs.map(s => {
+                    const isSub = st.sub === s;
+                    return '<div class="sub-pill" style="border-color:' + (isSub ? exp.color : exp.color + '55') +
+                        ';background:' + (isSub ? exp.color : '#fff') +
+                        ';color:' + (isSub ? '#fff' : exp.color) +
+                        '" onclick="modalPickSub(\'' + s + '\')">' + s + '</div>';
+                }).join('') +
+                '</div></div>';
+        }
+    }
+    document.getElementById('modal-cat-grid').innerHTML = html;
+}
+
+function modalPickCat(name) {
+    const type = document.getElementById('add-type').value;
+    const cats = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
+    const cat = cats.find(c => c.name === name);
+    if (cat && cat.subs && cat.subs.length > 0) {
+        // Toggle expand — if already expanded, collapse; otherwise expand
+        _modalCatState.expanded = _modalCatState.expanded === name ? null : name;
+        _modalCatState.cat = null; _modalCatState.sub = null;
+        document.getElementById('add-category').value = '';
+        document.getElementById('add-sub-category').value = '';
+        document.getElementById('modal-cat-selected').textContent = '';
+    } else {
+        // No subs — select directly
+        _modalCatState.expanded = null;
+        _modalCatState.cat = name; _modalCatState.sub = null;
+        document.getElementById('add-category').value = name;
+        document.getElementById('add-sub-category').value = '';
+        document.getElementById('modal-cat-selected').textContent = '· ' + name;
+    }
+    renderModalCatGrid(cats);
+}
+
+function modalPickSub(sub) {
+    const type = document.getElementById('add-type').value;
+    const cats = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
+    const parent = cats.find(c => c.subs && c.subs.includes(sub));
+    if (!parent) return;
+    _modalCatState.cat = parent.name;
+    _modalCatState.sub = sub;
+    document.getElementById('add-category').value = parent.name;
+    document.getElementById('add-sub-category').value = sub;
+    document.getElementById('modal-cat-selected').textContent = '· ' + parent.name + ' / ' + sub;
+    renderModalCatGrid(cats);
 }
 
 function openAddModal() {
@@ -1314,10 +1392,10 @@ function openAddModal() {
 function rowTap(id) {
     const e = (window._allCategorized || []).find(x => x.id === id);
     if (!e) return;
-    editEntry(e.id, e.date || '', e.category || '', e.note || '', e.amount || 0, e.type || 'debit', e.category_type || 'spending');
+    editEntry(e.id, e.date || '', e.category || '', e.note || '', e.amount || 0, e.type || 'debit', e.category_type || 'spending', e.sub_category || '');
 }
 
-function editEntry(id, date, category, note, amount, type, catType) {
+function editEntry(id, date, category, note, amount, type, catType, sub_category) {
     editingId = id;
     document.getElementById('modal-title').textContent = 'Edit transaction';
     document.getElementById('modal-btn').textContent = 'Save changes';
@@ -1331,8 +1409,17 @@ function editEntry(id, date, category, note, amount, type, catType) {
     else if (type === 'credit') typeOpt = 'credit';
     else typeOpt = 'debit';
     document.getElementById('add-type').value = typeOpt;
-    updateFormCats();
+    // Pre-populate grid state with existing category/sub
+    _modalCatState = {
+        expanded: sub_category ? category : null,
+        cat: category,
+        sub: sub_category || null
+    };
     document.getElementById('add-category').value = category;
+    document.getElementById('add-sub-category').value = sub_category || '';
+    const selLabel = sub_category ? '· ' + category + ' / ' + sub_category : (category ? '· ' + category : '');
+    document.getElementById('modal-cat-selected').textContent = selLabel;
+    updateFormCats(true); // preserve the selection
     document.getElementById('add-note').value = note;
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -1379,8 +1466,10 @@ async function addEntry() {
     const amount = parseFloat(document.getElementById('add-amount').value);
     const typeVal = document.getElementById('add-type').value;
     const category = document.getElementById('add-category').value;
+    const sub_category = document.getElementById('add-sub-category').value || null;
     const note = document.getElementById('add-note').value.trim();
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
+    if (!category) { showToast("Pick a category"); return; }
 
     const type = typeVal === 'credit' ? 'credit' : 'debit';
     const category_type = typeVal === 'credit' ? 'income'
@@ -1391,8 +1480,9 @@ async function addEntry() {
     try {
         const { collection, addDoc } = window.fb;
         await addDoc(collection(db, "personal_transactions"), {
-            date, amount, type, category, category_type,
-            note: note || category, recipient: '', upi_ref: '',
+            date, amount, type, category, sub_category, category_type,
+            note: note || (sub_category ? category + ' · ' + sub_category : category),
+            recipient: '', upi_ref: '',
             created_at: new Date().toISOString()
         });
         showToast("Added");
@@ -1407,8 +1497,10 @@ async function saveEditedEntry() {
     const amount = parseFloat(document.getElementById('add-amount').value);
     const typeVal = document.getElementById('add-type').value;
     const category = document.getElementById('add-category').value;
+    const sub_category = document.getElementById('add-sub-category').value || null;
     const note = document.getElementById('add-note').value.trim();
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
+    if (!category) { showToast("Pick a category"); return; }
 
     const type = typeVal === 'credit' ? 'credit' : 'debit';
     const category_type = typeVal === 'credit' ? 'income'
@@ -1418,7 +1510,10 @@ async function saveEditedEntry() {
 
     try {
         const { doc, updateDoc } = window.fb;
-        await updateDoc(doc(db, "personal_transactions", editingId), { date, amount, type, category, category_type, note: note || category });
+        await updateDoc(doc(db, "personal_transactions", editingId), {
+            date, amount, type, category, sub_category, category_type,
+            note: note || (sub_category ? category + ' · ' + sub_category : category)
+        });
         showToast("Updated");
         closeAddModal();
         loadMonth();
