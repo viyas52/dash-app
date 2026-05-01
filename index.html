@@ -1815,9 +1815,8 @@ function setAcctFilter(bank, btn) {
     document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     applyAcctFilter();
-    // If stats view is active, rebuild it with fresh data
-    const activeView = document.querySelector('.view.active');
-    if (activeView && activeView.id === 'view-stats') { buildStats(); loadHistory(); }
+    // Always rebuild stats with fresh data — deferred so all DOM updates settle first
+    requestAnimationFrame(() => { buildStats(); });
 }
 function applyAcctFilter() {
     const all = window._allCategorized || [];
