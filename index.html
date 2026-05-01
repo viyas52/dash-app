@@ -484,6 +484,19 @@
         .uncat-amt.cr { color: var(--green); }
         .uncat-type-label { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 2px; }
 
+        /* Modal type row */
+        .type-row { display: flex; gap: 6px; }
+        .type-box {
+            flex: 1; padding: 9px 4px; border-radius: 10px;
+            border: 1px solid var(--border); background: transparent;
+            font-size: 11px; font-weight: 600; color: var(--text-3);
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+            transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+        .type-box.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+        .type-box:active { transform: scale(0.95); }
+
         .type-toggle {
             display: flex; gap: 0; border: 1px solid var(--border); border-radius: 10px;
             overflow: hidden; margin: 14px 18px 0;
@@ -628,6 +641,13 @@
         .setting-input:focus { border-color: var(--text-1); }
 
         /* ─── SLIDER ─── */
+        .slider-badge {
+            font-family: 'Space Mono', monospace; font-size: 13px;
+            font-weight: 700; color: var(--text-1);
+        }
+        .slider-panel {
+            padding: 4px 0 14px;
+        }
         .slider-wrap { width: 100%; margin-top: 10px; }
         .slider-val {
             font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace;
@@ -814,6 +834,7 @@
     <div class="txn-section" id="txn-list-wrap">
         <div class="card txn-card" id="txn-list" style="display:none;"></div>
     </div>
+    <div class="txn-section" id="show-more-wrap"></div>
     <div class="txn-section">
         <div class="empty-state" id="no-entries" style="display:none;">
             <div class="empty-ico">
@@ -926,21 +947,33 @@
         <!-- Targets -->
         <div class="label setting-group-label">Targets</div>
         <div class="card" style="margin-bottom:12px;">
-            <div class="setting-row" style="flex-direction:column; align-items:stretch;">
-                <div><div class="setting-label">Monthly Budget</div><div class="setting-desc">Used for spending ring</div></div>
-                <div class="slider-wrap">
-                    <div class="slider-val" id="budget-slider-val">₹25,000</div>
-                    <input type="range" class="slider-range" id="settings-budget" min="5000" max="100000" step="1000" value="25000" oninput="onBudgetSlide(this.value)" onchange="updateBudget()">
-                    <div class="slider-bounds"><span>₹5K</span><span>₹1L</span></div>
+            <div class="setting-row" onclick="toggleSlider('budget')" style="cursor:pointer;">
+                <div>
+                    <div class="setting-label">Monthly Budget</div>
+                    <div class="setting-desc">Used for spending ring</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="slider-badge" id="budget-slider-val">₹25,000</span>
+                    <svg id="budget-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text-3);transition:transform 0.2s"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
             </div>
-            <div class="setting-row" style="flex-direction:column; align-items:stretch; border-bottom:none;">
-                <div><div class="setting-label">Investment Target</div><div class="setting-desc">Used for invested progress bar</div></div>
-                <div class="slider-wrap">
-                    <div class="slider-val" id="invest-slider-val">₹22,000</div>
-                    <input type="range" class="slider-range" id="settings-invest-target" min="5000" max="100000" step="1000" value="22000" oninput="onInvestSlide(this.value)" onchange="updateInvestTarget()">
-                    <div class="slider-bounds"><span>₹5K</span><span>₹1L</span></div>
+            <div class="slider-panel" id="budget-slider-panel" style="display:none;">
+                <input type="range" class="slider-range" id="settings-budget" min="5000" max="100000" step="1000" value="25000" oninput="onBudgetSlide(this.value)" onchange="updateBudget()">
+                <div class="slider-bounds"><span>₹5K</span><span>₹1L</span></div>
+            </div>
+            <div class="setting-row" onclick="toggleSlider('invest')" style="cursor:pointer;border-bottom:none;">
+                <div>
+                    <div class="setting-label">Investment Target</div>
+                    <div class="setting-desc">Used for invested progress bar</div>
                 </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="slider-badge" id="invest-slider-val">₹22,000</span>
+                    <svg id="invest-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text-3);transition:transform 0.2s"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+            </div>
+            <div class="slider-panel" id="invest-slider-panel" style="display:none;">
+                <input type="range" class="slider-range" id="settings-invest-target" min="5000" max="100000" step="1000" value="22000" oninput="onInvestSlide(this.value)" onchange="updateInvestTarget()">
+                <div class="slider-bounds"><span>₹5K</span><span>₹1L</span></div>
             </div>
         </div>
 
@@ -1011,12 +1044,13 @@
         </div>
         <div class="form-group">
             <label>Type</label>
-            <select id="add-type" onchange="updateFormCats()">
-                <option value="debit">Expense</option>
-                <option value="credit">Income</option>
-                <option value="investment">Investment</option>
-                <option value="transfer">Transfer</option>
-            </select>
+            <input type="hidden" id="add-type" value="debit">
+            <div class="type-row">
+                <button class="type-box active" data-val="debit"      onclick="setModalType('debit',this)">Expense</button>
+                <button class="type-box"         data-val="credit"    onclick="setModalType('credit',this)">Income</button>
+                <button class="type-box"         data-val="investment" onclick="setModalType('investment',this)">Invest</button>
+                <button class="type-box"         data-val="transfer"  onclick="setModalType('transfer',this)">Transfer</button>
+            </div>
         </div>
         <div class="form-group">
             <label>Category <span id="modal-cat-selected" style="color:var(--text-1);text-transform:none;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;"></span></label>
@@ -1475,13 +1509,20 @@ function renderTxnList(entries, expanded) {
         return '<div class="date-label">' + fmtDateFull(date) + '</div>' + rows;
     }).join('');
 
-    if (hasMore) {
-        const rem = entries.length - TXN_LIMIT;
-        html += expanded
-            ? '<button class="show-toggle expanded" onclick="toggleTxnView()">SHOW LESS <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 15l7-7 7 7"/></svg></button>'
-            : '<button class="show-toggle" onclick="toggleTxnView()">SHOW ' + rem + ' MORE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg></button>';
-    }
     container.innerHTML = html;
+
+    // Show-more lives OUTSIDE the card in #show-more-wrap
+    const moreWrap = document.getElementById('show-more-wrap');
+    if (moreWrap) {
+        if (hasMore) {
+            const rem = entries.length - TXN_LIMIT;
+            moreWrap.innerHTML = expanded
+                ? '<button class="show-toggle expanded" onclick="toggleTxnView()">SHOW LESS <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 15l7-7 7 7"/></svg></button>'
+                : '<button class="show-toggle" onclick="toggleTxnView()">SHOW ' + rem + ' MORE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg></button>';
+        } else {
+            moreWrap.innerHTML = '';
+        }
+    }
 }
 
 function toggleTxnView() {
@@ -1581,6 +1622,12 @@ function modalPickSub(sub) {
     renderModalCatGrid(cats);
 }
 
+function setModalType(val, btn) {
+    document.getElementById('add-type').value = val;
+    document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b === btn));
+    updateFormCats();
+}
+
 function openAddModal() {
     editingId = null;
     document.getElementById('modal-title').textContent = 'Add transaction';
@@ -1590,7 +1637,9 @@ function openAddModal() {
     document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('add-amount').value = '';
     document.getElementById('add-note').value = '';
+    // Reset type to Expense
     document.getElementById('add-type').value = 'debit';
+    document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b.dataset.val === 'debit'));
     updateFormCats();
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -1616,6 +1665,7 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
     else if (type === 'credit') typeOpt = 'credit';
     else typeOpt = 'debit';
     document.getElementById('add-type').value = typeOpt;
+    document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b.dataset.val === typeOpt));
     // Pre-populate grid state with existing category/sub
     _modalCatState = {
         expanded: sub_category ? category : null,
@@ -2083,6 +2133,14 @@ function initTheme() {
         document.getElementById('dark-toggle').classList.add('on');
         document.querySelector('meta[name="theme-color"]').content = '#1A1A1A';
     }
+}
+
+function toggleSlider(key) {
+    const panel = document.getElementById(key + '-slider-panel');
+    const chev  = document.getElementById(key + '-chev');
+    const open  = panel.style.display === 'none';
+    panel.style.display = open ? '' : 'none';
+    if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
 }
 
 function onBudgetSlide(val) {
