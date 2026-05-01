@@ -2689,7 +2689,6 @@ function renderCatBreakdown(totals, subTotals) {
             '<div class="spend-bar-dot" style="background:' + info.color + '"></div>' +
             '<div class="spend-bar-info" style="width:100%;display:flex;flex-direction:column;">' +
                 '<div class="spend-bar-name">' + cat +
-                    (hasSubs ? '<svg class="spend-bar-chev" style="transform:' + (isOpen ? 'rotate(180deg)' : '') + '" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' : '') +
                     '<span style="margin-left:auto;font-family:\'Space Mono\',monospace;font-size:12px;font-weight:700;">₹' + fmt(amt) + '</span>' +
                     '<span style="font-size:11px;color:var(--text-3);font-family:\'Space Mono\',monospace;">' + pct + '%</span>' +
                 '</div>' +
