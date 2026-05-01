@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "app",
+      "name": "personal-finance-tracker",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["http-server", ".", "-p", "8080", "-c-1"],
       "port": 8080
+    },
+    {
+      "name": "dev-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", ".", "-p", "8081", "-c-1"],
+      "port": 8081
     }
   ]
 }

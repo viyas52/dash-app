@@ -5,3 +5,5 @@ push_log.txt
 push.bat
 .DS_Store
 Thumbs.db
+# Dev-only preview file — never push to prod
+index-dev.html

@@ -2603,59 +2603,22 @@ let _statsPeriod = 'daily';
 let _catDrillOpen = null;
 let _chartView = 'bar';
 
-// ── Dummy data injected for chart preview (won't be saved to Firestore) ──
-window._dummyMonths = (() => {
-    const now = new Date();
-    const data = {};
-    const cats = ['Food','Transport','Culture','Gift','Health','Bill'];
-    const subs = { Food:['Lunch','Dinner','Breakfast'], Transport:['Auto','Taxi','Petrol'], Culture:['Movies','Events'], Gift:['Birthday'], Health:['Medicine'], Bill:['Mobile','Internet'] };
-    const rnd = (lo,hi) => Math.round((Math.random()*(hi-lo)+lo)*100)/100;
-    for (let mi = 5; mi >= 0; mi--) {
-        const d = new Date(now.getFullYear(), now.getMonth()-mi, 1);
-        const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-        const arr = [];
-        const txnCount = 10 + Math.floor(Math.random()*15);
-        for (let t = 0; t < txnCount; t++) {
-            const cat = cats[Math.floor(Math.random()*cats.length)];
-            const sub = subs[cat]?.[Math.floor(Math.random()*(subs[cat]||[]).length)] || '';
-            const dayNum = 1 + Math.floor(Math.random()*28);
-            arr.push({ date: key + '-' + String(dayNum).padStart(2,'0'), amount: rnd(80,2000), category: cat, sub_category: sub, category_type:'spending', bank:'icici', type:'debit' });
-        }
-        // income
-        arr.push({ date: key+'-01', amount: rnd(40000,55000), category:'Salary', category_type:'income', bank:'icici', type:'credit' });
-        // invest
-        arr.push({ date: key+'-05', amount: rnd(5000,12000), category:'Mutual Fund', category_type:'investment', bank:'icici', type:'debit' });
-        data[key] = arr;
-    }
-    return data;
-})();
-
 function getEntriesForPeriod() {
     const all = window._allHistoryEntries || [];
     const now = new Date();
 
     if (_statsPeriod === 'daily') {
-        // Last 7 days from today
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 6); cutoff.setHours(0,0,0,0);
         const cut = cutoff.toISOString().split('T')[0];
-        const real = (currentEntries || []).filter(e => e.date >= cut);
-        const dummy = Object.values(window._dummyMonths).flat().filter(e => e.date >= cut && e.category_type === 'spending');
-        return real.length > 0 ? real : dummy;
+        return (currentEntries || []).filter(e => e.date >= cut);
     }
     if (_statsPeriod === 'weekly') {
-        // Last 4 weeks from today
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 27); cutoff.setHours(0,0,0,0);
         const cut = cutoff.toISOString().split('T')[0];
-        const real = (currentEntries || []).filter(e => e.date >= cut);
-        const dummy = Object.values(window._dummyMonths).flat().filter(e => e.date >= cut && e.category_type === 'spending');
-        return real.length > 0 ? real : dummy;
+        return (currentEntries || []).filter(e => e.date >= cut);
     }
     if (_statsPeriod === 'monthly') return currentEntries;
-    if (_statsPeriod === 'annual') {
-        const real = all.filter(e => e.category_type === 'spending');
-        if (real.length > 0) return real;
-        return Object.values(window._dummyMonths).flat();
-    }
+    if (_statsPeriod === 'annual') return all;
     return currentEntries;
 }
 
@@ -2669,50 +2632,41 @@ function setStatsPeriod(period, btn) {
 
 function buildChartForPeriod() {
     const now = new Date();
-    const allHistory = window._allHistoryEntries || [];
 
     if (_statsPeriod === 'daily') {
-        // Last 7 days bar-by-day
         const points = [], labels = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date(now); d.setDate(now.getDate()-i);
             const key = d.toISOString().split('T')[0];
             const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0,2);
-            const real = (currentEntries || []).filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
-            const dummy = (window._dummyMonths[key.substring(0,7)]||[]).filter(e=>e.date===key&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
-            points.push(real || dummy);
+            const total = (currentEntries || []).filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
+            points.push(total);
             labels.push(dayLabel);
         }
         buildLineChart(points, labels, 6);
     } else if (_statsPeriod === 'weekly') {
-        // Last 4 weeks
         const points = [], labels = [];
         for (let i = 3; i >= 0; i--) {
             const start = new Date(now); start.setDate(now.getDate() - i*7 - 6);
             const end   = new Date(now); end.setDate(now.getDate() - i*7);
             const s = start.toISOString().split('T')[0];
             const e2 = end.toISOString().split('T')[0];
-            const allE = [...(currentEntries||[]), ...Object.values(window._dummyMonths).flat()];
-            const total = allE.filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
-            const weekNum = Math.ceil((now.getDate() - (now.getDate() - i*7 - 3)) / 7);
+            const total = (currentEntries||[]).filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
             labels.push('W' + (4-i));
             points.push(total);
         }
         buildLineChart(points, labels, 3);
     } else if (_statsPeriod === 'monthly') {
-        buildLineChartFromHistory(
-            Object.keys(window._dummyMonths).length > 0 && (window._allHistoryEntries||[]).length === 0
-                ? window._dummyMonths
-                : (() => { const m={}; (window._allHistoryEntries||[]).forEach(e=>{const k=e.date?e.date.substring(0,7):'x'; if(!m[k])m[k]=[]; m[k].push(e);}); return m; })()
-        );
+        const m = {};
+        (window._allHistoryEntries||[]).forEach(e => { const k=e.date?e.date.substring(0,7):'x'; if(!m[k])m[k]=[]; m[k].push(e); });
+        buildLineChartFromHistory(m);
     } else if (_statsPeriod === 'annual') {
-        // Last 5 years spending totals
         const points = [], labels = [];
         const curYear = now.getFullYear();
+        const all = window._allHistoryEntries || [];
         for (let i = 4; i >= 0; i--) {
             const yr = curYear - i;
-            const allE = [...(window._allHistoryEntries||[]), ...Object.values(window._dummyMonths).flat()];
-            const total = allE.filter(e=>e.date&&e.date.startsWith(yr+'')&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+            const total = all.filter(e=>e.date&&e.date.startsWith(yr+'')&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
             points.push(total);
             labels.push(String(yr).slice(2));
         }
