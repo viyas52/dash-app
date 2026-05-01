@@ -1283,11 +1283,6 @@
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-left:auto;color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             </button>
 
-            <!-- History -->
-            <div class="label setting-group-label">History</div>
-            <div id="history-list" style="margin-bottom:8px;"></div>
-            <div id="no-history" style="text-align:center;padding:20px 0;color:var(--text-3);font-size:13px;font-family:'Space Mono',monospace;display:none;">No history yet</div>
-
             <!-- Export -->
             <div class="label setting-group-label">Data</div>
             <div class="card" style="margin-bottom:12px;">
@@ -1662,7 +1657,6 @@ document.addEventListener('touchend', e => {
 function openSettings() {
     loadLinkedAccounts();
     loadCatManager();
-    loadHistory();
     initSettingsSliders();
     const sheet = document.getElementById('settings-sheet');
     sheet.classList.add('open');
@@ -2635,6 +2629,8 @@ function buildChartForPeriod() {
 
     if (_statsPeriod === 'daily') {
         const points = [], labels = [];
+        let activeIdx = 6;
+        let maxVal = -1;
         for (let i = 6; i >= 0; i--) {
             const d = new Date(now); d.setDate(now.getDate()-i);
             const key = d.toISOString().split('T')[0];
@@ -2642,20 +2638,29 @@ function buildChartForPeriod() {
             const total = (currentEntries || []).filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
             points.push(total);
             labels.push(dayLabel);
+            // highlight the day with most spending (or today if all zero)
+            if (total > maxVal) { maxVal = total; activeIdx = 6 - i; }
         }
-        buildLineChart(points, labels, 6);
+        buildLineChart(points, labels, maxVal > 0 ? activeIdx : 6);
     } else if (_statsPeriod === 'weekly') {
         const points = [], labels = [];
+        let activeIdx = 3;
+        let maxVal = -1;
         for (let i = 3; i >= 0; i--) {
-            const start = new Date(now); start.setDate(now.getDate() - i*7 - 6);
-            const end   = new Date(now); end.setDate(now.getDate() - i*7);
+            // Use calendar weeks Mon–Sun
+            const end = new Date(now); end.setDate(now.getDate() - i*7);
+            const start = new Date(end); start.setDate(end.getDate() - 6);
             const s = start.toISOString().split('T')[0];
             const e2 = end.toISOString().split('T')[0];
             const total = (currentEntries||[]).filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
-            labels.push('W' + (4-i));
+            // Label = start date of that week e.g. "26 Apr"
+            const lbl = start.getDate() + ' ' + start.toLocaleDateString('en-IN',{month:'short'});
+            labels.push(lbl);
             points.push(total);
+            const idx = 3 - i;
+            if (total > maxVal) { maxVal = total; activeIdx = idx; }
         }
-        buildLineChart(points, labels, 3);
+        buildLineChart(points, labels, maxVal > 0 ? activeIdx : 3);
     } else if (_statsPeriod === 'monthly') {
         const m = {};
         (window._allHistoryEntries||[]).forEach(e => { const k=e.date?e.date.substring(0,7):'x'; if(!m[k])m[k]=[]; m[k].push(e); });
@@ -2911,39 +2916,15 @@ function buildLineChart(points, labels, activeIdx) {
         '</div>';
 }
 
-/* ─── HISTORY ─── */
+/* ─── HISTORY (data only — for annual/monthly chart) ─── */
 async function loadHistory() {
     if (!firebaseReady) return;
     try {
         const { collection, getDocs } = window.fb;
         const snap = await getDocs(collection(db, "personal_transactions"));
         const all = []; snap.forEach(d => all.push(d.data()));
-        window._allHistoryEntries = all; // for annual period view
-
-        const months = {};
-        all.forEach(e => { const k = e.date ? e.date.substring(0,7) : 'unknown'; if (!months[k]) months[k]=[]; months[k].push(e); });
-        const sorted = Object.keys(months).filter(k=>k!=='unknown').sort().reverse();
-
+        window._allHistoryEntries = all;
         buildChartForPeriod();
-
-        const container = document.getElementById('history-list');
-        const noMsg = document.getElementById('no-history');
-        if (sorted.length === 0) { container.innerHTML = ''; noMsg.style.display = 'block'; return; }
-        noMsg.style.display = 'none';
-        container.innerHTML = sorted.map(key => {
-            const entries = months[key];
-            const income  = entries.filter(e => e.category_type === 'income').reduce((s,e) => s+(e.amount||0), 0);
-            const expense = entries.filter(e => e.category_type === 'spending').reduce((s,e) => s+(e.amount||0), 0);
-            const invest  = entries.filter(e => e.category_type === 'investment').reduce((s,e) => s+(e.amount||0), 0);
-            const pct = Math.min(100, Math.round(expense / BUDGET * 100));
-            const color = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--text-1)';
-            const [y, m] = key.split('-');
-            const label = new Date(y, m-1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-            return '<div class="history-month" onclick="jumpToMonth(\'' + key + '\')">' +
-                '<div class="history-head"><div class="history-name">' + label + '</div><div class="history-total" style="color:' + color + '">₹' + fmt(expense) + '</div></div>' +
-                '<div class="history-bar-bg"><div class="history-bar-fill" style="width:' + pct + '%;background:' + color + ';"></div></div>' +
-                '<div class="history-meta"><span>In: ₹' + fmt(income) + '</span><span>Inv: ₹' + fmt(invest) + '</span></div></div>';
-        }).join('');
     } catch(err) { console.error("History failed:", err); }
 }
 
