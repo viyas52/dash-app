@@ -525,6 +525,20 @@
         .uncat-amt.cr { color: var(--green); }
         .uncat-type-label { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 2px; }
 
+        /* Modal bank chips */
+        .bank-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .bank-chip {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 12px; border-radius: 20px;
+            border: 1.5px solid var(--border); background: transparent;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            font-family: 'DM Sans', sans-serif; color: var(--text-2);
+            transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        .bank-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .bank-chip.active { border-width: 2px; color: var(--text-1); background: var(--bg); }
+        .bank-chip.none-chip { font-style: italic; color: var(--text-3); }
+
         /* Modal type row */
         .type-row { display: flex; gap: 6px; }
         .type-box {
@@ -1108,6 +1122,11 @@
         <div class="form-group">
             <label>Note</label>
             <input type="text" id="add-note" placeholder="e.g. Swiggy, SIP transfer">
+        </div>
+        <div class="form-group">
+            <label>Account</label>
+            <div class="bank-chips" id="modal-bank-chips"></div>
+            <input type="hidden" id="add-bank" value="">
         </div>
         <button class="btn btn-primary" id="modal-btn" onclick="addEntry()">Add transaction</button>
         <button class="btn btn-danger" id="modal-delete-btn" style="display:none;" onclick="deleteFromModal()">Delete transaction</button>
@@ -1764,11 +1783,16 @@ function updateDashboard(entries) {
     document.getElementById('invest-progress').style.background = investPct >= 100 ? 'var(--green)' : 'var(--blue)';
     document.getElementById('invest-meta').textContent = investPct + '% of ₹' + f(INVEST_TARGET);
 
-    // Donut ring
+    // Donut ring — colour shifts green→amber→red as spend rises
     const pct = Math.min(100, Math.round((totalExpense / BUDGET) * 100));
     const ringOffset = 414.7 - (414.7 * pct / 100);
-    document.getElementById('donut-ring').style.strokeDashoffset = ringOffset;
+    const ring = document.getElementById('donut-ring');
+    ring.style.strokeDashoffset = ringOffset;
+    ring.style.stroke = pct >= 100 ? '#FF3B30'
+                      : pct >= 80  ? '#FF9500'
+                      : 'var(--text-1)';
     document.getElementById('donut-pct').textContent = pct + '%';
+    document.getElementById('donut-pct').style.color = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--orange)' : '';
 
     // Uncategorized banner
     const banner = document.getElementById('uncat-banner');
@@ -1807,6 +1831,8 @@ function updateDashboard(entries) {
     window._allCategorized = categorized;
     window._txnExpanded = false;
     applyAcctFilter();
+    // Rebuild stats after every data load so month arrows work on stats view
+    requestAnimationFrame(() => { buildStats(); });
 }
 
 let _acctFilter = 'all';
@@ -1815,8 +1841,6 @@ function setAcctFilter(bank, btn) {
     document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     applyAcctFilter();
-    // Always rebuild stats with fresh data — deferred so all DOM updates settle first
-    requestAnimationFrame(() => { buildStats(); });
 }
 function applyAcctFilter() {
     const all = window._allCategorized || [];
@@ -1996,10 +2020,12 @@ function openAddModal() {
     document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('add-amount').value = '';
     document.getElementById('add-note').value = '';
+    document.getElementById('add-bank').value = '';
     // Reset type to Expense
     document.getElementById('add-type').value = 'debit';
     document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b.dataset.val === 'debit'));
     updateFormCats();
+    renderModalBankChips();
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -2007,10 +2033,10 @@ function openAddModal() {
 function rowTap(id) {
     const e = (window._allCategorized || []).find(x => x.id === id);
     if (!e) return;
-    editEntry(e.id, e.date || '', e.category || '', e.note || '', e.amount || 0, e.type || 'debit', e.category_type || 'spending', e.sub_category || '');
+    editEntry(e.id, e.date || '', e.category || '', e.note || '', e.amount || 0, e.type || 'debit', e.category_type || 'spending', e.sub_category || '', e.bank || '');
 }
 
-function editEntry(id, date, category, note, amount, type, catType, sub_category) {
+function editEntry(id, date, category, note, amount, type, catType, sub_category, bank) {
     editingId = id;
     document.getElementById('modal-title').textContent = 'Edit transaction';
     document.getElementById('modal-btn').textContent = 'Save changes';
@@ -2037,6 +2063,8 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
     document.getElementById('modal-cat-selected').textContent = selLabel;
     updateFormCats(true); // preserve the selection
     document.getElementById('add-note').value = note;
+    document.getElementById('add-bank').value = bank || '';
+    renderModalBankChips();
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -2076,6 +2104,22 @@ function closeAddModal(e) {
     document.body.style.overflow = '';
 }
 
+function renderModalBankChips() {
+    const el = document.getElementById('modal-bank-chips');
+    if (!el) return;
+    const cur = document.getElementById('add-bank').value;
+    let html = '<div class="bank-chip none-chip' + (!cur ? ' active' : '') + '" onclick="setModalBank(\'\',this)" style="border-color:' + (!cur ? 'var(--text-3)' : 'var(--border)') + '">No account</div>';
+    html += LINKED_ACCOUNTS.map(a =>
+        '<div class="bank-chip' + (cur === a.id ? ' active' : '') + '" onclick="setModalBank(\'' + a.id + '\',this)" style="' + (cur === a.id ? 'border-color:' + a.color + ';' : '') + '">' +
+        '<div class="bank-chip-dot" style="background:' + a.color + '"></div>' + a.name.split(' ')[0] + ' ···' + a.last4 + '</div>'
+    ).join('');
+    el.innerHTML = html;
+}
+function setModalBank(id, btn) {
+    document.getElementById('add-bank').value = id;
+    renderModalBankChips();
+}
+
 async function addEntry() {
     if (!firebaseReady) { showToast("Not connected"); return; }
     const date = document.getElementById('add-date').value;
@@ -2084,6 +2128,7 @@ async function addEntry() {
     const category = document.getElementById('add-category').value;
     const sub_category = document.getElementById('add-sub-category').value || null;
     const note = document.getElementById('add-note').value.trim();
+    const bank = document.getElementById('add-bank').value || null;
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
     if (!category) { showToast("Pick a category"); return; }
 
@@ -2093,10 +2138,19 @@ async function addEntry() {
                        : typeVal === 'transfer' ? 'transfer'
                        : 'spending';
 
+    // Auto-adjust account balance
+    if (bank) {
+        const curBal = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+        const newBal = type === 'credit' ? curBal + amount : curBal - amount;
+        localStorage.setItem('pft_bal_' + bank, newBal);
+        localStorage.setItem('pft_bal_upd_' + bank, new Date().toISOString());
+    }
+
     try {
         const { collection, addDoc } = window.fb;
         await addDoc(collection(db, "personal_transactions"), {
             date, amount, type, category, sub_category, category_type,
+            bank: bank || null,
             note: note || (sub_category ? category + ' · ' + sub_category : category),
             recipient: '', upi_ref: '',
             created_at: new Date().toISOString()
