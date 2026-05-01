@@ -524,20 +524,82 @@
         .cat-btn .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
         .cat-label { font-size: 9px; font-weight: 600; color: var(--text-2); text-align: center; letter-spacing: 0.03em; line-height: 1.2; }
 
-        .sub-pills {
-            padding: 10px 12px; margin: 2px 18px 0; border-radius: var(--radius-sm);
+        /* ── Sub-category panel ── */
+        .sub-panel {
+            margin: 6px 18px 0; border-radius: var(--radius-sm); overflow: hidden;
+            border: 1px solid transparent;
+            animation: subSlideIn 0.18s ease;
         }
-        .sub-pills-label {
+        @keyframes subSlideIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+        .sub-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 12px 6px;
+        }
+        .sub-panel-title {
             font-size: 9px; font-family: 'Space Mono', monospace; letter-spacing: 0.12em;
-            font-weight: 700; margin-bottom: 8px;
+            font-weight: 700;
         }
+        /* Style switcher tabs */
+        .sub-style-tabs { display: flex; gap: 4px; }
+        .sub-style-tab {
+            font-size: 9px; font-family: 'Space Mono', monospace; letter-spacing: 0.06em;
+            padding: 2px 6px; border-radius: 4px; border: 1px solid transparent;
+            cursor: pointer; color: var(--text-3); background: transparent;
+            transition: all 0.1s; -webkit-tap-highlight-color: transparent;
+        }
+        .sub-style-tab.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+
+        /* Option A — Full-width rows */
+        .sub-rows { padding: 0 0 6px; }
+        .sub-row-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 14px; cursor: pointer;
+            border-bottom: 1px solid transparent;
+            transition: background 0.12s; -webkit-tap-highlight-color: transparent;
+            font-size: 13px; font-weight: 500;
+        }
+        .sub-row-item:last-child { border-bottom: none; }
+        .sub-row-dot {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        }
+        .sub-row-item.active .sub-row-dot { background: currentColor; }
+
+        /* Option B — 2-col grid */
+        .sub-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 10px 10px; }
+        .sub-grid-item {
+            padding: 9px 8px; border-radius: 10px; border: 1px solid;
+            font-size: 12px; font-weight: 500; text-align: center; cursor: pointer;
+            transition: all 0.12s; -webkit-tap-highlight-color: transparent;
+            background: #fff;
+        }
+
+        /* Option C — Horizontal scroll */
+        .sub-hscroll {
+            display: flex; gap: 7px; padding: 8px 12px 10px;
+            overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        }
+        .sub-hscroll::-webkit-scrollbar { display: none; }
+        .sub-chip {
+            flex-shrink: 0; padding: 7px 14px; border-radius: 20px; border: 1px solid;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            transition: all 0.12s; -webkit-tap-highlight-color: transparent; background: #fff;
+            white-space: nowrap;
+        }
+
+        /* Option D — Tag cloud (uniform, wrapped) */
+        .sub-tagcloud { display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 12px 12px; }
+        .sub-tag {
+            flex: 1 1 calc(50% - 4px); min-width: 80px; max-width: 100%;
+            padding: 8px 10px; border-radius: 10px; border: 1px solid;
+            font-size: 12px; font-weight: 500; text-align: center; cursor: pointer;
+            transition: all 0.12s; -webkit-tap-highlight-color: transparent; background: #fff;
+        }
+
+        /* legacy kept for uncat cards */
+        .sub-pills { padding: 10px 12px; margin: 2px 18px 0; border-radius: var(--radius-sm); }
+        .sub-pills-label { font-size: 9px; font-family: 'Space Mono', monospace; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 8px; }
         .sub-pills-row { display: flex; flex-wrap: wrap; gap: 6px; }
-        .sub-pill {
-            padding: 5px 12px; border-radius: 20px; border: 1px solid;
-            font-size: 11px; font-weight: 500; cursor: pointer;
-            font-family: 'DM Sans', sans-serif; transition: all 0.12s;
-            background: #fff; -webkit-tap-highlight-color: transparent;
-        }
+        .sub-pill { padding: 5px 12px; border-radius: 20px; border: 1px solid; font-size: 11px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s; background: #fff; -webkit-tap-highlight-color: transparent; }
         .sub-pill:active { transform: scale(0.95); }
 
         .confirm-btn {
@@ -619,6 +681,49 @@
         .history-bar-bg { height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
         .history-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
         .history-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--text-3); font-family: 'Space Mono', monospace; }
+
+        /* ─── CATEGORY MANAGER ─── */
+        .cat-mgr-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); margin-bottom: 8px; overflow: hidden;
+        }
+        .cat-mgr-row {
+            display: flex; align-items: center; padding: 13px 16px;
+            gap: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .cat-mgr-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .cat-mgr-name { flex: 1; font-size: 14px; font-weight: 500; }
+        .cat-mgr-count { font-size: 11px; color: var(--text-3); }
+        .cat-mgr-chev { color: var(--text-3); transition: transform 0.2s; flex-shrink: 0; }
+        .cat-mgr-body { border-top: 1px solid var(--border-light); padding: 12px 16px; }
+        .cat-mgr-subs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .cat-mgr-sub-chip {
+            display: flex; align-items: center; gap: 4px;
+            padding: 5px 10px 5px 12px; border-radius: 20px; border: 1px solid;
+            font-size: 12px; font-weight: 500;
+        }
+        .cat-mgr-sub-del {
+            width: 14px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; cursor: pointer; line-height: 1; color: currentColor;
+            border: none; padding: 0; font-family: inherit; flex-shrink: 0;
+        }
+        .cat-mgr-add-row {
+            display: flex; gap: 6px; align-items: center;
+        }
+        .cat-mgr-input {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+            border-radius: 10px; font-size: 13px; font-weight: 500;
+            color: var(--text-1); background: var(--bg); outline: none;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .cat-mgr-input:focus { border-color: var(--text-1); }
+        .cat-mgr-add-btn {
+            padding: 8px 14px; border-radius: 10px; background: var(--text-1);
+            color: #fff; border: none; font-size: 12px; font-weight: 600;
+            cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
 
         /* ─── SETTINGS VIEW ─── */
         .settings-section { padding: 0 20px; }
@@ -997,12 +1102,16 @@
             </div>
         </div>
 
+        <!-- Categories Manager -->
+        <div class="label setting-group-label">Categories</div>
+        <div id="cat-manager-wrap" style="margin-bottom:12px;"></div>
+
         <!-- About -->
         <div class="label setting-group-label">About</div>
         <div class="card" style="margin-bottom:24px;">
             <div class="setting-row">
                 <div><div class="setting-label">Version</div></div>
-                <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">3.3.0</span>
+                <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">3.8.0</span>
             </div>
             <div class="setting-row" style="border-bottom:none;">
                 <div><div class="setting-label">My Finance</div><div class="setting-desc">Built by Viyas</div></div>
@@ -1174,6 +1283,71 @@ function saveAcctBal(id) {
     loadLinkedAccounts();
     showToast('Balance saved');
 }
+
+/* ─── CATEGORY MANAGER ─── */
+let _catMgrExpanded = null;
+
+function loadCatManager() {
+    const el = document.getElementById('cat-manager-wrap');
+    if (!el) return;
+    let html = '';
+    SPENDING_CATS.forEach((cat, idx) => {
+        const isExp = _catMgrExpanded === cat.name;
+        const subCount = (cat.subs || []).length;
+        html += '<div class="cat-mgr-card">' +
+            '<div class="cat-mgr-row" onclick="toggleCatMgr(\'' + cat.name + '\')">' +
+            '<div class="cat-mgr-dot" style="background:' + cat.color + '"></div>' +
+            '<div class="cat-mgr-name">' + cat.name + '</div>' +
+            '<div class="cat-mgr-count">' + subCount + ' sub' + (subCount!==1?'s':'') + '</div>' +
+            '<svg class="cat-mgr-chev" style="transform:' + (isExp?'rotate(180deg)':'') + '" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
+            '</div>';
+        if (isExp) {
+            html += '<div class="cat-mgr-body">' +
+                '<div class="cat-mgr-subs">';
+            (cat.subs || []).forEach(s => {
+                html += '<div class="cat-mgr-sub-chip" style="border-color:' + cat.color + '55;color:' + cat.color + ';background:' + (cat.bg||'#F5F5F5') + '">' +
+                    s + '<button class="cat-mgr-sub-del" onclick="catMgrDelSub(\'' + cat.name + '\',\'' + s.replace(/'/g,"\\'") + '\')" title="Remove">×</button>' +
+                    '</div>';
+            });
+            html += '</div>' +
+                '<div class="cat-mgr-add-row">' +
+                '<input class="cat-mgr-input" id="cat-mgr-inp-' + idx + '" placeholder="Add sub-category…" ' +
+                'onkeydown="if(event.key===\'Enter\')catMgrAddSub(\'' + cat.name + '\',' + idx + ')">' +
+                '<button class="cat-mgr-add-btn" onclick="catMgrAddSub(\'' + cat.name + '\',' + idx + ')">+ Add</button>' +
+                '</div></div>';
+        }
+        html += '</div>';
+    });
+    el.innerHTML = html;
+}
+
+function toggleCatMgr(name) {
+    _catMgrExpanded = _catMgrExpanded === name ? null : name;
+    loadCatManager();
+}
+
+function catMgrAddSub(catName, idx) {
+    const inp = document.getElementById('cat-mgr-inp-' + idx);
+    if (!inp) return;
+    const val = inp.value.trim();
+    if (!val) return;
+    const cat = SPENDING_CATS.find(c => c.name === catName);
+    if (!cat) return;
+    if (!cat.subs) cat.subs = [];
+    if (cat.subs.includes(val)) { showToast('Already exists'); return; }
+    cat.subs.push(val);
+    loadCatManager();
+    showToast('Sub-category added');
+}
+
+function catMgrDelSub(catName, sub) {
+    const cat = SPENDING_CATS.find(c => c.name === catName);
+    if (!cat || !cat.subs) return;
+    cat.subs = cat.subs.filter(s => s !== sub);
+    loadCatManager();
+    showToast('Removed');
+}
+
 let INVEST_TARGET = parseInt(localStorage.getItem('pft_invest_target')) || 22000;
 
 const SPENDING_CATS = [
@@ -1182,10 +1356,11 @@ const SPENDING_CATS = [
     { name: "Transport", color: "#1565C0", bg: "#E3F2FD", subs: ["Bus","Taxi","Auto","Petrol","Parking"] },
     { name: "Health", color: "#2E7D32", bg: "#E8F5E9", subs: ["Medicine","Hospital","Gym"] },
     { name: "Apparel", color: "#6A1B9A", bg: "#F3E5F5", subs: ["Clothing","Shoes","Accessories"] },
-    { name: "Hair Cut", color: "#C2185B", bg: "#FCE4EC" },
+    { name: "Beauty", color: "#C2185B", bg: "#FCE4EC", subs: ["Haircut","Skin Care","Hair Care","Body Care","Essentials"] },
     { name: "Culture", color: "#512DA8", bg: "#EDE7F6", subs: ["Movies","Concerts","Events"] },
+    { name: "Sports", color: "#FF6482", bg: "#FFE8EE", subs: ["Indoor","Outdoor"] },
+    { name: "Education", color: "#0277BD", bg: "#E1F5FE", subs: ["Tuition","Books","Courses","Exam Fees","Stationery"] },
     { name: "Household", color: "#00897B", bg: "#E0F2F1", subs: ["Furniture","Appliances","Kitchen","Toiletries","Groceries"] },
-    { name: "Gaming", color: "#FF6482", bg: "#FFE8EE" },
     { name: "Gift", color: "#E91E63", bg: "#FCE4EC", subs: ["Birthday","Wedding","Festival"] },
     { name: "Miscellaneous", color: "#8E8E93", bg: "#F0F0F0" }
 ];
@@ -1223,10 +1398,11 @@ const CAT_ICONS = {
     "Transport":    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg>`,
     "Health":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="17"/><line x1="3" y1="10" x2="17" y2="10"/></svg>`,
     "Apparel":      `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7 6,4 10,6 14,4 17,7 14,9 14,17 6,17 6,9"/></svg>`,
-    "Hair Cut":     `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 2 2 3 4 3s4-1 4-3"/><circle cx="5" cy="15" r="2"/><circle cx="15" cy="15" r="2"/><line x1="7" y1="14" x2="13" y2="14"/></svg>`,
+    "Beauty":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3c-2 0-4 1.5-4 4 0 2 1.5 3.5 4 4 2.5-.5 4-2 4-4 0-2.5-2-4-4-4z"/><path d="M7 11c-1 1.5-1.5 3-1 5"/><path d="M13 11c1 1.5 1.5 3 1 5"/><line x1="10" y1="15" x2="10" y2="18"/></svg>`,
     "Culture":      `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><polygon points="8,9 8,14 14,11.5" fill="currentColor" stroke="none"/></svg>`,
     "Household":    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9.5L10 3l8 6.5"/><path d="M4 8.5V17h5v-4h2v4h5V8.5"/></svg>`,
-    "Gaming":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="16" height="10" rx="3"/><line x1="7" y1="11" x2="10" y2="11"/><line x1="8.5" y1="9.5" x2="8.5" y2="12.5"/><circle cx="13" cy="10" r="0.8" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>`,
+    "Sports":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 3c0 0 2 3 2 7s-2 7-2 7"/><path d="M3 10h14"/><path d="M4 6.5c1.5.5 3.5.8 6 .8s4.5-.3 6-.8"/><path d="M4 13.5c1.5-.5 3.5-.8 6-.8s4.5.3 6 .8"/></svg>`,
+    "Education":    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l8-5 8 5-8 5-8-5z"/><path d="M18 8v5"/><path d="M6 10.5V15c0 1.1 1.8 2 4 2s4-.9 4-2v-4.5"/></svg>`,
     "Gift":         `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="16" height="10" rx="1"/><rect x="2" y="5" width="16" height="3" rx="1"/><line x1="10" y1="5" x2="10" y2="18"/><path d="M10 5C10 5 7 5 7 3s3-2 3 2"/><path d="M10 5C10 5 13 5 13 3s-3-2-3 2"/></svg>`,
     "Miscellaneous":`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>`,
     "Mutual Fund":  `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,14 7,9 10,12 14,6 17,8"/></svg>`,
@@ -1289,7 +1465,7 @@ function switchView(name) {
     const fab = document.getElementById('fab-btn');
     fab.style.display = (name === 'home' || name === 'uncat') ? '' : 'none';
     if (name === 'stats') { buildStats(); loadHistory(); }
-    if (name === 'settings') { loadLinkedAccounts(); }
+    if (name === 'settings') { loadLinkedAccounts(); loadCatManager(); }
 }
 
 function showUncategorized() {
@@ -1319,6 +1495,7 @@ async function initFirebase() {
         populateMonths();
         loadMonth();
         loadLinkedAccounts();
+        loadCatManager();
     } catch (err) {
         console.error("Firebase init failed:", err);
         showToast("Firebase connection failed");
@@ -1548,6 +1725,77 @@ function updateFormCats(preserveSel) {
     renderModalCatGrid(cats);
 }
 
+let _subStyle = parseInt(localStorage.getItem('pft_sub_style')) || 1; // 1=rows 2=grid 3=scroll 4=tags
+
+function setSubStyle(n) {
+    _subStyle = n;
+    localStorage.setItem('pft_sub_style', n);
+    const type = document.getElementById('add-type').value;
+    const cats = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
+    renderModalCatGrid(cats);
+}
+
+function renderSubPanel(exp) {
+    const st = _modalCatState;
+    const c = exp.color; const bg = exp.bg || '#F5F3EE';
+    const styleLabels = ['ROWS','GRID','SCROLL','TAGS'];
+    let tabs = styleLabels.map((l,i) =>
+        '<button class="sub-style-tab' + (_subStyle===i+1?' active':'') + '" onclick="setSubStyle(' + (i+1) + ')">' + l + '</button>'
+    ).join('');
+    let inner = '';
+    if (_subStyle === 1) {
+        // Option A — Full-width rows
+        inner = '<div class="sub-rows">' +
+            exp.subs.map(s => {
+                const isSub = st.sub === s;
+                return '<div class="sub-row-item' + (isSub ? ' active' : '') +
+                    '" style="background:' + (isSub ? c + '18' : 'transparent') +
+                    ';color:' + c +
+                    ';border-bottom-color:' + c + '18' +
+                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' +
+                    '<div class="sub-row-dot" style="background:' + (isSub ? c : c + '44') + ';"></div>' +
+                    s + (isSub ? ' <span style="margin-left:auto;font-size:11px;">✓</span>' : '') +
+                    '</div>';
+            }).join('') + '</div>';
+    } else if (_subStyle === 2) {
+        // Option B — 2-column grid
+        inner = '<div class="sub-grid-2">' +
+            exp.subs.map(s => {
+                const isSub = st.sub === s;
+                return '<div class="sub-grid-item" style="border-color:' + (isSub ? c : c + '44') +
+                    ';background:' + (isSub ? c : '#fff') +
+                    ';color:' + (isSub ? '#fff' : c) +
+                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
+            }).join('') + '</div>';
+    } else if (_subStyle === 3) {
+        // Option C — Horizontal scroll
+        inner = '<div class="sub-hscroll">' +
+            exp.subs.map(s => {
+                const isSub = st.sub === s;
+                return '<div class="sub-chip" style="border-color:' + (isSub ? c : c + '55') +
+                    ';background:' + (isSub ? c : '#fff') +
+                    ';color:' + (isSub ? '#fff' : c) +
+                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
+            }).join('') + '</div>';
+    } else {
+        // Option D — Equal-width tags (flex, wraps evenly)
+        inner = '<div class="sub-tagcloud">' +
+            exp.subs.map(s => {
+                const isSub = st.sub === s;
+                return '<div class="sub-tag" style="border-color:' + (isSub ? c : c + '44') +
+                    ';background:' + (isSub ? c : '#fff') +
+                    ';color:' + (isSub ? '#fff' : c) +
+                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
+            }).join('') + '</div>';
+    }
+    return '<div class="sub-panel" style="background:' + bg + ';border-color:' + c + '33;">' +
+        '<div class="sub-panel-header">' +
+        '<div class="sub-panel-title" style="color:' + c + '">' + exp.name.toUpperCase() + '</div>' +
+        '<div class="sub-style-tabs">' + tabs + '</div>' +
+        '</div>' +
+        inner + '</div>';
+}
+
 function renderModalCatGrid(cats) {
     const st = _modalCatState;
     let html = '<div class="cat-grid-inner">';
@@ -1565,23 +1813,12 @@ function renderModalCatGrid(cats) {
     }).join('');
     html += '</div>';
 
-    // Sub-pills
     if (st.expanded) {
         const type = document.getElementById('add-type').value;
         const cats2 = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
         const exp = cats2.find(c => c.name === st.expanded);
         if (exp && exp.subs && exp.subs.length > 0) {
-            html += '<div class="sub-pills" style="background:' + (exp.bg || '#F5F3EE') + ';border:1px solid ' + exp.color + '44;margin-top:8px;">' +
-                '<div class="sub-pills-label" style="color:' + exp.color + '">' + exp.name.toUpperCase() + ' ·</div>' +
-                '<div class="sub-pills-row">' +
-                exp.subs.map(s => {
-                    const isSub = st.sub === s;
-                    return '<div class="sub-pill" style="border-color:' + (isSub ? exp.color : exp.color + '55') +
-                        ';background:' + (isSub ? exp.color : '#fff') +
-                        ';color:' + (isSub ? '#fff' : exp.color) +
-                        '" onclick="modalPickSub(\'' + s + '\')">' + s + '</div>';
-                }).join('') +
-                '</div></div>';
+            html += renderSubPanel(exp);
         }
     }
     document.getElementById('modal-cat-grid').innerHTML = html;
