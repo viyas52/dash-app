@@ -1688,8 +1688,21 @@ function updateMonthLabel() {
     document.getElementById('month-label').textContent =
         d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
-function prevMonth() { monthOffset++; updateMonthLabel(); loadMonth(); }
-function nextMonth() { if (monthOffset <= 0) return; monthOffset--; updateMonthLabel(); loadMonth(); }
+function prevMonth() {
+    monthOffset++;
+    updateMonthLabel();
+    loadMonth();
+    const active = document.querySelector('.view.active');
+    if (active && active.id === 'view-stats') { buildStats(); loadHistory(); }
+}
+function nextMonth() {
+    if (monthOffset <= 0) return;
+    monthOffset--;
+    updateMonthLabel();
+    loadMonth();
+    const active = document.querySelector('.view.active');
+    if (active && active.id === 'view-stats') { buildStats(); loadHistory(); }
+}
 function populateMonths() {
     monthOffset = 0;
     updateMonthLabel();
@@ -1898,73 +1911,20 @@ function updateFormCats(preserveSel) {
     renderModalCatGrid(cats);
 }
 
-let _subStyle = parseInt(localStorage.getItem('pft_sub_style')) || 1; // 1=rows 2=grid 3=scroll 4=tags
-
-function setSubStyle(n) {
-    _subStyle = n;
-    localStorage.setItem('pft_sub_style', n);
-    const type = document.getElementById('add-type').value;
-    const cats = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
-    renderModalCatGrid(cats);
-}
-
 function renderSubPanel(exp) {
     const st = _modalCatState;
     const c = exp.color; const bg = exp.bg || '#F5F3EE';
-    const styleLabels = ['ROWS','GRID','SCROLL','TAGS'];
-    let tabs = styleLabels.map((l,i) =>
-        '<button class="sub-style-tab' + (_subStyle===i+1?' active':'') + '" onclick="setSubStyle(' + (i+1) + ')">' + l + '</button>'
-    ).join('');
-    let inner = '';
-    if (_subStyle === 1) {
-        // Option A — Full-width rows
-        inner = '<div class="sub-rows">' +
-            exp.subs.map(s => {
-                const isSub = st.sub === s;
-                return '<div class="sub-row-item' + (isSub ? ' active' : '') +
-                    '" style="background:' + (isSub ? c + '18' : 'transparent') +
-                    ';color:' + c +
-                    ';border-bottom-color:' + c + '18' +
-                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' +
-                    '<div class="sub-row-dot" style="background:' + (isSub ? c : c + '44') + ';"></div>' +
-                    s + (isSub ? ' <span style="margin-left:auto;font-size:11px;">✓</span>' : '') +
-                    '</div>';
-            }).join('') + '</div>';
-    } else if (_subStyle === 2) {
-        // Option B — 2-column grid
-        inner = '<div class="sub-grid-2">' +
-            exp.subs.map(s => {
-                const isSub = st.sub === s;
-                return '<div class="sub-grid-item" style="border-color:' + (isSub ? c : c + '44') +
-                    ';background:' + (isSub ? c : '#fff') +
-                    ';color:' + (isSub ? '#fff' : c) +
-                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
-            }).join('') + '</div>';
-    } else if (_subStyle === 3) {
-        // Option C — Horizontal scroll
-        inner = '<div class="sub-hscroll">' +
-            exp.subs.map(s => {
-                const isSub = st.sub === s;
-                return '<div class="sub-chip" style="border-color:' + (isSub ? c : c + '55') +
-                    ';background:' + (isSub ? c : '#fff') +
-                    ';color:' + (isSub ? '#fff' : c) +
-                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
-            }).join('') + '</div>';
-    } else {
-        // Option D — Equal-width tags (flex, wraps evenly)
-        inner = '<div class="sub-tagcloud">' +
-            exp.subs.map(s => {
-                const isSub = st.sub === s;
-                return '<div class="sub-tag" style="border-color:' + (isSub ? c : c + '44') +
-                    ';background:' + (isSub ? c : '#fff') +
-                    ';color:' + (isSub ? '#fff' : c) +
-                    '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
-            }).join('') + '</div>';
-    }
+    const inner = '<div class="sub-hscroll">' +
+        exp.subs.map(s => {
+            const isSub = st.sub === s;
+            return '<div class="sub-chip" style="border-color:' + (isSub ? c : c + '55') +
+                ';background:' + (isSub ? c : '#fff') +
+                ';color:' + (isSub ? '#fff' : c) +
+                '" onclick="modalPickSub(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
+        }).join('') + '</div>';
     return '<div class="sub-panel" style="background:' + bg + ';border-color:' + c + '33;">' +
         '<div class="sub-panel-header">' +
         '<div class="sub-panel-title" style="color:' + c + '">' + exp.name.toUpperCase() + '</div>' +
-        '<div class="sub-style-tabs">' + tabs + '</div>' +
         '</div>' +
         inner + '</div>';
 }
