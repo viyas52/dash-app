@@ -66,16 +66,22 @@
         .greeting { font-size: 11px; color: var(--text-3); font-weight: 400; font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
         .app-name { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; color: var(--text-1); }
         .month-pill {
-            display: flex; align-items: center; gap: 6px;
-            border: 1px solid #D8D5CF; border-radius: 20px; padding: 6px 12px;
+            display: flex; align-items: center; gap: 2px;
             font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
-            color: var(--text-1); cursor: pointer; background: var(--bg-card);
+            color: var(--text-1);
         }
-        .month-pill select {
-            appearance: none; border: none; background: none;
-            font: inherit; color: inherit; cursor: pointer; outline: none;
+        .month-pill .month-label {
+            padding: 6px 4px; white-space: nowrap;
         }
-        .month-pill svg { width: 12px; height: 12px; }
+        .month-arrow {
+            width: 28px; height: 28px; border-radius: 50%;
+            border: 1px solid #D8D5CF; background: var(--bg-card);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-1); flex-shrink: 0;
+            transition: all 0.12s; -webkit-tap-highlight-color: transparent;
+        }
+        .month-arrow:active { transform: scale(0.9); }
+        .month-arrow svg { width: 14px; height: 14px; }
 
         /* ─── HERO / DONUT ─── */
         .hero { text-align: center; padding: 20px 20px 8px; }
@@ -140,6 +146,24 @@
             padding: 5px 12px; font-size: 11px; color: var(--text-2); font-weight: 500;
         }
         .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ─── ACCOUNT FILTER ─── */
+        .acct-filter {
+            display: flex; gap: 6px; padding: 0 20px 4px;
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .acct-filter::-webkit-scrollbar { display: none; }
+        .acct-chip {
+            padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+            font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+            background: transparent; color: var(--text-3);
+            font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .acct-chip.active {
+            background: var(--text-1); color: #fff; border-color: var(--text-1);
+        }
+        .acct-chip:active { transform: scale(0.95); }
 
         /* ─── SECTION HEADERS ─── */
         .sec-head {
@@ -367,22 +391,37 @@
         }
         .type-btn.active { background: var(--text-1); color: #fff; }
 
-        .cat-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 6px; padding: 14px 18px 0;
+        .cat-grid { padding: 14px 18px 0; }
+        .cat-grid-inner {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 7px;
         }
         .cat-btn {
-            display: flex; flex-direction: column; align-items: center; gap: 6px;
-            padding: 12px 8px;
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            padding: 10px 4px 8px;
             border: 1px solid var(--border); border-radius: var(--radius-sm);
             background: #FAFAF8; cursor: pointer;
-            transition: all 0.15s; flex: 1; min-width: 80px;
+            transition: all 0.15s;
         }
-        .cat-btn:hover { border-color: var(--text-1); background: #F5F3EE; }
-        .cat-btn.selected { border-color: var(--text-1); background: var(--text-1); }
-        .cat-btn.selected .cat-label { color: #fff; }
+        .cat-btn:active { transform: scale(0.95); }
         .cat-btn .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .cat-label { font-size: 10px; font-weight: 500; color: var(--text-2); text-align: center; }
+        .cat-label { font-size: 9px; font-weight: 600; color: var(--text-2); text-align: center; letter-spacing: 0.03em; line-height: 1.2; }
+
+        .sub-pills {
+            padding: 10px 12px; margin: 2px 18px 0; border-radius: var(--radius-sm);
+        }
+        .sub-pills-label {
+            font-size: 9px; font-family: 'Space Mono', monospace; letter-spacing: 0.12em;
+            font-weight: 700; margin-bottom: 8px;
+        }
+        .sub-pills-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .sub-pill {
+            padding: 5px 12px; border-radius: 20px; border: 1px solid;
+            font-size: 11px; font-weight: 500; cursor: pointer;
+            font-family: 'DM Sans', sans-serif; transition: all 0.12s;
+            background: #fff; -webkit-tap-highlight-color: transparent;
+        }
+        .sub-pill:active { transform: scale(0.95); }
 
         .confirm-btn {
             width: calc(100% - 36px); margin: 14px 18px 16px; padding: 13px;
@@ -556,8 +595,9 @@
         <div class="app-name">My Finance</div>
     </div>
     <div class="month-pill">
-        <select id="month-select" onchange="loadMonth()"></select>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        <button class="month-arrow" onclick="prevMonth()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <span class="month-label" id="month-label"></span>
+        <button class="month-arrow" onclick="nextMonth()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
     </div>
 </div>
 
@@ -620,6 +660,13 @@
     <div class="sec-head" style="margin-top:20px;">
         <div class="sec-title">Recent</div>
         <div class="sec-link" id="txn-count-label">0 transactions</div>
+    </div>
+    <!-- Account filter -->
+    <div class="acct-filter" id="acct-filter">
+        <button class="acct-chip active" onclick="setAcctFilter('all',this)">All</button>
+        <button class="acct-chip" onclick="setAcctFilter('ICICI',this)">ICICI ••2472</button>
+        <button class="acct-chip" onclick="setAcctFilter('HDFC',this)">HDFC ••2065</button>
+        <button class="acct-chip" onclick="setAcctFilter('CUB',this)">CUB ••4745</button>
     </div>
     <div class="txn-section" id="txn-list-wrap">
         <div class="card txn-card" id="txn-list" style="display:none;"></div>
@@ -723,12 +770,63 @@
             </div>
         </div>
 
+        <!-- Linked Accounts -->
+        <div class="label setting-group-label">Linked Accounts</div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">ICICI Bank</div>
+                    <div class="setting-desc">••2472 · SMS via MacroDroid</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
+                    <span style="font-size:11px;color:var(--green);font-weight:500;">Live</span>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">HDFC Bank</div>
+                    <div class="setting-desc">••2065 · SMS via MacroDroid</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
+                    <span style="font-size:11px;color:var(--green);font-weight:500;">Live</span>
+                </div>
+            </div>
+            <div class="setting-row" style="border-bottom:none;">
+                <div>
+                    <div class="setting-label">City Union Bank</div>
+                    <div class="setting-desc">••4745 · SMS via MacroDroid</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
+                    <span style="font-size:11px;color:var(--green);font-weight:500;">Live</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Integrations -->
+        <div class="label setting-group-label">Integrations</div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="setting-row">
+                <div><div class="setting-label">SMS Auto-import</div><div class="setting-desc">MacroDroid → Cloud Function</div></div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
+                    <span style="font-size:11px;color:var(--green);font-weight:500;">Active</span>
+                </div>
+            </div>
+            <div class="setting-row" style="border-bottom:none;">
+                <div><div class="setting-label">Cloud Function</div><div class="setting-desc">asia-south1 · parseSms</div></div>
+                <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);">v3.2</span>
+            </div>
+        </div>
+
         <!-- About -->
         <div class="label setting-group-label">About</div>
         <div class="card" style="margin-bottom:24px;">
             <div class="setting-row">
                 <div><div class="setting-label">Version</div></div>
-                <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">3.0.0</span>
+                <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">3.2.0</span>
             </div>
             <div class="setting-row" style="border-bottom:none;">
                 <div><div class="setting-label">My Finance</div><div class="setting-desc">Built by Viyas</div></div>
@@ -816,17 +914,17 @@ let BUDGET = parseInt(localStorage.getItem('pft_budget')) || 25000;
 let INVEST_TARGET = parseInt(localStorage.getItem('pft_invest_target')) || 22000;
 
 const SPENDING_CATS = [
-    { name: "Food", color: "#FF3B30" },
-    { name: "Bill", color: "#FF9500" },
-    { name: "Transport", color: "#007AFF" },
-    { name: "Health", color: "#22C55E" },
-    { name: "Apparel", color: "#5856D6" },
-    { name: "Hair Cut", color: "#FF2D55" },
-    { name: "Culture", color: "#AF52DE" },
-    { name: "Household", color: "#30B0C7" },
-    { name: "Gaming", color: "#FF6482" },
-    { name: "Gift", color: "#FF9F0A" },
-    { name: "Miscellaneous", color: "#8E8E93" }
+    { name: "Food", color: "#E53935", bg: "#FDECEA", subs: ["Breakfast","Lunch","Dinner","Snacks","Beverages"] },
+    { name: "Bill", color: "#F57C00", bg: "#FFF3E0", subs: ["Electricity","Water","Internet","Mobile","Rent","OTT / Sub"] },
+    { name: "Transport", color: "#1565C0", bg: "#E3F2FD", subs: ["Bus","Taxi","Auto","Petrol","Parking"] },
+    { name: "Health", color: "#2E7D32", bg: "#E8F5E9", subs: ["Medicine","Hospital","Gym"] },
+    { name: "Apparel", color: "#6A1B9A", bg: "#F3E5F5", subs: ["Clothing","Shoes","Accessories"] },
+    { name: "Hair Cut", color: "#C2185B", bg: "#FCE4EC" },
+    { name: "Culture", color: "#512DA8", bg: "#EDE7F6", subs: ["Movies","Concerts","Events"] },
+    { name: "Household", color: "#00897B", bg: "#E0F2F1", subs: ["Furniture","Appliances","Kitchen","Toiletries","Groceries"] },
+    { name: "Gaming", color: "#FF6482", bg: "#FFE8EE" },
+    { name: "Gift", color: "#E91E63", bg: "#FCE4EC", subs: ["Birthday","Wedding","Festival"] },
+    { name: "Miscellaneous", color: "#8E8E93", bg: "#F0F0F0" }
 ];
 const INVEST_CATS = [
     { name: "Mutual Fund", color: "#5856D6" },
@@ -849,8 +947,38 @@ function getCatInfo(name) {
     for (const list of [SPENDING_CATS, INVEST_CATS, INCOME_CATS, TRANSFER_CATS]) {
         const f = list.find(c => c.name === name);
         if (f) return f;
+        const p = list.find(c => c.subs && c.subs.includes(name));
+        if (p) return { name, color: p.color, bg: p.bg };
     }
     return { name, color: "#8E8E93" };
+}
+
+// ── Category SVG icons (raw SVG strings, 20×20 viewBox) ──
+const CAT_ICONS = {
+    "Food":         `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg>`,
+    "Bill":         `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2" width="14" height="16" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="6" y1="13" x2="10" y2="13"/></svg>`,
+    "Transport":    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+    "Health":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="17"/><line x1="3" y1="10" x2="17" y2="10"/></svg>`,
+    "Apparel":      `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7 6,4 10,6 14,4 17,7 14,9 14,17 6,17 6,9"/></svg>`,
+    "Hair Cut":     `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 2 2 3 4 3s4-1 4-3"/><circle cx="5" cy="15" r="2"/><circle cx="15" cy="15" r="2"/><line x1="7" y1="14" x2="13" y2="14"/></svg>`,
+    "Culture":      `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><polygon points="8,9 8,14 14,11.5" fill="currentColor" stroke="none"/></svg>`,
+    "Household":    `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9.5L10 3l8 6.5"/><path d="M4 8.5V17h5v-4h2v4h5V8.5"/></svg>`,
+    "Gaming":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="16" height="10" rx="3"/><line x1="7" y1="11" x2="10" y2="11"/><line x1="8.5" y1="9.5" x2="8.5" y2="12.5"/><circle cx="13" cy="10" r="0.8" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>`,
+    "Gift":         `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="16" height="10" rx="1"/><rect x="2" y="5" width="16" height="3" rx="1"/><line x1="10" y1="5" x2="10" y2="18"/><path d="M10 5C10 5 7 5 7 3s3-2 3 2"/><path d="M10 5C10 5 13 5 13 3s-3-2-3 2"/></svg>`,
+    "Miscellaneous":`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+    "Mutual Fund":  `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,14 7,9 10,12 14,6 17,8"/></svg>`,
+    "PPF":          `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><line x1="7" y1="9" x2="13" y2="9"/><line x1="10" y1="6" x2="10" y2="14"/></svg>`,
+    "SIP Transfer": `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><polyline points="3,14 7,9 10,12 14,6 17,8"/><circle cx="17" cy="8" r="2" fill="currentColor" stroke="none"/></svg>`,
+    "Fixed Deposit":`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="3" width="12" height="14" rx="2"/><line x1="7" y1="8" x2="13" y2="8"/><line x1="7" y1="11" x2="13" y2="11"/><line x1="7" y1="14" x2="10" y2="14"/></svg>`,
+    "Stocks":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,16 6,10 9,13 13,7 18,10"/><polyline points="14,7 18,7 18,11"/></svg>`,
+    "Salary":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="15" x2="10" y2="5"/><polyline points="6,9 10,5 14,9"/><line x1="5" y1="15" x2="15" y2="15"/></svg>`,
+    "Refund":       `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a6 6 0 1 0 1-3.3"/><polyline points="4,5 4,10 9,10"/></svg>`,
+    "Other Income": `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="10" y1="7" x2="10" y2="13"/><line x1="7" y1="10" x2="13" y2="10"/></svg>`,
+    "Self Transfer":`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h14M3 7l3-3M3 7l3 3"/><path d="M17 13H3m14 0l-3-3m3 3l-3 3"/></svg>`,
+};
+const DEFAULT_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><polyline points="7,10 10,7 13,10"/><line x1="10" y1="7" x2="10" y2="14"/></svg>`;
+function getCatIcon(name) {
+    return CAT_ICONS[name] || DEFAULT_ICON;
 }
 
 const firebaseConfig = {
@@ -898,16 +1026,10 @@ function showUncategorized() {
 }
 
 function jumpToMonth(key) {
-    const sel = document.getElementById('month-select');
-    if (![...sel.options].some(o => o.value === key)) {
-        // Older than the 12-month rolling window — inject it.
-        const [y, m] = key.split('-').map(Number);
-        const label = new Date(y, m - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-        const opt = document.createElement('option');
-        opt.value = key; opt.textContent = label;
-        sel.appendChild(opt);
-    }
-    sel.value = key;
+    const [y, m] = key.split('-').map(Number);
+    const now = new Date();
+    monthOffset = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
+    updateMonthLabel();
     switchView('home');
     loadMonth();
 }
@@ -931,16 +1053,23 @@ async function initFirebase() {
 }
 
 /* ─── MONTH SELECTOR ─── */
+let monthOffset = 0;
+function getMonthVal() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - monthOffset);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function updateMonthLabel() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - monthOffset);
+    document.getElementById('month-label').textContent =
+        d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+function prevMonth() { monthOffset++; updateMonthLabel(); loadMonth(); }
+function nextMonth() { if (monthOffset <= 0) return; monthOffset--; updateMonthLabel(); loadMonth(); }
 function populateMonths() {
-    const sel = document.getElementById('month-select');
-    const now = new Date();
-    sel.innerHTML = '';
-    for (let i = 0; i < 12; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        const label = d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-        sel.innerHTML += '<option value="' + val + '">' + label + '</option>';
-    }
+    monthOffset = 0;
+    updateMonthLabel();
     updateFormCats();
     document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
 }
@@ -948,7 +1077,7 @@ function populateMonths() {
 /* ─── LOAD DATA ─── */
 async function loadMonth() {
     if (!firebaseReady) return;
-    const mv = document.getElementById('month-select').value;
+    const mv = getMonthVal();
     if (!mv) return;
     const [year, month] = mv.split('-').map(Number);
     const start = year + '-' + String(month).padStart(2, '0') + '-01';
@@ -1051,8 +1180,25 @@ function updateDashboard(entries) {
     const noMsg = document.getElementById('no-entries');
     window._allCategorized = categorized;
     window._txnExpanded = false;
-    if (categorized.length === 0) { container.style.display = 'none'; noMsg.style.display = 'block'; }
-    else { noMsg.style.display = 'none'; container.style.display = 'block'; renderTxnList(categorized, false); }
+    applyAcctFilter();
+}
+
+let _acctFilter = 'all';
+function setAcctFilter(bank, btn) {
+    _acctFilter = bank;
+    document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    applyAcctFilter();
+}
+function applyAcctFilter() {
+    const all = window._allCategorized || [];
+    const filtered = _acctFilter === 'all' ? all : all.filter(e => e.bank === _acctFilter);
+    const container = document.getElementById('txn-list');
+    const noMsg = document.getElementById('no-entries');
+    const label = document.getElementById('txn-count-label');
+    if (label) label.textContent = filtered.length + ' transactions';
+    if (filtered.length === 0) { container.style.display = 'none'; noMsg.style.display = 'block'; }
+    else { noMsg.style.display = 'none'; container.style.display = 'block'; renderTxnList(filtered, window._txnExpanded || false); }
 }
 
 /* ─── TRANSACTION LIST ─── */
@@ -1071,7 +1217,7 @@ function renderTxnList(entries, expanded) {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
             return '<div class="txn-row" onclick="rowTap(\'' + e.id + '\')">' +
-                '<div class="txn-icon" style="background:' + info.color + '18;color:' + info.color + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div>' +
+                '<div class="txn-icon" style="background:' + (info.bg || info.color + '18') + ';color:' + info.color + '"><div style="width:18px;height:18px">' + getCatIcon(e.category) + '</div></div>' +
                 '<div class="txn-mid"><div class="txn-name">' + esc(e.note || e.category) + '</div>' +
                 '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(e.category) + '</div></div>' +
                 '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
@@ -1092,7 +1238,7 @@ function renderTxnList(entries, expanded) {
 
 function toggleTxnView() {
     window._txnExpanded = !window._txnExpanded;
-    renderTxnList(window._allCategorized, window._txnExpanded);
+    applyAcctFilter();
 }
 
 /* ─── ADD / EDIT ─── */
@@ -1103,7 +1249,12 @@ function updateFormCats() {
               : type === 'investment' ? INVEST_CATS
               : type === 'transfer' ? TRANSFER_CATS
               : SPENDING_CATS;
-    sel.innerHTML = cats.map(c => '<option value="' + c.name + '">' + c.name + '</option>').join('');
+    let opts = '';
+    cats.forEach(c => {
+        opts += '<option value="' + c.name + '">' + c.name + '</option>';
+        if (c.subs) c.subs.forEach(s => { opts += '<option value="' + s + '"> · ' + s + '</option>'; });
+    });
+    sel.innerHTML = opts;
 }
 
 function openAddModal() {
@@ -1253,7 +1404,7 @@ function renderUncatCards() {
     pill.textContent = uncatEntries.length;
 
     container.innerHTML = uncatEntries.map((e, i) => {
-        uncatState[i] = { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null };
+        uncatState[i] = { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null };
         const isCredit = e.type === 'credit';
         return '<div class="uncat-card" id="ucard-' + i + '">' +
             '<div class="uncat-header"><div class="uncat-top"><div>' +
@@ -1276,17 +1427,41 @@ function renderUncatCards() {
 
 function renderCatChips(i) {
     const list = ALL_CATS[uncatState[i].type] || SPENDING_CATS;
-    return list.map(c => {
-        const sel = uncatState[i].sel === c.name ? ' selected' : '';
-        return '<div class="cat-btn' + sel + '" onclick="pickUncat(' + i + ',\'' + c.name + '\')">' +
-            '<div class="cat-dot" style="background:' + c.color + '"></div>' +
-            '<div class="cat-label">' + c.name + '</div></div>';
+    const st = uncatState[i];
+    let html = '<div class="cat-grid-inner">';
+    html += list.map(c => {
+        const isSel = st.sel === c.name || (st.expanded === c.name);
+        const borderCol = isSel ? c.color : 'var(--border)';
+        const bgCol = isSel && c.bg ? c.bg : '#FAFAF8';
+        const txtCol = isSel ? c.color : 'var(--text-2)';
+        const icon = getCatIcon(c.name);
+        return '<div class="cat-btn" style="border-color:' + borderCol + ';background:' + bgCol + '" ' +
+            'onclick="pickUncat(' + i + ',\'' + c.name + '\')">' +
+            '<div style="width:20px;height:20px;color:' + (isSel ? c.color : '#888') + '">' + icon + '</div>' +
+            '<div class="cat-label" style="color:' + txtCol + '">' + c.name + '</div></div>';
     }).join('');
+    html += '</div>';
+    const exp = list.find(c => c.name === st.expanded);
+    if (exp && exp.subs && exp.subs.length > 0) {
+        html += '<div class="sub-pills" style="background:' + (exp.bg || '#F5F3EE') + ';border:1px solid ' + exp.color + '44">' +
+            '<div class="sub-pills-label" style="color:' + exp.color + '">' + exp.name.toUpperCase() + ' ·</div>' +
+            '<div class="sub-pills-row">' +
+            exp.subs.map(s => {
+                const isSub = st.sel === s;
+                return '<div class="sub-pill" style="border-color:' + (isSub ? exp.color : exp.color + '55') +
+                    ';background:' + (isSub ? exp.color : '#fff') +
+                    ';color:' + (isSub ? '#fff' : exp.color) +
+                    '" onclick="pickUncatSub(' + i + ',\'' + s + '\',\'' + exp.name + '\')">' + s + '</div>';
+            }).join('') +
+            '</div></div>';
+    }
+    return html;
 }
 
 function switchUncatType(i, type) {
     uncatState[i].type = type;
     uncatState[i].sel = null;
+    uncatState[i].expanded = null;
     const card = document.getElementById('ucard-' + i);
     card.querySelectorAll('.type-btn').forEach(b => {
         b.classList.toggle('active', b.textContent.toLowerCase().startsWith(type));
@@ -1297,11 +1472,30 @@ function switchUncatType(i, type) {
 }
 
 function pickUncat(i, name) {
-    uncatState[i].sel = name;
+    const st = uncatState[i];
+    const list = ALL_CATS[st.type] || SPENDING_CATS;
+    const cat = list.find(c => c.name === name);
+    if (cat && cat.subs && cat.subs.length > 0) {
+        st.expanded = st.expanded === name ? null : name;
+        st.sel = null;
+        document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
+        const btn = document.getElementById('ubtn-' + i);
+        btn.classList.remove('ready'); btn.textContent = 'CONFIRM';
+    } else {
+        st.expanded = null;
+        st.sel = name;
+        document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
+        const btn = document.getElementById('ubtn-' + i);
+        btn.classList.add('ready');
+        btn.textContent = 'CONFIRM — ' + name.toUpperCase();
+    }
+}
+function pickUncatSub(i, sub, parentName) {
+    uncatState[i].sel = sub;
     document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
     const btn = document.getElementById('ubtn-' + i);
     btn.classList.add('ready');
-    btn.textContent = 'CONFIRM — ' + name.toUpperCase();
+    btn.textContent = 'CONFIRM — ' + sub.toUpperCase();
 }
 
 function normalizeKey(s) {
