@@ -167,6 +167,90 @@
         }
         .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
+        /* ─── LINKED ACCOUNT CARDS ─── */
+        .acct-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); margin-bottom: 8px;
+            overflow: hidden; transition: box-shadow 0.15s;
+        }
+        .acct-card-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.12s;
+        }
+        .acct-card-row:active { background: var(--border-light); }
+        .acct-bank-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+            color: #fff; flex-shrink: 0; letter-spacing: 0;
+        }
+        .acct-info { flex: 1; }
+        .acct-name { font-size: 14px; font-weight: 500; color: var(--text-1); }
+        .acct-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+        .acct-live {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 11px; color: var(--green); font-weight: 500;
+        }
+        .acct-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+        .acct-chevron {
+            width: 16px; height: 16px; color: var(--text-3);
+            transition: transform 0.2s; flex-shrink: 0;
+        }
+        .acct-chevron.open { transform: rotate(180deg); }
+
+        .acct-expand {
+            border-top: 1px solid var(--border-light);
+            padding: 14px 16px 16px;
+            display: none;
+        }
+        .acct-expand.open { display: block; }
+        .acct-bal-label {
+            font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--text-3);
+            font-family: 'Space Mono', monospace; margin-bottom: 8px;
+        }
+        .acct-bal-row {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .acct-bal-display {
+            flex: 1; font-family: 'Space Mono', monospace;
+            font-size: 22px; font-weight: 700; color: var(--text-1);
+            letter-spacing: -0.5px;
+        }
+        .acct-bal-display.empty { font-size: 14px; color: var(--text-3); font-weight: 400; }
+        .acct-edit-btn {
+            width: 36px; height: 36px; border-radius: 10px;
+            border: 1px solid var(--border); background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-2); flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.12s;
+        }
+        .acct-edit-btn:active { border-color: var(--text-1); color: var(--text-1); }
+        .acct-edit-btn svg { width: 15px; height: 15px; }
+        .acct-bal-input-row {
+            display: flex; align-items: center; gap: 8px; margin-top: 10px;
+        }
+        .acct-bal-input {
+            flex: 1; padding: 10px 12px; border: 1px solid var(--text-1);
+            border-radius: 10px; font-size: 16px; font-weight: 700;
+            font-family: 'Space Mono', monospace; color: var(--text-1);
+            background: var(--bg-card); outline: none;
+        }
+        .acct-bal-save {
+            padding: 10px 18px; border-radius: 10px;
+            background: var(--text-1); color: var(--bg);
+            border: none; font-size: 12px; font-weight: 700;
+            font-family: 'Space Mono', monospace; cursor: pointer;
+            letter-spacing: 0.06em; white-space: nowrap;
+        }
+        .acct-updated {
+            font-size: 10px; color: var(--text-3); margin-top: 6px;
+            font-family: 'Space Mono', monospace;
+        }
+
         /* ─── ACCOUNT FILTER ─── */
         .acct-filter {
             display: flex; gap: 6px; padding: 0 20px 4px;
@@ -862,38 +946,7 @@
 
         <!-- Linked Accounts -->
         <div class="label setting-group-label">Linked Accounts</div>
-        <div class="card" style="margin-bottom:12px;">
-            <div class="setting-row">
-                <div>
-                    <div class="setting-label">ICICI Bank</div>
-                    <div class="setting-desc">••2472 · SMS via MacroDroid</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
-                    <span style="font-size:11px;color:var(--green);font-weight:500;">Live</span>
-                </div>
-            </div>
-            <div class="setting-row">
-                <div>
-                    <div class="setting-label">HDFC Bank</div>
-                    <div class="setting-desc">••2065 · SMS via MacroDroid</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
-                    <span style="font-size:11px;color:var(--green);font-weight:500;">Live</span>
-                </div>
-            </div>
-            <div class="setting-row" style="border-bottom:none;">
-                <div>
-                    <div class="setting-label">City Union Bank</div>
-                    <div class="setting-desc">••4745 · SMS via MacroDroid</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
-                    <span style="font-size:11px;color:var(--green);font-weight:500;">Live</span>
-                </div>
-            </div>
-        </div>
+        <div id="linked-accounts-list" style="margin-bottom:12px;"></div>
 
         <!-- Integrations -->
         <div class="label setting-group-label">Integrations</div>
@@ -1003,6 +1056,90 @@
 <script>
 /* ─── CONFIG ─── */
 let BUDGET = parseInt(localStorage.getItem('pft_budget')) || 25000;
+
+/* ─── LINKED ACCOUNTS ─── */
+const LINKED_ACCOUNTS = [
+    { id: 'icici', name: 'ICICI Bank',      last4: '2472', color: '#FF6B00', initials: 'IC' },
+    { id: 'hdfc',  name: 'HDFC Bank',       last4: '2065', color: '#004C8F', initials: 'HD' },
+    { id: 'cub',   name: 'City Union Bank', last4: '4745', color: '#7B3F9E', initials: 'CU' },
+];
+let _acctExpanded = null; // id of currently open card
+let _acctEditing  = null; // id of card currently showing input
+
+function loadLinkedAccounts() {
+    const el = document.getElementById('linked-accounts-list');
+    if (!el) return;
+    el.innerHTML = LINKED_ACCOUNTS.map(a => renderAcctCard(a)).join('');
+}
+
+function renderAcctCard(a) {
+    const balRaw = localStorage.getItem('pft_bal_' + a.id);
+    const bal    = balRaw !== null ? parseFloat(balRaw) : null;
+    const updAt  = localStorage.getItem('pft_bal_upd_' + a.id);
+    const isOpen = _acctExpanded === a.id;
+    const isEdit = _acctEditing  === a.id;
+
+    const balDisplay = bal !== null
+        ? '₹' + bal.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+        : 'Not set';
+    const updLabel = updAt
+        ? 'Updated ' + new Date(updAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : '';
+
+    return `<div class="acct-card" id="acct-card-${a.id}">
+        <div class="acct-card-row" onclick="toggleAcctCard('${a.id}')">
+            <div class="acct-bank-icon" style="background:${a.color}">${a.initials}</div>
+            <div class="acct-info">
+                <div class="acct-name">${a.name}</div>
+                <div class="acct-desc">••${a.last4} · SMS via MacroDroid</div>
+            </div>
+            <div class="acct-live"><div class="acct-live-dot"></div>Live</div>
+            <svg class="acct-chevron ${isOpen ? 'open' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="acct-expand ${isOpen ? 'open' : ''}">
+            <div class="acct-bal-label">Account Balance</div>
+            <div class="acct-bal-row">
+                <div class="acct-bal-display ${bal === null ? 'empty' : ''}">${balDisplay}</div>
+                <button class="acct-edit-btn" onclick="startAcctEdit('${a.id}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+            </div>
+            ${isEdit ? `<div class="acct-bal-input-row">
+                <input class="acct-bal-input" id="acct-bal-inp-${a.id}" type="number" placeholder="Enter balance" value="${bal !== null ? bal : ''}" autofocus>
+                <button class="acct-bal-save" onclick="saveAcctBal('${a.id}')">SAVE</button>
+            </div>` : ''}
+            ${updLabel ? `<div class="acct-updated">${updLabel}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+function toggleAcctCard(id) {
+    _acctEditing = null;
+    _acctExpanded = _acctExpanded === id ? null : id;
+    loadLinkedAccounts();
+}
+
+function startAcctEdit(id) {
+    _acctEditing = id;
+    _acctExpanded = id;
+    loadLinkedAccounts();
+    setTimeout(() => {
+        const inp = document.getElementById('acct-bal-inp-' + id);
+        if (inp) { inp.focus(); inp.select(); }
+    }, 50);
+}
+
+function saveAcctBal(id) {
+    const inp = document.getElementById('acct-bal-inp-' + id);
+    if (!inp) return;
+    const val = parseFloat(inp.value);
+    if (isNaN(val) || val < 0) { showToast('Enter a valid balance'); return; }
+    localStorage.setItem('pft_bal_' + id, val);
+    localStorage.setItem('pft_bal_upd_' + id, new Date().toISOString());
+    _acctEditing = null;
+    loadLinkedAccounts();
+    showToast('Balance saved');
+}
 let INVEST_TARGET = parseInt(localStorage.getItem('pft_invest_target')) || 22000;
 
 const SPENDING_CATS = [
@@ -1118,6 +1255,7 @@ function switchView(name) {
     const fab = document.getElementById('fab-btn');
     fab.style.display = (name === 'home' || name === 'uncat') ? '' : 'none';
     if (name === 'stats') { buildStats(); loadHistory(); }
+    if (name === 'settings') { loadLinkedAccounts(); }
 }
 
 function showUncategorized() {
@@ -1146,6 +1284,7 @@ async function initFirebase() {
         firebaseReady = true;
         populateMonths();
         loadMonth();
+        loadLinkedAccounts();
     } catch (err) {
         console.error("Firebase init failed:", err);
         showToast("Firebase connection failed");
