@@ -1083,8 +1083,9 @@
 
         <!-- Period tabs -->
         <div class="period-tabs" id="period-tabs">
-            <button class="period-btn active" data-period="monthly" onclick="setStatsPeriod('monthly',this)">Monthly</button>
+            <button class="period-btn active" data-period="daily" onclick="setStatsPeriod('daily',this)">Daily</button>
             <button class="period-btn" data-period="weekly" onclick="setStatsPeriod('weekly',this)">Weekly</button>
+            <button class="period-btn" data-period="monthly" onclick="setStatsPeriod('monthly',this)">Monthly</button>
             <button class="period-btn" data-period="annual" onclick="setStatsPeriod('annual',this)">Annual</button>
         </div>
 
@@ -1121,6 +1122,39 @@
         <div class="card" id="portfolio-section" style="margin-bottom:16px; display:none;">
             <div class="label" style="margin-bottom:12px;">Portfolio</div>
             <div id="portfolio-list"></div>
+        </div>
+
+        <!-- Income / Expense / Investment Summary -->
+        <div class="card" id="fin-summary-section" style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleFinSummary()">
+                <div class="label">Financial Summary</div>
+                <svg id="fin-summary-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" style="transition:transform .25s;flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <div id="fin-summary-body" style="display:none;margin-top:14px;">
+                <!-- 3 big number tiles -->
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+                    <div style="background:var(--bg-2);border-radius:12px;padding:10px 8px;text-align:center;">
+                        <div style="font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Income</div>
+                        <div id="fin-income-val" style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#2E7D32;">₹0</div>
+                    </div>
+                    <div style="background:var(--bg-2);border-radius:12px;padding:10px 8px;text-align:center;">
+                        <div style="font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Expense</div>
+                        <div id="fin-expense-val" style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#E53935;">₹0</div>
+                    </div>
+                    <div style="background:var(--bg-2);border-radius:12px;padding:10px 8px;text-align:center;">
+                        <div style="font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Invested</div>
+                        <div id="fin-invest-val" style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#1565C0;">₹0</div>
+                    </div>
+                </div>
+                <!-- Net saved bar -->
+                <div id="fin-net-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border-light);">
+                    <span style="font-size:12px;color:var(--text-3);font-weight:500;">Net Saved</span>
+                    <span id="fin-net-val" style="font-family:'Space Mono',monospace;font-size:14px;font-weight:700;">₹0</span>
+                </div>
+                <!-- Flow bar: income split into expense + invest + saved -->
+                <div id="fin-flow-bar" style="height:6px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin-top:4px;"></div>
+                <div id="fin-flow-legend" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;"></div>
+            </div>
         </div>
 
     </div>
@@ -2565,33 +2599,125 @@ async function confirmUncat(i) {
 }
 
 /* ─── STATS VIEW ─── */
-let _statsPeriod = 'monthly';
+let _statsPeriod = 'daily';
 let _catDrillOpen = null;
 let _chartView = 'bar';
+
+// ── Dummy data injected for chart preview (won't be saved to Firestore) ──
+window._dummyMonths = (() => {
+    const now = new Date();
+    const data = {};
+    const cats = ['Food','Transport','Culture','Gift','Health','Bill'];
+    const subs = { Food:['Lunch','Dinner','Breakfast'], Transport:['Auto','Taxi','Petrol'], Culture:['Movies','Events'], Gift:['Birthday'], Health:['Medicine'], Bill:['Mobile','Internet'] };
+    const rnd = (lo,hi) => Math.round((Math.random()*(hi-lo)+lo)*100)/100;
+    for (let mi = 5; mi >= 0; mi--) {
+        const d = new Date(now.getFullYear(), now.getMonth()-mi, 1);
+        const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        const arr = [];
+        const txnCount = 10 + Math.floor(Math.random()*15);
+        for (let t = 0; t < txnCount; t++) {
+            const cat = cats[Math.floor(Math.random()*cats.length)];
+            const sub = subs[cat]?.[Math.floor(Math.random()*(subs[cat]||[]).length)] || '';
+            const dayNum = 1 + Math.floor(Math.random()*28);
+            arr.push({ date: key + '-' + String(dayNum).padStart(2,'0'), amount: rnd(80,2000), category: cat, sub_category: sub, category_type:'spending', bank:'icici', type:'debit' });
+        }
+        // income
+        arr.push({ date: key+'-01', amount: rnd(40000,55000), category:'Salary', category_type:'income', bank:'icici', type:'credit' });
+        // invest
+        arr.push({ date: key+'-05', amount: rnd(5000,12000), category:'Mutual Fund', category_type:'investment', bank:'icici', type:'debit' });
+        data[key] = arr;
+    }
+    return data;
+})();
+
+function getEntriesForPeriod() {
+    const all = window._allHistoryEntries || [];
+    const now = new Date();
+
+    if (_statsPeriod === 'daily') {
+        // Last 7 days from today
+        const cutoff = new Date(now); cutoff.setDate(now.getDate() - 6); cutoff.setHours(0,0,0,0);
+        const cut = cutoff.toISOString().split('T')[0];
+        const real = (currentEntries || []).filter(e => e.date >= cut);
+        const dummy = Object.values(window._dummyMonths).flat().filter(e => e.date >= cut && e.category_type === 'spending');
+        return real.length > 0 ? real : dummy;
+    }
+    if (_statsPeriod === 'weekly') {
+        // Last 4 weeks from today
+        const cutoff = new Date(now); cutoff.setDate(now.getDate() - 27); cutoff.setHours(0,0,0,0);
+        const cut = cutoff.toISOString().split('T')[0];
+        const real = (currentEntries || []).filter(e => e.date >= cut);
+        const dummy = Object.values(window._dummyMonths).flat().filter(e => e.date >= cut && e.category_type === 'spending');
+        return real.length > 0 ? real : dummy;
+    }
+    if (_statsPeriod === 'monthly') return currentEntries;
+    if (_statsPeriod === 'annual') {
+        const real = all.filter(e => e.category_type === 'spending');
+        if (real.length > 0) return real;
+        return Object.values(window._dummyMonths).flat();
+    }
+    return currentEntries;
+}
 
 function setStatsPeriod(period, btn) {
     _statsPeriod = period;
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     buildStats();
+    buildChartForPeriod();
 }
 
-function getEntriesForPeriod() {
-    if (_statsPeriod === 'monthly') return currentEntries;
-    if (_statsPeriod === 'weekly') {
-        const now = new Date();
-        const day = now.getDay(); // 0=Sun
-        const weekStart = new Date(now); weekStart.setDate(now.getDate() - day); weekStart.setHours(0,0,0,0);
-        const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
-        const ws = weekStart.toISOString().split('T')[0];
-        const we = weekEnd.toISOString().split('T')[0];
-        return currentEntries.filter(e => e.date >= ws && e.date < we);
+function buildChartForPeriod() {
+    const now = new Date();
+    const allHistory = window._allHistoryEntries || [];
+
+    if (_statsPeriod === 'daily') {
+        // Last 7 days bar-by-day
+        const points = [], labels = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now); d.setDate(now.getDate()-i);
+            const key = d.toISOString().split('T')[0];
+            const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0,2);
+            const real = (currentEntries || []).filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
+            const dummy = (window._dummyMonths[key.substring(0,7)]||[]).filter(e=>e.date===key&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+            points.push(real || dummy);
+            labels.push(dayLabel);
+        }
+        buildLineChart(points, labels, 6);
+    } else if (_statsPeriod === 'weekly') {
+        // Last 4 weeks
+        const points = [], labels = [];
+        for (let i = 3; i >= 0; i--) {
+            const start = new Date(now); start.setDate(now.getDate() - i*7 - 6);
+            const end   = new Date(now); end.setDate(now.getDate() - i*7);
+            const s = start.toISOString().split('T')[0];
+            const e2 = end.toISOString().split('T')[0];
+            const allE = [...(currentEntries||[]), ...Object.values(window._dummyMonths).flat()];
+            const total = allE.filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
+            const weekNum = Math.ceil((now.getDate() - (now.getDate() - i*7 - 3)) / 7);
+            labels.push('W' + (4-i));
+            points.push(total);
+        }
+        buildLineChart(points, labels, 3);
+    } else if (_statsPeriod === 'monthly') {
+        buildLineChartFromHistory(
+            Object.keys(window._dummyMonths).length > 0 && (window._allHistoryEntries||[]).length === 0
+                ? window._dummyMonths
+                : (() => { const m={}; (window._allHistoryEntries||[]).forEach(e=>{const k=e.date?e.date.substring(0,7):'x'; if(!m[k])m[k]=[]; m[k].push(e);}); return m; })()
+        );
+    } else if (_statsPeriod === 'annual') {
+        // Last 5 years spending totals
+        const points = [], labels = [];
+        const curYear = now.getFullYear();
+        for (let i = 4; i >= 0; i--) {
+            const yr = curYear - i;
+            const allE = [...(window._allHistoryEntries||[]), ...Object.values(window._dummyMonths).flat()];
+            const total = allE.filter(e=>e.date&&e.date.startsWith(yr+'')&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+            points.push(total);
+            labels.push(String(yr).slice(2));
+        }
+        buildLineChart(points, labels, 4);
     }
-    if (_statsPeriod === 'annual') {
-        // Use all loaded history data
-        return (window._allHistoryEntries || []);
-    }
-    return currentEntries;
 }
 
 function buildStats() {
@@ -2601,8 +2727,12 @@ function buildStats() {
     // Update chart label
     const labelEl = document.getElementById('chart-period-label');
     const breakdownLabel = document.getElementById('breakdown-label');
-    if (labelEl) labelEl.textContent = _statsPeriod === 'annual' ? 'Annual Spending' : _statsPeriod === 'weekly' ? 'This Week' : 'Monthly Spending';
-    if (breakdownLabel) breakdownLabel.textContent = _statsPeriod === 'annual' ? 'Annual by Category' : _statsPeriod === 'weekly' ? 'This Week by Category' : 'By Category';
+    const periodLabel = { daily:'Last 7 Days', weekly:'Last 4 Weeks', monthly:'Monthly Spending', annual:'Annual Spending' }[_statsPeriod] || 'Spending';
+    const bLabel = { daily:'Last 7 Days by Category', weekly:'Last 4 Weeks by Category', monthly:'By Category', annual:'Annual by Category' }[_statsPeriod] || 'By Category';
+    if (labelEl) labelEl.textContent = periodLabel;
+    if (breakdownLabel) breakdownLabel.textContent = bLabel;
+
+    updateFinSummary(periodEntries);
 
     // Category breakdown (spending only)
     const spendingEntries = categorized.filter(e => e.category_type === 'spending');
@@ -2645,6 +2775,8 @@ function buildStats() {
             '<span style="font-family:\'Space Mono\',monospace;font-size:14px;font-weight:700;color:var(--blue)">₹' + fmt(totalInv) + '</span></div>';
         document.getElementById('portfolio-list').innerHTML = html;
     } else { portfolioSection.style.display = 'none'; }
+
+    buildChartForPeriod();
 }
 
 function switchChartView(mode) {
@@ -2736,6 +2868,42 @@ function drawPieChart(totals) {
     }).join('');
 }
 
+let _finSummaryOpen = false;
+function toggleFinSummary() {
+    _finSummaryOpen = !_finSummaryOpen;
+    document.getElementById('fin-summary-body').style.display = _finSummaryOpen ? 'block' : 'none';
+    const chev = document.getElementById('fin-summary-chev');
+    if (chev) chev.style.transform = _finSummaryOpen ? 'rotate(180deg)' : '';
+}
+
+function updateFinSummary(entries) {
+    entries = entries || [];
+    const income  = entries.filter(e=>e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
+    const expense = entries.filter(e=>e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+    const invest  = entries.filter(e=>e.category_type==='investment').reduce((s,e)=>s+(e.amount||0),0);
+    const net = income - expense - invest;
+
+    const el = id => document.getElementById(id);
+    if (!el('fin-income-val')) return;
+    el('fin-income-val').textContent  = '₹' + fmt(income);
+    el('fin-expense-val').textContent = '₹' + fmt(expense);
+    el('fin-invest-val').textContent  = '₹' + fmt(invest);
+    el('fin-net-val').textContent     = (net >= 0 ? '+' : '-') + '₹' + fmt(Math.abs(net));
+    el('fin-net-val').style.color     = net >= 0 ? '#2E7D32' : '#E53935';
+
+    // Flow bar: income split into expense (red) + invest (blue) + saved (green)
+    const base = Math.max(income, expense + invest, 1);
+    const ep = Math.round(expense/base*100), ip = Math.round(invest/base*100), sp = Math.max(0, 100-ep-ip);
+    el('fin-flow-bar').innerHTML =
+        '<div style="flex:' + ep + ';background:#E53935;border-radius:99px;min-width:' + (ep>0?'4px':'0') + '"></div>' +
+        '<div style="flex:' + ip + ';background:#1565C0;border-radius:99px;min-width:' + (ip>0?'4px':'0') + '"></div>' +
+        '<div style="flex:' + sp + ';background:#2E7D32;border-radius:99px;min-width:' + (sp>0?'4px':'0') + '"></div>';
+    el('fin-flow-legend').innerHTML =
+        '<span style="font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#E53935;display:inline-block"></span>Expense ' + ep + '%</span>' +
+        '<span style="font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#1565C0;display:inline-block"></span>Invested ' + ip + '%</span>' +
+        '<span style="font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#2E7D32;display:inline-block"></span>Saved ' + sp + '%</span>';
+}
+
 /* ─── LINE CHART ─── */
 function buildLineChart(points, labels, activeIdx) {
     const wrap = document.getElementById('line-chart-wrap');
@@ -2805,7 +2973,7 @@ async function loadHistory() {
         all.forEach(e => { const k = e.date ? e.date.substring(0,7) : 'unknown'; if (!months[k]) months[k]=[]; months[k].push(e); });
         const sorted = Object.keys(months).filter(k=>k!=='unknown').sort().reverse();
 
-        buildLineChartFromHistory(months);
+        buildChartForPeriod();
 
         const container = document.getElementById('history-list');
         const noMsg = document.getElementById('no-history');
