@@ -464,6 +464,14 @@
         .bar-label { font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace; }
 
         .cat-breakdown { margin-bottom: 12px; }
+        .chart-toggle { display: flex; gap: 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .chart-toggle-btn {
+            width: 32px; height: 28px; display: flex; align-items: center; justify-content: center;
+            border: none; background: transparent; cursor: pointer; color: var(--text-3);
+            transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        .chart-toggle-btn svg { width: 14px; height: 14px; }
+        .chart-toggle-btn.active { background: var(--text-1); color: #fff; }
         .spend-bar-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
         .spend-bar-row:last-child { border-bottom: none; }
         .spend-bar-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
@@ -723,8 +731,22 @@
 
         <!-- Category breakdown -->
         <div class="card cat-breakdown" id="cat-breakdown-section" style="display:none;">
-            <div class="label" style="margin-bottom:12px;">By Category</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div class="label">By Category</div>
+                <div class="chart-toggle">
+                    <button class="chart-toggle-btn active" id="chart-bar-btn" onclick="switchChartView('bar')">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
+                    </button>
+                    <button class="chart-toggle-btn" id="chart-pie-btn" onclick="switchChartView('pie')">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 8V2"/><path d="M8 8l5.2 3"/></svg>
+                    </button>
+                </div>
+            </div>
             <div id="cat-breakdown-list"></div>
+            <div id="cat-pie-wrap" style="display:none;">
+                <canvas id="cat-pie-canvas" width="220" height="220" style="display:block;margin:0 auto 16px;"></canvas>
+                <div id="cat-pie-legend"></div>
+            </div>
         </div>
 
         <!-- Portfolio -->
@@ -980,6 +1002,14 @@ const DEFAULT_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"
 function getCatIcon(name) {
     return CAT_ICONS[name] || DEFAULT_ICON;
 }
+// Resolve a sub-category name back to its parent category name (for grouping in stats)
+function resolveParentCat(name) {
+    for (const list of [SPENDING_CATS, INVEST_CATS, INCOME_CATS, TRANSFER_CATS]) {
+        const p = list.find(c => c.subs && c.subs.includes(name));
+        if (p) return p.name;
+    }
+    return name; // already a top-level category
+}
 
 const firebaseConfig = {
     apiKey: "AIzaSyCUWFkzMEW5A8P5MTmwH_W8OCo4q5-svh0",
@@ -1162,7 +1192,10 @@ function updateDashboard(entries) {
     if (spendingEntries.length > 0) {
         badgeSection.style.display = 'block';
         const totals = {};
-        spendingEntries.forEach(e => { totals[e.category] = (totals[e.category] || 0) + (e.amount || 0); });
+        spendingEntries.forEach(e => {
+            const cat = resolveParentCat(e.category);
+            totals[cat] = (totals[cat] || 0) + (e.amount || 0);
+        });
         const total = Object.values(totals).reduce((s, v) => s + v, 0);
         const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
         document.getElementById('spending-badges').innerHTML = sorted.map(([cat, amt]) => {
@@ -1209,17 +1242,23 @@ function renderTxnList(entries, expanded) {
     const hasMore = entries.length > TXN_LIMIT;
 
     const groups = {};
-    visible.forEach(e => { const d = e.date || 'unknown'; if (!groups[d]) groups[d] = []; groups[d].push(e); });
+    // Sort by date desc, then by created_at desc within same day
+    const sorted_visible = [...visible].sort((a, b) => {
+        if (b.date !== a.date) return (b.date || '').localeCompare(a.date || '');
+        return (b.created_at || '').localeCompare(a.created_at || '');
+    });
+    sorted_visible.forEach(e => { const d = e.date || 'unknown'; if (!groups[d]) groups[d] = []; groups[d].push(e); });
     const sortedDates = Object.keys(groups).sort().reverse();
 
     let html = sortedDates.map(date => {
         const rows = groups[date].map(e => {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
+            const catLabel = e.sub_category ? e.category + ' · ' + e.sub_category : e.category;
             return '<div class="txn-row" onclick="rowTap(\'' + e.id + '\')">' +
                 '<div class="txn-icon" style="background:' + (info.bg || info.color + '18') + ';color:' + info.color + '"><div style="width:18px;height:18px">' + getCatIcon(e.category) + '</div></div>' +
                 '<div class="txn-mid"><div class="txn-name">' + esc(e.note || e.category) + '</div>' +
-                '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(e.category) + '</div></div>' +
+                '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(catLabel) + '</div></div>' +
                 '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +
                 '</div>';
@@ -1404,7 +1443,7 @@ function renderUncatCards() {
     pill.textContent = uncatEntries.length;
 
     container.innerHTML = uncatEntries.map((e, i) => {
-        uncatState[i] = { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null };
+        uncatState[i] = { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null, selParent: null };
         const isCredit = e.type === 'credit';
         return '<div class="uncat-card" id="ucard-' + i + '">' +
             '<div class="uncat-header"><div class="uncat-top"><div>' +
@@ -1462,6 +1501,7 @@ function switchUncatType(i, type) {
     uncatState[i].type = type;
     uncatState[i].sel = null;
     uncatState[i].expanded = null;
+    uncatState[i].selParent = null;
     const card = document.getElementById('ucard-' + i);
     card.querySelectorAll('.type-btn').forEach(b => {
         b.classList.toggle('active', b.textContent.toLowerCase().startsWith(type));
@@ -1492,10 +1532,11 @@ function pickUncat(i, name) {
 }
 function pickUncatSub(i, sub, parentName) {
     uncatState[i].sel = sub;
+    uncatState[i].selParent = parentName; // track which parent this sub belongs to
     document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
     const btn = document.getElementById('ubtn-' + i);
     btn.classList.add('ready');
-    btn.textContent = 'CONFIRM — ' + sub.toUpperCase();
+    btn.textContent = 'CONFIRM — ' + parentName.toUpperCase() + ' · ' + sub.toUpperCase();
 }
 
 function normalizeKey(s) {
@@ -1508,8 +1549,13 @@ async function confirmUncat(i) {
     const entry = uncatEntries[i];
     try {
         const { doc, updateDoc, setDoc } = window.fb;
+        // If a sub-category was selected, store parent as category + sub as sub_category
+        const parentCat = s.selParent || resolveParentCat(s.sel);
+        const isSub = parentCat !== s.sel;
         await updateDoc(doc(db, "personal_transactions", s.id), {
-            category: s.sel, category_type: s.type
+            category: parentCat,
+            sub_category: isSub ? s.sel : null,
+            category_type: s.type
         });
 
         // Remember rule for future SMSes from this recipient (debits only, not for transfers).
@@ -1519,7 +1565,7 @@ async function confirmUncat(i) {
                 await setDoc(doc(db, "personal_rules", key), {
                     match: key,
                     recipient: entry.recipient,
-                    category: s.sel,
+                    category: parentCat,
                     category_type: s.type,
                     last_used: new Date().toISOString()
                 });
@@ -1557,25 +1603,18 @@ async function confirmUncat(i) {
 function buildStats() {
     const categorized = currentEntries.filter(e => e.category && e.category_type);
 
-    // Category breakdown
+    // Category breakdown (spending only, sub-cats grouped under parent)
     const spendingEntries = categorized.filter(e => e.category_type === 'spending');
     const breakdownSection = document.getElementById('cat-breakdown-section');
     if (spendingEntries.length > 0) {
         breakdownSection.style.display = 'block';
         const totals = {};
-        spendingEntries.forEach(e => { totals[e.category] = (totals[e.category] || 0) + (e.amount || 0); });
-        const total = Object.values(totals).reduce((s, v) => s + v, 0);
-        const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-
-        document.getElementById('cat-breakdown-list').innerHTML = sorted.map(([cat, amt]) => {
-            const info = getCatInfo(cat);
-            const pct = Math.round(amt / total * 100);
-            return '<div class="spend-bar-row">' +
-                '<div class="spend-bar-dot" style="background:' + info.color + '"></div>' +
-                '<div class="spend-bar-info"><div class="spend-bar-name">' + cat + '</div>' +
-                '<div class="spend-bar-track"><div class="spend-bar-fill" style="width:' + pct + '%;background:' + info.color + '"></div></div></div>' +
-                '<div class="spend-bar-amt">₹' + fmt(amt) + '</div></div>';
-        }).join('');
+        spendingEntries.forEach(e => {
+            const cat = resolveParentCat(e.category);
+            totals[cat] = (totals[cat] || 0) + (e.amount || 0);
+        });
+        window._catTotals = totals; // store for pie chart
+        renderCatBreakdown(totals);
     } else { breakdownSection.style.display = 'none'; }
 
     // Portfolio
@@ -1583,12 +1622,11 @@ function buildStats() {
     const portfolioSection = document.getElementById('portfolio-section');
     if (investEntries.length > 0) {
         portfolioSection.style.display = 'block';
-        const totals = {};
-        investEntries.forEach(e => { totals[e.category] = (totals[e.category] || 0) + (e.amount || 0); });
-        const totalInv = Object.values(totals).reduce((s, v) => s + v, 0);
-        const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-
-        let html = sorted.map(([cat, amt]) => {
+        const totals2 = {};
+        investEntries.forEach(e => { totals2[e.category] = (totals2[e.category] || 0) + (e.amount || 0); });
+        const totalInv = Object.values(totals2).reduce((s, v) => s + v, 0);
+        const sorted2 = Object.entries(totals2).sort((a, b) => b[1] - a[1]);
+        let html = sorted2.map(([cat, amt]) => {
             const info = getCatInfo(cat);
             return '<div class="portfolio-row">' +
                 '<div style="width:10px;height:10px;border-radius:2px;background:' + info.color + ';flex-shrink:0"></div>' +
@@ -1600,6 +1638,72 @@ function buildStats() {
             '<span style="font-family:\'Space Mono\',monospace;font-size:14px;font-weight:700;color:var(--blue)">₹' + fmt(totalInv) + '</span></div>';
         document.getElementById('portfolio-list').innerHTML = html;
     } else { portfolioSection.style.display = 'none'; }
+}
+
+let _chartView = 'bar';
+function switchChartView(mode) {
+    _chartView = mode;
+    document.getElementById('chart-bar-btn').classList.toggle('active', mode === 'bar');
+    document.getElementById('chart-pie-btn').classList.toggle('active', mode === 'pie');
+    document.getElementById('cat-breakdown-list').style.display = mode === 'bar' ? '' : 'none';
+    document.getElementById('cat-pie-wrap').style.display = mode === 'pie' ? '' : 'none';
+    if (mode === 'pie' && window._catTotals) drawPieChart(window._catTotals);
+}
+
+function renderCatBreakdown(totals) {
+    const total = Object.values(totals).reduce((s, v) => s + v, 0);
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    document.getElementById('cat-breakdown-list').innerHTML = sorted.map(([cat, amt]) => {
+        const info = getCatInfo(cat);
+        const pct = Math.round(amt / total * 100);
+        return '<div class="spend-bar-row">' +
+            '<div class="spend-bar-dot" style="background:' + info.color + '"></div>' +
+            '<div class="spend-bar-info"><div class="spend-bar-name">' + cat + '</div>' +
+            '<div class="spend-bar-track"><div class="spend-bar-fill" style="width:' + pct + '%;background:' + info.color + '"></div></div></div>' +
+            '<div class="spend-bar-amt">₹' + fmt(amt) + '</div></div>';
+    }).join('');
+    // Also refresh pie if currently showing
+    if (_chartView === 'pie') drawPieChart(totals);
+}
+
+function drawPieChart(totals) {
+    const canvas = document.getElementById('cat-pie-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height, R = Math.min(W, H) / 2 - 8;
+    ctx.clearRect(0, 0, W, H);
+    const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((s, [, v]) => s + v, 0);
+    let angle = -Math.PI / 2;
+    entries.forEach(([cat, amt]) => {
+        const info = getCatInfo(cat);
+        const slice = (amt / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2, H / 2);
+        ctx.arc(W / 2, H / 2, R, angle, angle + slice);
+        ctx.closePath();
+        ctx.fillStyle = info.color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        angle += slice;
+    });
+    // Centre hole (donut)
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, R * 0.52, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    // Legend
+    document.getElementById('cat-pie-legend').innerHTML = entries.map(([cat, amt]) => {
+        const info = getCatInfo(cat);
+        const pct = Math.round(amt / total * 100);
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-light)">' +
+            '<div style="width:10px;height:10px;border-radius:3px;background:' + info.color + ';flex-shrink:0"></div>' +
+            '<div style="flex:1;font-size:12px;font-weight:500">' + cat + '</div>' +
+            '<div style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--text-3)">' + pct + '%</div>' +
+            '<div style="font-family:\'Space Mono\',monospace;font-size:11px;font-weight:700">₹' + fmt(amt) + '</div></div>';
+    }).join('');
 }
 
 /* ─── HISTORY ─── */
