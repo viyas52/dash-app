@@ -1688,21 +1688,8 @@ function updateMonthLabel() {
     document.getElementById('month-label').textContent =
         d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
-function prevMonth() {
-    monthOffset++;
-    updateMonthLabel();
-    loadMonth();
-    const active = document.querySelector('.view.active');
-    if (active && active.id === 'view-stats') { buildStats(); loadHistory(); }
-}
-function nextMonth() {
-    if (monthOffset <= 0) return;
-    monthOffset--;
-    updateMonthLabel();
-    loadMonth();
-    const active = document.querySelector('.view.active');
-    if (active && active.id === 'view-stats') { buildStats(); loadHistory(); }
-}
+function prevMonth() { monthOffset++; updateMonthLabel(); loadMonth(); }
+function nextMonth() { if (monthOffset <= 0) return; monthOffset--; updateMonthLabel(); loadMonth(); }
 function populateMonths() {
     monthOffset = 0;
     updateMonthLabel();
@@ -1828,6 +1815,9 @@ function setAcctFilter(bank, btn) {
     document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     applyAcctFilter();
+    // If stats view is active, rebuild it with fresh data
+    const activeView = document.querySelector('.view.active');
+    if (activeView && activeView.id === 'view-stats') { buildStats(); loadHistory(); }
 }
 function applyAcctFilter() {
     const all = window._allCategorized || [];
