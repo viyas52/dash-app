@@ -2079,15 +2079,35 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
     document.body.style.overflow = 'hidden';
 }
 
+function reverseBalance(txn) {
+    // Undo the balance effect of a transaction
+    if (!txn || !txn.bank) return;
+    const bank = txn.bank;
+    const amount = txn.amount || 0;
+    const cur = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+    // Reverse: debit was a subtraction → add back; credit was addition → subtract back
+    const reversed = txn.type === 'credit' ? cur - amount : cur + amount;
+    localStorage.setItem('pft_bal_' + bank, reversed);
+    localStorage.setItem('pft_bal_upd_' + bank, new Date().toISOString());
+    // Also handle transfer to-bank if present
+    if (txn.bank_to) {
+        const cur2 = parseFloat(localStorage.getItem('pft_bal_' + txn.bank_to)) || 0;
+        localStorage.setItem('pft_bal_' + txn.bank_to, cur2 - amount); // reverse the credit
+        localStorage.setItem('pft_bal_upd_' + txn.bank_to, new Date().toISOString());
+    }
+    loadLinkedAccounts();
+}
+
 async function deleteFromModal() {
     if (!editingId) return;
     const id = editingId;
-    // Snapshot the doc first so Undo can restore it (auto-IDs lose their original ID; SMS-imported docs keep theirs).
     const snapshot = (window._allCategorized || []).find(x => x.id === id) || (uncatEntries || []).find(x => x.id === id);
     closeAddModal();
     try {
         const { deleteDoc, doc, setDoc, addDoc, collection } = window.fb;
         await deleteDoc(doc(db, "personal_transactions", id));
+        // Reverse balance effect of deleted transaction
+        reverseBalance(snapshot);
         showToast("Deleted", {
             label: "Undo",
             fn: async () => {
@@ -2098,6 +2118,14 @@ async function deleteFromModal() {
                         await setDoc(doc(db, "personal_transactions", data.dedup_key), data);
                     } else {
                         await addDoc(collection(db, "personal_transactions"), data);
+                    }
+                    // Re-apply balance on undo
+                    if (data.bank) {
+                        const cur = parseFloat(localStorage.getItem('pft_bal_' + data.bank)) || 0;
+                        const restored = data.type === 'credit' ? cur + data.amount : cur - data.amount;
+                        localStorage.setItem('pft_bal_' + data.bank, restored);
+                        localStorage.setItem('pft_bal_upd_' + data.bank, new Date().toISOString());
+                        loadLinkedAccounts();
                     }
                     showToast("Restored");
                     loadMonth();
@@ -2247,6 +2275,7 @@ async function saveEditedEntry() {
     const category = document.getElementById('add-category').value;
     const sub_category = document.getElementById('add-sub-category').value || null;
     const note = document.getElementById('add-note').value.trim();
+    const bank = document.getElementById('add-bank').value || null;
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
     if (!category) { showToast("Pick a category"); return; }
 
@@ -2256,14 +2285,26 @@ async function saveEditedEntry() {
                        : typeVal === 'transfer' ? 'transfer'
                        : 'spending';
 
+    // Reverse old balance, apply new balance
+    const oldTxn = (window._allCategorized || []).find(x => x.id === editingId);
+    if (oldTxn) reverseBalance(oldTxn);
+    if (bank) {
+        const cur = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+        const newBal = type === 'credit' ? cur + amount : cur - amount;
+        localStorage.setItem('pft_bal_' + bank, newBal);
+        localStorage.setItem('pft_bal_upd_' + bank, new Date().toISOString());
+    }
+
     try {
         const { doc, updateDoc } = window.fb;
         await updateDoc(doc(db, "personal_transactions", editingId), {
             date, amount, type, category, sub_category, category_type,
+            bank: bank || null,
             note: note || (sub_category ? category + ' · ' + sub_category : category)
         });
         showToast("Updated");
         closeAddModal();
+        loadLinkedAccounts();
         loadMonth();
     } catch (err) { showToast("Update failed"); console.error(err); }
 }
