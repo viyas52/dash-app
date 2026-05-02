@@ -2538,14 +2538,20 @@ function renderUncatCards() {
             '</div><div>' +
             '<div class="uncat-amt ' + (isCredit ? 'cr' : 'dr') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
             '<div class="uncat-type-label">' + (isCredit ? 'Credit' : 'Debit') + '</div>' +
-            '</div></div></div>' +
+            '</div></div>' +
+            // Note editor row
+            '<div style="display:flex;align-items:center;gap:6px;margin-top:10px;">' +
+            '<input id="unote-' + i + '" type="text" value="' + esc(e.note || e.recipient || '') + '" ' +
+            'placeholder="Note" style="flex:1;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-1);font-family:\'DM Sans\',sans-serif;outline:none;">' +
+            '</div>' +
+            '</div>' +
             '<div class="type-toggle">' +
             '<button class="type-btn' + (uncatState[i].type === 'spending' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'spending\')">Spending</button>' +
             '<button class="type-btn' + (uncatState[i].type === 'investment' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'investment\')">Investment</button>' +
             '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
             '</div>' +
             '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
-            '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px;padding-left:4px;">' +
             '<button class="rule-pill active" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>' +
             '<button class="rule-pill person-pill" id="uperson-' + i + '" onclick="togglePersonMode(' + i + ',this)">👤 Person</button>' +
             '<button class="confirm-btn" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">Confirm</button>' +
@@ -2652,10 +2658,13 @@ async function confirmUncat(i) {
         // If a sub-category was selected, store parent as category + sub as sub_category
         const parentCat = s.selParent || resolveParentCat(s.sel);
         const isSub = parentCat !== s.sel;
+        const noteEl = document.getElementById('unote-' + i);
+        const editedNote = noteEl ? noteEl.value.trim() : null;
         await updateDoc(doc(db, "personal_transactions", s.id), {
             category: parentCat,
             sub_category: isSub ? s.sel : null,
-            category_type: s.type
+            category_type: s.type,
+            ...(editedNote ? { note: editedNote } : {})
         });
 
         // Remember rule for future SMSes from this recipient (debits only, not for transfers).
