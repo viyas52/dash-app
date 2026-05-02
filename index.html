@@ -1283,6 +1283,13 @@
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-left:auto;color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             </button>
 
+            <!-- Rules -->
+            <div class="label setting-group-label">Auto-categorize Rules</div>
+            <div class="card" style="margin-bottom:12px;padding:0;">
+                <div id="rules-list" style="padding:4px 0;"></div>
+                <div id="rules-empty" style="display:none;padding:14px 16px;font-size:12px;color:var(--text-3);">No rules saved yet</div>
+            </div>
+
             <!-- Export -->
             <div class="label setting-group-label">Data</div>
             <div class="card" style="margin-bottom:12px;">
@@ -1445,6 +1452,42 @@ function saveAcctBal(id) {
 
 /* ─── CATEGORY MANAGER ─── */
 let _catMgrExpanded = null;
+
+async function loadRules() {
+    if (!firebaseReady) return;
+    const { collection, getDocs, deleteDoc, doc, setDoc } = window.fb;
+    const snap = await getDocs(collection(db, 'personal_rules'));
+    const rules = []; snap.forEach(d => rules.push({ id: d.id, ...d.data() }));
+    const list = document.getElementById('rules-list');
+    const empty = document.getElementById('rules-empty');
+    if (!list) return;
+    if (rules.length === 0) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
+    if (empty) empty.style.display = 'none';
+    list.innerHTML = rules.map(r =>
+        '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border-light);">' +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.recipient || r.id) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">' + (r.contact ? '👤 Person — always ask' : '→ ' + (r.category || '?') + ' · ' + (r.category_type || '')) + '</div>' +
+        '</div>' +
+        '<button onclick="toggleContactRule(\'' + r.id + '\',' + (!r.contact) + ')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:' + (r.contact ? '#FCE4EC' : 'var(--bg-2)') + ';color:' + (r.contact ? '#C2185B' : 'var(--text-3)') + ';cursor:pointer;">' + (r.contact ? '👤' : 'Set person') + '</button>' +
+        '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid #E5353540;background:#FDF0F0;color:#E53535;cursor:pointer;margin-left:4px;">Delete</button>' +
+        '</div>'
+    ).join('');
+}
+async function deleteRule(id) {
+    if (!firebaseReady) return;
+    const { deleteDoc, doc } = window.fb;
+    await deleteDoc(doc(db, 'personal_rules', id));
+    showToast('Rule deleted');
+    loadRules();
+}
+async function toggleContactRule(id, makeContact) {
+    if (!firebaseReady) return;
+    const { doc, updateDoc } = window.fb;
+    await updateDoc(doc(db, 'personal_rules', id), { contact: makeContact });
+    showToast(makeContact ? 'Marked as person — will always ask' : 'Rule restored');
+    loadRules();
+}
 
 function loadCatManager() {
     const el = document.getElementById('cat-manager-wrap');
@@ -1657,6 +1700,7 @@ document.addEventListener('touchend', e => {
 function openSettings() {
     loadLinkedAccounts();
     loadCatManager();
+    loadRules();
     initSettingsSliders();
     const sheet = document.getElementById('settings-sheet');
     sheet.classList.add('open');
@@ -2452,6 +2496,13 @@ function renderUncatCards() {
             '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
             '</div>' +
             '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;padding:8px 0 2px;">' +
+            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-3);">' +
+            '<input type="checkbox" id="uremember-' + i + '" checked style="accent-color:var(--text-1);width:14px;height:14px;">' +
+            'Remember rule</label>' +
+            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#C2185B;margin-left:auto;">' +
+            '<input type="checkbox" id="uperson-' + i + '" style="accent-color:#C2185B;width:14px;height:14px;" onchange="togglePersonMode(' + i + ',this.checked)">' +
+            '👤 Person (always ask)</label></div>' +
             '<button class="confirm-btn" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">CONFIRM</button>' +
             '</div>';
     }).join('');
@@ -2488,6 +2539,12 @@ function renderCatChips(i) {
             '</div></div>';
     }
     return html;
+}
+
+function togglePersonMode(i, isPerson) {
+    // When "Person" is checked, uncheck "Remember rule" (contacts are saved with contact:true)
+    const remEl = document.getElementById('uremember-' + i);
+    if (remEl) remEl.checked = true; // keep remember ON so we save contact:true flag
 }
 
 function switchUncatType(i, type) {
@@ -2552,7 +2609,11 @@ async function confirmUncat(i) {
         });
 
         // Remember rule for future SMSes from this recipient (debits only, not for transfers).
-        if (entry && entry.type === 'debit' && entry.recipient && s.type !== 'transfer') {
+        const rememberEl = document.getElementById('uremember-' + i);
+        const personEl   = document.getElementById('uperson-' + i);
+        const shouldRemember = rememberEl ? rememberEl.checked : true;
+        const isPerson       = personEl   ? personEl.checked   : false;
+        if (entry && entry.type === 'debit' && entry.recipient && s.type !== 'transfer' && shouldRemember) {
             const key = normalizeKey(entry.recipient);
             if (key) {
                 await setDoc(doc(db, "personal_rules", key), {
@@ -2560,6 +2621,7 @@ async function confirmUncat(i) {
                     recipient: entry.recipient,
                     category: parentCat,
                     category_type: s.type,
+                    contact: isPerson,   // contact:true = always ask, never auto-tag
                     last_used: new Date().toISOString()
                 });
             }
