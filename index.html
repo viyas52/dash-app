@@ -1396,9 +1396,27 @@ function loadLinkedAccounts() {
     el.innerHTML = LINKED_ACCOUNTS.map(a => renderAcctCard(a)).join('');
 }
 
+function computeLiveBalance(bankId) {
+    const baseRaw = localStorage.getItem('pft_bal_' + bankId);
+    const since   = localStorage.getItem('pft_bal_upd_' + bankId);
+    if (baseRaw === null || baseRaw === '') return null;
+    const base = parseFloat(baseRaw);
+    if (isNaN(base) || !since) return base;
+    // Apply all transactions newer than 'since' to get live balance
+    const allTxns = [...(currentEntries || []), ...(window._allHistoryEntries || [])];
+    const seen = new Set();
+    let delta = 0;
+    allTxns.forEach(e => {
+        if (e.bank !== bankId) return;
+        if (!e.created_at || e.created_at <= since) return;
+        if (seen.has(e.id)) return; seen.add(e.id);
+        delta += e.type === 'credit' ? (e.amount || 0) : -(e.amount || 0);
+    });
+    return base + delta;
+}
+
 function renderAcctCard(a) {
-    const balRaw = localStorage.getItem('pft_bal_' + a.id);
-    const bal    = balRaw !== null ? parseFloat(balRaw) : null;
+    const bal    = computeLiveBalance(a.id);
     const updAt  = localStorage.getItem('pft_bal_upd_' + a.id);
     const isOpen = _acctExpanded === a.id;
     const isEdit = _acctEditing  === a.id;
@@ -1891,14 +1909,11 @@ async function loadMonth() {
 /* ─── DASHBOARD UPDATE ─── */
 function updateDashboard(entries) {
     currentEntries = entries;
-    // Auto-update linked account balances from most recent transaction with balance_after
-    const latestBalByBank = {};
+    // Auto-seed balance from NEFT credits that include balance_after (first-time only)
     entries.forEach(e => {
         if (e.balance_after == null || !e.bank || !e.created_at) return;
-        const prev = latestBalByBank[e.bank];
-        if (!prev || e.created_at > prev.created_at) latestBalByBank[e.bank] = e;
-    });
-    Object.values(latestBalByBank).forEach(e => {
+        const existing = localStorage.getItem('pft_bal_' + e.bank);
+        if (existing !== null) return; // never overwrite a user-set balance
         localStorage.setItem('pft_bal_' + e.bank, e.balance_after);
         localStorage.setItem('pft_bal_upd_' + e.bank, e.created_at);
     });
@@ -1993,6 +2008,8 @@ function updateDashboard(entries) {
     applyAcctFilter();
     // Rebuild stats after every data load so month arrows work on stats view
     requestAnimationFrame(() => { buildStats(); });
+    // Refresh linked accounts balance display (live balance recalculated from transactions)
+    loadLinkedAccounts();
 }
 
 let _acctFilter = 'icici';
@@ -2551,7 +2568,7 @@ function renderUncatCards() {
             '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
             '</div>' +
             '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
-            '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px;padding-left:4px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;padding:10px 18px 4px;">' +
             '<button class="rule-pill active" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>' +
             '<button class="rule-pill person-pill" id="uperson-' + i + '" onclick="togglePersonMode(' + i + ',this)">👤 Person</button>' +
             '<button class="confirm-btn" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">Confirm</button>' +
@@ -2570,8 +2587,10 @@ function renderCatChips(i) {
         const bgCol = isSel && c.bg ? c.bg : '#FAFAF8';
         const txtCol = isSel ? c.color : 'var(--text-2)';
         const icon = getCatIcon(c.name);
-        return '<div class="cat-btn" style="border-color:' + borderCol + ';background:' + bgCol + '" ' +
+        const borderW = isSel ? '2px' : '1px';
+        return '<div class="cat-btn" style="border-color:' + borderCol + ';border-width:' + borderW + ';background:' + bgCol + ';position:relative;" ' +
             'onclick="pickUncat(' + i + ',\'' + c.name + '\')">' +
+            (isSel ? '<div style="position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:' + c.color + ';"></div>' : '') +
             '<div style="width:20px;height:20px;color:' + (isSel ? c.color : '#888') + '">' + icon + '</div>' +
             '<div class="cat-label" style="color:' + txtCol + '">' + c.name + '</div></div>';
     }).join('');
