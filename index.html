@@ -1402,14 +1402,16 @@ function computeLiveBalance(bankId) {
     if (baseRaw === null || baseRaw === '') return null;
     const base = parseFloat(baseRaw);
     if (isNaN(base) || !since) return base;
-    // Apply all transactions newer than 'since' to get live balance
-    const allTxns = [...(currentEntries || []), ...(window._allHistoryEntries || [])];
+    // Use currentEntries only — avoids double-counting with _allHistoryEntries
+    // (both arrays share current-month data; _allHistoryEntries lacks doc IDs)
     const seen = new Set();
     let delta = 0;
-    allTxns.forEach(e => {
+    (currentEntries || []).forEach(e => {
         if (e.bank !== bankId) return;
         if (!e.created_at || e.created_at <= since) return;
-        if (seen.has(e.id)) return; seen.add(e.id);
+        const key = e.dedup_key || e.id || (e.type + e.amount + e.created_at);
+        if (seen.has(key)) return;
+        seen.add(key);
         delta += e.type === 'credit' ? (e.amount || 0) : -(e.amount || 0);
     });
     return base + delta;
