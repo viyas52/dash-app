@@ -1333,6 +1333,21 @@
                 <div id="rules-empty" style="display:none;padding:14px 16px;font-size:12px;color:var(--text-3);">No rules saved yet</div>
             </div>
 
+            <!-- Contacts -->
+            <div class="label setting-group-label">Contacts</div>
+            <div class="card" style="margin-bottom:12px;padding:0;">
+                <button id="contacts-toggle" onclick="toggleContactsPanel()" style="width:100%;display:flex;align-items:center;gap:10px;padding:13px 16px;background:none;border:none;cursor:pointer;text-align:left;">
+                    <span style="font-size:16px;">👤</span>
+                    <span style="flex:1;font-size:13px;font-weight:500;color:var(--text-1);">Saved Contacts</span>
+                    <span id="contacts-count" style="font-size:11px;color:var(--text-3);font-family:'Space Mono',monospace;"></span>
+                    <svg id="contacts-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3);transition:transform 0.2s;"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+                <div id="contacts-panel" style="display:none;border-top:1px solid var(--border-light);padding:4px 0;">
+                    <div id="contacts-list"></div>
+                    <div id="contacts-empty" style="display:none;padding:12px 16px;font-size:12px;color:var(--text-3);">No contacts saved yet</div>
+                </div>
+            </div>
+
             <!-- Export -->
             <div class="label setting-group-label">Data</div>
             <div class="card" style="margin-bottom:12px;">
@@ -1526,18 +1541,51 @@ async function loadRules() {
     const list = document.getElementById('rules-list');
     const empty = document.getElementById('rules-empty');
     if (!list) return;
-    if (rules.length === 0) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
-    if (empty) empty.style.display = 'none';
-    list.innerHTML = rules.map(r =>
-        '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border-light);">' +
-        '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.recipient || r.id) + '</div>' +
-        '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">' + (r.contact ? '👤 Person — always ask' : '→ ' + (r.category || '?') + ' · ' + (r.category_type || '')) + '</div>' +
-        '</div>' +
-        '<button onclick="toggleContactRule(\'' + r.id + '\',' + (!r.contact) + ')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:' + (r.contact ? '#FCE4EC' : 'var(--bg-2)') + ';color:' + (r.contact ? '#C2185B' : 'var(--text-3)') + ';cursor:pointer;">' + (r.contact ? '👤' : 'Set person') + '</button>' +
-        '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid #E5353540;background:#FDF0F0;color:#E53535;cursor:pointer;margin-left:4px;">Delete</button>' +
-        '</div>'
-    ).join('');
+    const merchants = rules.filter(r => !r.contact);
+    const contacts  = rules.filter(r => r.contact);
+
+    // Merchant rules list
+    if (merchants.length === 0) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; }
+    else {
+        if (empty) empty.style.display = 'none';
+        list.innerHTML = merchants.map((r, i) =>
+            '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;' + (i < merchants.length-1 ? 'border-bottom:1px solid var(--border-light);' : '') + '">' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.recipient || r.id) + '</div>' +
+            '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">→ ' + (r.category || '?') + ' · ' + (r.category_type || '') + '</div>' +
+            '</div>' +
+            '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid #E5353540;background:#FDF0F0;color:#E53535;cursor:pointer;">Delete</button>' +
+            '</div>'
+        ).join('');
+    }
+
+    // Contacts section
+    const countEl  = document.getElementById('contacts-count');
+    const cList    = document.getElementById('contacts-list');
+    const cEmpty   = document.getElementById('contacts-empty');
+    if (countEl) countEl.textContent = contacts.length ? contacts.length + ' saved' : '';
+    if (cList) {
+        if (contacts.length === 0) { cList.innerHTML = ''; if (cEmpty) cEmpty.style.display = 'block'; }
+        else {
+            if (cEmpty) cEmpty.style.display = 'none';
+            cList.innerHTML = contacts.map((r, i) =>
+                '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;' + (i < contacts.length-1 ? 'border-bottom:1px solid var(--border-light);' : '') + '">' +
+                '<div style="width:32px;height:32px;border-radius:50%;background:var(--border-light);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>' +
+                '<div style="flex:1;min-width:0;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.recipient || r.id) + '</div>' +
+                '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid #E5353540;background:#FDF0F0;color:#E53535;cursor:pointer;">Remove</button>' +
+                '</div>'
+            ).join('');
+        }
+    }
+}
+
+let _contactsPanelOpen = false;
+function toggleContactsPanel() {
+    _contactsPanelOpen = !_contactsPanelOpen;
+    const panel   = document.getElementById('contacts-panel');
+    const chevron = document.getElementById('contacts-chevron');
+    if (panel)   panel.style.display   = _contactsPanelOpen ? 'block' : 'none';
+    if (chevron) chevron.style.transform = _contactsPanelOpen ? 'rotate(180deg)' : '';
 }
 async function deleteRule(id) {
     if (!firebaseReady) return;
