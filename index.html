@@ -166,27 +166,25 @@
             padding: 5px 12px; font-size: 11px; color: var(--text-2); font-weight: 500;
         }
 
-        /* ─── SPENDING INSIGHTS ─── */
-        .insights-wrap { padding: 0 20px; margin-top: 20px; display:none; }
-        .insights-scroll {
-            display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
-            scrollbar-width: none;
+        /* ─── SPENDING INSIGHTS TICKER ─── */
+        .insights-ticker {
+            margin: 12px 20px 0;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            min-height: 20px;
         }
-        .insights-scroll::-webkit-scrollbar { display: none; }
-        .insight-card {
-            flex: 0 0 auto; min-width: 180px; max-width: 220px;
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: var(--radius-sm); padding: 12px 14px;
+        .insights-ticker-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--text-3); flex-shrink: 0; opacity: 0.5;
         }
-        .insight-card .ins-emoji { font-size: 20px; line-height: 1; margin-bottom: 6px; }
-        .insight-card .ins-val {
-            font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700;
-            margin-bottom: 3px;
+        .insights-ticker-text {
+            font-size: 12px; color: var(--text-3);
+            font-style: italic; flex: 1;
+            transition: opacity 0.4s ease;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .insight-card .ins-val.up { color: var(--red); }
-        .insight-card .ins-val.down { color: var(--green); }
-        .insight-card .ins-val.neutral { color: var(--text-1); }
-        .insight-card .ins-label { font-size: 11px; color: var(--text-3); line-height: 1.35; }
+        .insights-ticker-text.fade { opacity: 0; }
         .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
         /* ─── LINKED ACCOUNT CARDS ─── */
@@ -1058,10 +1056,10 @@
         <div class="badge-row" id="spending-badges" style="margin-top:10px;"></div>
     </div>
 
-    <!-- Spending Insights -->
-    <div class="insights-wrap" id="insights-wrap">
-        <div class="label" style="margin-bottom:10px;">Insights</div>
-        <div class="insights-scroll" id="insights-scroll"></div>
+    <!-- Spending Insights Ticker -->
+    <div class="insights-ticker" id="insights-ticker">
+        <div class="insights-ticker-dot"></div>
+        <div class="insights-ticker-text" id="insights-ticker-text"></div>
     </div>
 
     <!-- Transactions -->
@@ -1538,6 +1536,16 @@ async function loadRules() {
     const rules = []; snap.forEach(d => rules.push({ id: d.id, ...d.data() }));
     // Cache contact keys so uncatEntries can skip them
     window._contactKeys = new Set(rules.filter(r => r.contact).map(r => r.id));
+    // Cache contact display names: normalizedKey → friendly name (strip UPI handle)
+    window._contactNames = {};
+    rules.filter(r => r.contact).forEach(r => {
+        const raw = r.recipient || r.id || '';
+        // Strip @upi handle if present: "VEDA VIYAS@ybl" → "Veda Viyas"
+        const name = raw.replace(/@\S+/g, '').trim();
+        const titled = name.replace(/\b\w/g, c => c.toUpperCase()).toLowerCase()
+                           .replace(/\b\w/g, c => c.toUpperCase());
+        window._contactNames[r.id] = titled || raw;
+    });
     const list = document.getElementById('rules-list');
     const empty = document.getElementById('rules-empty');
     if (!list) return;
@@ -2094,112 +2102,97 @@ function updateDashboard(entries) {
     if (!window._allHistoryEntries) loadHistory().then(() => computeInsights(entries));
 }
 
-/* ─── SPENDING INSIGHTS ─── */
+/* ─── SPENDING INSIGHTS TICKER ─── */
+let _insightLines = [], _insightIdx = 0, _insightTimer = null;
+
 function computeInsights(curEntries) {
-    const wrap = document.getElementById('insights-wrap');
-    const scroll = document.getElementById('insights-scroll');
-    if (!wrap || !scroll) return;
+    const ticker = document.getElementById('insights-ticker');
+    const textEl = document.getElementById('insights-ticker-text');
+    if (!ticker || !textEl) return;
 
     const all = window._allHistoryEntries || [];
-    if (!all.length) { wrap.style.display = 'none'; return; }
+    if (!all.length) { ticker.style.display = 'none'; return; }
 
-    // Figure out current month string (YYYY-MM) from monthOffset
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - monthOffset);
-    const curMon = d.toISOString().substring(0, 7);
-    const prevD = new Date(d);
-    prevD.setMonth(prevD.getMonth() - 1);
+    // Current and previous month strings
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - monthOffset);
+    const curMon  = d.toISOString().substring(0, 7);
+    const prevD   = new Date(d); prevD.setMonth(prevD.getMonth() - 1);
     const prevMon = prevD.toISOString().substring(0, 7);
 
-    // Bucket spending by category for each month
     const bucket = (entries, mon) => {
         const t = {};
         entries.filter(e => e.date && e.date.startsWith(mon) && e.category_type === 'spending' && e.category)
-               .forEach(e => {
-                   const cat = resolveParentCat(e.category);
-                   t[cat] = (t[cat] || 0) + (e.amount || 0);
-               });
+               .forEach(e => { const c = resolveParentCat(e.category); t[c] = (t[c]||0) + (e.amount||0); });
         return t;
     };
-
-    // Current month: use live currentEntries (more accurate, has doc IDs)
     const curTotals  = bucket(curEntries, curMon);
     const prevTotals = bucket(all, prevMon);
-
     const fmtAmt = v => '₹' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : Math.round(v));
 
-    const cards = [];
+    const lines = [];
 
-    // 1. Net saved nudge
+    // Net saved change
     const curIncome  = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
     const curSpend   = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
     const prevIncome = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
     const prevSpend  = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
-    const curSaved   = curIncome - curSpend;
-    const prevSaved  = prevIncome - prevSpend;
+    const curSaved = curIncome - curSpend, prevSaved = prevIncome - prevSpend;
     if (prevSaved !== 0 && curIncome > 0) {
         const diff = curSaved - prevSaved;
         const pct  = Math.round(Math.abs(diff) / Math.abs(prevSaved) * 100);
-        if (pct >= 5) {
-            const better = diff > 0;
-            cards.push({
-                emoji: better ? '💰' : '📉',
-                val: (better ? '+' : '-') + fmtAmt(Math.abs(diff)),
-                cls: better ? 'down' : 'up',
-                label: better ? 'more saved vs last month' : 'less saved vs last month'
-            });
-        }
+        if (pct >= 5)
+            lines.push(diff > 0
+                ? '"You saved ' + fmtAmt(Math.abs(diff)) + ' more than last month 💰"'
+                : '"You saved ' + fmtAmt(Math.abs(diff)) + ' less than last month 📉"');
     }
 
-    // 2. Per-category changes
-    const allCats = new Set([...Object.keys(curTotals), ...Object.keys(prevTotals)]);
-    const changes = [];
-    allCats.forEach(cat => {
-        const cur  = curTotals[cat]  || 0;
-        const prev = prevTotals[cat] || 0;
-        if (prev === 0 || cur === 0) return;
-        const pct = Math.round((cur - prev) / prev * 100);
-        if (Math.abs(pct) < 15) return; // skip tiny fluctuations
-        changes.push({ cat, cur, prev, pct });
-    });
-    // Sort: biggest % change first
-    changes.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+    // Category % changes
     const catEmoji = { Food:'🍕', Transport:'🚗', Bill:'💡', Health:'💊', Apparel:'👕',
         Beauty:'✨', Culture:'🎬', Household:'🏠', Sports:'⚽', Education:'📚',
         Gift:'🎁', Miscellaneous:'🗂️' };
-
+    const allCats = new Set([...Object.keys(curTotals), ...Object.keys(prevTotals)]);
+    const changes = [];
+    allCats.forEach(cat => {
+        const cur = curTotals[cat]||0, prev = prevTotals[cat]||0;
+        if (!prev || !cur) return;
+        const pct = Math.round((cur - prev) / prev * 100);
+        if (Math.abs(pct) < 15) return;
+        changes.push({ cat, pct });
+    });
+    changes.sort((a,b) => Math.abs(b.pct)-Math.abs(a.pct));
     changes.slice(0, 3).forEach(({ cat, pct }) => {
-        const up = pct > 0;
-        cards.push({
-            emoji: catEmoji[cat] || '📊',
-            val: (up ? '↑' : '↓') + Math.abs(pct) + '%',
-            cls: up ? 'up' : 'down',
-            label: cat + (up ? ' up vs last month' : ' down vs last month')
-        });
+        const e = catEmoji[cat] || '📊';
+        lines.push(pct > 0
+            ? '"' + cat + ' spending up ' + pct + '% vs last month ' + e + '"'
+            : '"' + cat + ' spending down ' + Math.abs(pct) + '% vs last month ' + e + '"');
     });
 
-    // 3. Top spend category this month
+    // Top category
     const topCur = Object.entries(curTotals).sort((a,b)=>b[1]-a[1])[0];
-    if (topCur) {
-        cards.push({
-            emoji: catEmoji[topCur[0]] || '🏆',
-            val: fmtAmt(topCur[1]),
-            cls: 'neutral',
-            label: 'most spent on ' + topCur[0]
-        });
+    if (topCur) lines.push('"Most spent on ' + topCur[0] + ' — ' + fmtAmt(topCur[1]) + ' this month ' + (catEmoji[topCur[0]]||'') + '"');
+
+    if (!lines.length) { ticker.style.display = 'none'; return; }
+
+    ticker.style.display = 'flex';
+    _insightLines = lines;
+    _insightIdx   = 0;
+
+    // Clear any existing timer
+    if (_insightTimer) { clearInterval(_insightTimer); _insightTimer = null; }
+
+    textEl.classList.remove('fade');
+    textEl.textContent = lines[0];
+
+    if (lines.length > 1) {
+        _insightTimer = setInterval(() => {
+            textEl.classList.add('fade');
+            setTimeout(() => {
+                _insightIdx = (_insightIdx + 1) % _insightLines.length;
+                textEl.textContent = _insightLines[_insightIdx];
+                textEl.classList.remove('fade');
+            }, 400);
+        }, 4000);
     }
-
-    if (!cards.length) { wrap.style.display = 'none'; return; }
-
-    wrap.style.display = 'block';
-    scroll.innerHTML = cards.map(c =>
-        '<div class="insight-card">' +
-        '<div class="ins-emoji">' + c.emoji + '</div>' +
-        '<div class="ins-val ' + c.cls + '">' + c.val + '</div>' +
-        '<div class="ins-label">' + c.label + '</div>' +
-        '</div>'
-    ).join('');
 }
 
 let _acctFilter = 'icici';
@@ -2244,6 +2237,13 @@ function renderTxnList(entries, expanded) {
             const catLabel = e.sub_category ? e.category + ' · ' + e.sub_category : e.category;
             // For self-transfers: resolve note to "(me) → BANK" using paired leg in currentEntries
             let displayNote = e.note || e.category;
+            // For contact/person transactions: show friendly name instead of raw UPI note
+            if (e.recipient) {
+                const rkey = normalizeKey(e.recipient);
+                if (rkey && window._contactNames && window._contactNames[rkey]) {
+                    displayNote = window._contactNames[rkey];
+                }
+            }
             if (e.category_type === 'transfer' && e.upi_ref && currentEntries) {
                 const paired = currentEntries.find(x => x.upi_ref === e.upi_ref && x.id !== e.id && x.bank !== e.bank);
                 if (paired) {
