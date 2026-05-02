@@ -165,6 +165,28 @@
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
             padding: 5px 12px; font-size: 11px; color: var(--text-2); font-weight: 500;
         }
+
+        /* ─── SPENDING INSIGHTS ─── */
+        .insights-wrap { padding: 0 20px; margin-top: 20px; display:none; }
+        .insights-scroll {
+            display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .insights-scroll::-webkit-scrollbar { display: none; }
+        .insight-card {
+            flex: 0 0 auto; min-width: 180px; max-width: 220px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 12px 14px;
+        }
+        .insight-card .ins-emoji { font-size: 20px; line-height: 1; margin-bottom: 6px; }
+        .insight-card .ins-val {
+            font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .insight-card .ins-val.up { color: var(--red); }
+        .insight-card .ins-val.down { color: var(--green); }
+        .insight-card .ins-val.neutral { color: var(--text-1); }
+        .insight-card .ins-label { font-size: 11px; color: var(--text-3); line-height: 1.35; }
         .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
         /* ─── LINKED ACCOUNT CARDS ─── */
@@ -1034,6 +1056,12 @@
     <div id="spending-badges-section" style="display:none;" class="badge-section">
         <div class="label">Spending</div>
         <div class="badge-row" id="spending-badges" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Spending Insights -->
+    <div class="insights-wrap" id="insights-wrap">
+        <div class="label" style="margin-bottom:10px;">Insights</div>
+        <div class="insights-scroll" id="insights-scroll"></div>
     </div>
 
     <!-- Transactions -->
@@ -2012,6 +2040,118 @@ function updateDashboard(entries) {
     requestAnimationFrame(() => { buildStats(); });
     // Refresh linked accounts balance display (live balance recalculated from transactions)
     loadLinkedAccounts();
+    // Spending insights vs last month
+    computeInsights(entries);
+    // Lazy-load history so insights have prev-month data even on home screen
+    if (!window._allHistoryEntries) loadHistory().then(() => computeInsights(entries));
+}
+
+/* ─── SPENDING INSIGHTS ─── */
+function computeInsights(curEntries) {
+    const wrap = document.getElementById('insights-wrap');
+    const scroll = document.getElementById('insights-scroll');
+    if (!wrap || !scroll) return;
+
+    const all = window._allHistoryEntries || [];
+    if (!all.length) { wrap.style.display = 'none'; return; }
+
+    // Figure out current month string (YYYY-MM) from monthOffset
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - monthOffset);
+    const curMon = d.toISOString().substring(0, 7);
+    const prevD = new Date(d);
+    prevD.setMonth(prevD.getMonth() - 1);
+    const prevMon = prevD.toISOString().substring(0, 7);
+
+    // Bucket spending by category for each month
+    const bucket = (entries, mon) => {
+        const t = {};
+        entries.filter(e => e.date && e.date.startsWith(mon) && e.category_type === 'spending' && e.category)
+               .forEach(e => {
+                   const cat = resolveParentCat(e.category);
+                   t[cat] = (t[cat] || 0) + (e.amount || 0);
+               });
+        return t;
+    };
+
+    // Current month: use live currentEntries (more accurate, has doc IDs)
+    const curTotals  = bucket(curEntries, curMon);
+    const prevTotals = bucket(all, prevMon);
+
+    const fmtAmt = v => '₹' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : Math.round(v));
+
+    const cards = [];
+
+    // 1. Net saved nudge
+    const curIncome  = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
+    const curSpend   = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+    const prevIncome = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
+    const prevSpend  = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+    const curSaved   = curIncome - curSpend;
+    const prevSaved  = prevIncome - prevSpend;
+    if (prevSaved !== 0 && curIncome > 0) {
+        const diff = curSaved - prevSaved;
+        const pct  = Math.round(Math.abs(diff) / Math.abs(prevSaved) * 100);
+        if (pct >= 5) {
+            const better = diff > 0;
+            cards.push({
+                emoji: better ? '💰' : '📉',
+                val: (better ? '+' : '-') + fmtAmt(Math.abs(diff)),
+                cls: better ? 'down' : 'up',
+                label: better ? 'more saved vs last month' : 'less saved vs last month'
+            });
+        }
+    }
+
+    // 2. Per-category changes
+    const allCats = new Set([...Object.keys(curTotals), ...Object.keys(prevTotals)]);
+    const changes = [];
+    allCats.forEach(cat => {
+        const cur  = curTotals[cat]  || 0;
+        const prev = prevTotals[cat] || 0;
+        if (prev === 0 || cur === 0) return;
+        const pct = Math.round((cur - prev) / prev * 100);
+        if (Math.abs(pct) < 15) return; // skip tiny fluctuations
+        changes.push({ cat, cur, prev, pct });
+    });
+    // Sort: biggest % change first
+    changes.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+    const catEmoji = { Food:'🍕', Transport:'🚗', Bill:'💡', Health:'💊', Apparel:'👕',
+        Beauty:'✨', Culture:'🎬', Household:'🏠', Sports:'⚽', Education:'📚',
+        Gift:'🎁', Miscellaneous:'🗂️' };
+
+    changes.slice(0, 3).forEach(({ cat, pct }) => {
+        const up = pct > 0;
+        cards.push({
+            emoji: catEmoji[cat] || '📊',
+            val: (up ? '↑' : '↓') + Math.abs(pct) + '%',
+            cls: up ? 'up' : 'down',
+            label: cat + (up ? ' up vs last month' : ' down vs last month')
+        });
+    });
+
+    // 3. Top spend category this month
+    const topCur = Object.entries(curTotals).sort((a,b)=>b[1]-a[1])[0];
+    if (topCur) {
+        cards.push({
+            emoji: catEmoji[topCur[0]] || '🏆',
+            val: fmtAmt(topCur[1]),
+            cls: 'neutral',
+            label: 'most spent on ' + topCur[0]
+        });
+    }
+
+    if (!cards.length) { wrap.style.display = 'none'; return; }
+
+    wrap.style.display = 'block';
+    scroll.innerHTML = cards.map(c =>
+        '<div class="insight-card">' +
+        '<div class="ins-emoji">' + c.emoji + '</div>' +
+        '<div class="ins-val ' + c.cls + '">' + c.val + '</div>' +
+        '<div class="ins-label">' + c.label + '</div>' +
+        '</div>'
+    ).join('');
 }
 
 let _acctFilter = 'icici';
