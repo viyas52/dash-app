@@ -416,3 +416,7 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
     return res.status(500).json({ error: "Firestore write failed" });
   }
 });
+
+// ── One-time migration function (remove after use) ──
+const { migrateToMultiUser } = require("./migrate");
+exports.migrateToMultiUser = migrateToMultiUser;
