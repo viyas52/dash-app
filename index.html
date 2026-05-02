@@ -2198,7 +2198,6 @@ function computeInsights(curEntries) {
     if (!ticker || !textEl) return;
 
     const all = window._allHistoryEntries || [];
-    if (!all.length) { ticker.style.display = 'none'; return; }
 
     // Current and previous month strings
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - monthOffset);
@@ -2257,6 +2256,20 @@ function computeInsights(curEntries) {
     // Top category
     const topCur = Object.entries(curTotals).sort((a,b)=>b[1]-a[1])[0];
     if (topCur) lines.push('"Most spent on ' + topCur[0] + ' — ' + fmtAmt(topCur[1]) + ' this month ' + (catEmoji[topCur[0]]||'') + '"');
+
+    // Fallback insights when no category comparisons available
+    if (!lines.length) {
+        const thisMonthAll = curEntries.filter(e => e.date && e.date.startsWith(curMon));
+        const totalSpend = thisMonthAll.filter(e => e.category_type === 'spending').reduce((s,e) => s + (e.amount||0), 0);
+        const totalTxns  = thisMonthAll.length;
+        if (totalSpend > 0) {
+            lines.push('"You\'ve spent ' + fmtAmt(totalSpend) + ' across ' + totalTxns + ' transactions this month 📊"');
+        } else if (totalTxns > 0) {
+            const uncatCount = thisMonthAll.filter(e => !e.category).length;
+            if (uncatCount > 0) lines.push('"' + uncatCount + ' transaction' + (uncatCount > 1 ? 's need' : ' needs') + ' categorizing — tap to sort them 🏷️"');
+            else lines.push('"' + totalTxns + ' transaction' + (totalTxns > 1 ? 's' : '') + ' tracked this month ✅"');
+        }
+    }
 
     if (!lines.length) { ticker.style.display = 'none'; return; }
 

@@ -1,4 +1,4 @@
-const CACHE = 'finance-v4.0';
+const CACHE = 'finance-v4.1';
 const ASSETS = ['./index.html'];
 
 self.addEventListener('install', e => {
