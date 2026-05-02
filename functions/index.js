@@ -31,6 +31,16 @@ function parseDateNum(raw) {
   const [day, mon, yr] = raw.split("-");
   return `20${yr}-${mon}-${day}`;
 }
+function parseDateSlash(raw) {
+  // "02/05/26" → "2026-05-02"
+  const [day, mon, yr] = raw.split("/");
+  return `20${yr}-${mon}-${day.padStart(2,"0")}`;
+}
+function parseDateSlashLong(raw) {
+  // "01-05-2026" (dash) already handled but slash variant "01/05/2026"
+  const [day, mon, yr] = raw.split("/");
+  return `${yr}-${mon}-${day.padStart(2,"0")}`;
+}
 function parseDateNumLong(raw) {
   // "30-04-2026" → "2026-04-30"
   const [day, mon, yr] = raw.split("-");
@@ -59,7 +69,7 @@ const PATTERNS = [
     parse: (m, sms) => {
       const upi_ref = m[5];
       return {
-        raw_sms: sms, bank: "ICICI", account: m[1],
+        raw_sms: sms, bank: "icici", account: m[1],
         amount: parseFloat(m[2].replace(/,/g, "")),
         date: parseDateAlpha(m[3]),
         type: "debit", category: null, category_type: null,
@@ -80,7 +90,7 @@ const PATTERNS = [
       const dt = parseDateAlpha(m[3]);
       const bal = parseFloat(m[5].replace(/,/g, ""));
       return {
-        raw_sms: sms, bank: "ICICI", account: m[1],
+        raw_sms: sms, bank: "icici", account: m[1],
         amount: amt, date: dt,
         type: "credit", category: null, category_type: null,
         recipient: "", source: m[4], source_account: "",
@@ -98,7 +108,7 @@ const PATTERNS = [
     parse: (m, sms) => {
       const upi_ref = m[5];
       return {
-        raw_sms: sms, bank: "ICICI", account: m[1],
+        raw_sms: sms, bank: "icici", account: m[1],
         amount: parseFloat(m[2].replace(/,/g, "")),
         date: parseDateAlpha(m[3]),
         type: "credit", category: null, category_type: null,
@@ -117,7 +127,7 @@ const PATTERNS = [
     parse: (m, sms) => {
       const upi_ref = m[5];
       return {
-        raw_sms: sms, bank: "HDFC", account: m[2],
+        raw_sms: sms, bank: "hdfc", account: m[2],
         amount: parseFloat(m[1].replace(/,/g, "")),
         date: parseDateNum(m[3]),
         type: "credit", category: null, category_type: null,
@@ -138,7 +148,7 @@ const PATTERNS = [
       const amt = parseFloat(m[1].replace(/,/g, ""));
       const umrn = m[4];
       return {
-        raw_sms: sms, bank: "HDFC", account: m[2],
+        raw_sms: sms, bank: "hdfc", account: m[2],
         amount: amt, date: dt,
         type: "debit", category: null, category_type: null,
         recipient: m[3].trim(), source: "", source_account: "",
@@ -158,7 +168,7 @@ const PATTERNS = [
       const upi_ref = m[5];
       const sourceAcct = m[4];
       return {
-        raw_sms: sms, bank: "CUB", account: m[1],
+        raw_sms: sms, bank: "cub", account: m[1],
         amount: parseFloat(m[2].replace(/,/g, "")),
         date: parseDateNumLong(m[3]),
         type: "credit", category: null, category_type: null,
@@ -188,13 +198,54 @@ const PATTERNS = [
                    : ciubMatch ? ciubMatch[1]
                    : (dt + "_" + amt + "_" + cleaned.slice(0, 20).replace(/\W/g, ""));
       return {
-        raw_sms: sms, bank: "CUB", account: m[1],
+        raw_sms: sms, bank: "cub", account: m[1],
         amount: amt, date: dt,
         type: "debit", category: null, category_type: null,
         recipient: cleaned, source: "", source_account: "",
         note: cleaned, upi_ref: "", balance_after: null,
         created_at: new Date().toISOString(),
         dedup_key: "cub_d_" + refTag,
+      };
+    },
+  },
+  // ── CUB debit (UPI — sent from CUB to another account) ──
+  // "Your a/c no. XXXXXXXX4745 is debited for Rs.594.00 on 01-05-2026 and credited to a/c no. XXXXXXXX2472 (UPI Ref no 612176928376)"
+  {
+    name: "cub_debit_upi",
+    rx: /Your a\/c no\. X+(\d+) is debited for Rs\.?\s*([\d,]+\.?\d*) on (\d{2}-\d{2}-\d{4}) and credited to a\/c no\. X+(\d+) \(UPI Ref no (\d+)\)/i,
+    parse: (m, sms) => {
+      const upi_ref = m[5];
+      const destAcct = m[4];
+      return {
+        raw_sms: sms, bank: "cub", account: m[1],
+        amount: parseFloat(m[2].replace(/,/g, "")),
+        date: parseDateNumLong(m[3]),
+        type: "debit", category: null, category_type: null,
+        recipient: "To XX" + destAcct.slice(-4),
+        source: "", source_account: destAcct,
+        note: "To XX" + destAcct.slice(-4),
+        upi_ref, balance_after: null,
+        created_at: new Date().toISOString(),
+        dedup_key: "cub_du_" + upi_ref,
+      };
+    },
+  },
+
+  // ── HDFC debit (UPI — multiline "Sent Rs.X / From HDFC Bank A/C *XXXX / To NAME / On DD/MM/YY / Ref XXXXXX") ──
+  {
+    name: "hdfc_debit_upi",
+    rx: /Sent Rs\.?\s*([\d,]+\.?\d*)[\s\S]*?From HDFC Bank A\/C \*(\d+)[\s\S]*?To (.+?)\s*On (\d{2}\/\d{2}\/\d{2})\s*Ref (\d+)/i,
+    parse: (m, sms) => {
+      const upi_ref = m[5];
+      return {
+        raw_sms: sms, bank: "hdfc", account: m[2],
+        amount: parseFloat(m[1].replace(/,/g, "")),
+        date: parseDateSlash(m[4]),
+        type: "debit", category: null, category_type: null,
+        recipient: m[3].trim(), source: "", source_account: "",
+        note: m[3].trim(), upi_ref, balance_after: null,
+        created_at: new Date().toISOString(),
+        dedup_key: "hdfc_du_" + upi_ref,
       };
     },
   },
