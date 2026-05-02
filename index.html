@@ -185,6 +185,55 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .insights-ticker-text.fade { opacity: 0; }
+
+        /* ─── AUTH SCREENS ─── */
+        .auth-screen {
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 40px 30px; text-align: center;
+        }
+        .auth-screen .auth-brand { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
+        .auth-screen .auth-title { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
+        .auth-screen .auth-sub { font-size: 13px; color: var(--text-3); margin-bottom: 40px; }
+        .auth-form { width: 100%; max-width: 320px; text-align: left; }
+        .auth-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; display: block; margin-bottom: 6px; }
+        .auth-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-weight: 500; color: var(--text-1); background: var(--bg-card); font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 16px; }
+        .auth-input:focus { border-color: var(--text-2); }
+        .auth-btn { width: 100%; padding: 14px; border-radius: 12px; background: var(--text-1); color: var(--bg); border: none; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; letter-spacing: 0.02em; margin-bottom: 12px; }
+        .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .auth-btn-outline { width: 100%; padding: 14px; border-radius: 12px; background: transparent; color: var(--text-2); border: 1px solid var(--border); font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+        .auth-toggle { font-size: 13px; color: var(--text-3); margin-top: 20px; }
+        .auth-toggle a { color: var(--text-1); font-weight: 600; cursor: pointer; text-decoration: none; }
+        .auth-error { font-size: 12px; color: #FF3B30; margin-bottom: 12px; display: none; text-align: center; }
+        .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+        .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .auth-divider span { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        /* ─── PIN / LOCK SCREEN ─── */
+        .lock-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: var(--bg); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 40px 30px;
+        }
+        .lock-screen.hidden { display: none; }
+        .lock-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+        .lock-sub { font-size: 13px; color: var(--text-3); margin-bottom: 32px; }
+        .pin-dots { display: flex; gap: 14px; margin-bottom: 32px; }
+        .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); transition: all 0.15s; }
+        .pin-dot.filled { background: var(--text-1); border-color: var(--text-1); }
+        .pin-dot.error { border-color: #FF3B30; background: #FF3B30; }
+        .pin-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+        .pin-key { width: 72px; height: 72px; border-radius: 50%; border: 1px solid var(--border);
+            background: var(--bg-card); font-size: 24px; font-weight: 500; color: var(--text-1);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-family: 'DM Sans', sans-serif; transition: background 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pin-key:active { background: var(--border); }
+        .pin-key.fn { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; border: none; background: transparent; color: var(--text-3); }
+        .pin-key.fn:active { color: var(--text-1); }
+        .biometric-btn { margin-top: 20px; padding: 10px 24px; border-radius: 12px; border: 1px solid var(--border); background: transparent; font-size: 13px; color: var(--text-2); cursor: pointer; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 8px; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-10px)} 40%{transform:translateX(10px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+
         .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
         /* ─── LINKED ACCOUNT CARDS ─── */
@@ -983,28 +1032,82 @@
 </head>
 <body>
 
-<!-- ═══ WELCOME SCREEN ═══ -->
-<div id="welcome-screen" style="display:none;">
-    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 30px;text-align:center;">
-        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--text-3);text-transform:uppercase;margin-bottom:8px;">Welcome to</div>
-        <div style="font-size:28px;font-weight:700;letter-spacing:-0.03em;margin-bottom:6px;">My Finance</div>
-        <div style="font-size:13px;color:var(--text-3);margin-bottom:40px;">Track your money, your way.</div>
+<!-- ═══ PIN / BIOMETRIC LOCK SCREEN ═══ -->
+<div id="lock-screen" class="lock-screen hidden">
+    <div class="lock-title" id="lock-greeting">Welcome back</div>
+    <div class="lock-sub">Enter your PIN to continue</div>
+    <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-pad">
+        <button class="pin-key" onclick="pinInput(1)">1</button>
+        <button class="pin-key" onclick="pinInput(2)">2</button>
+        <button class="pin-key" onclick="pinInput(3)">3</button>
+        <button class="pin-key" onclick="pinInput(4)">4</button>
+        <button class="pin-key" onclick="pinInput(5)">5</button>
+        <button class="pin-key" onclick="pinInput(6)">6</button>
+        <button class="pin-key" onclick="pinInput(7)">7</button>
+        <button class="pin-key" onclick="pinInput(8)">8</button>
+        <button class="pin-key" onclick="pinInput(9)">9</button>
+        <button class="pin-key fn" id="lock-bio-key" onclick="triggerBiometric()" style="display:none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 11c0-1.1.9-2 2-2s2 .9 2 2v1"/><path d="M8 11V9a4 4 0 018 0v2"/><path d="M5 11V8a7 7 0 0114 0v3"/><path d="M12 14v3"/></svg>
+        </button>
+        <button class="pin-key" onclick="pinInput(0)">0</button>
+        <button class="pin-key fn" onclick="pinDelete()">⌫</button>
+    </div>
+    <button class="biometric-btn" id="lock-bio-btn" onclick="triggerBiometric()" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 11c0-1.1.9-2 2-2s2 .9 2 2v1"/><path d="M8 11V9a4 4 0 018 0v2"/><path d="M5 11V8a7 7 0 0114 0v3"/><path d="M12 14v3"/></svg>
+        Use Fingerprint
+    </button>
+</div>
 
-        <div style="width:100%;max-width:320px;text-align:left;">
-            <label style="font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);font-family:'Space Mono',monospace;display:block;margin-bottom:6px;">Your Name</label>
-            <input id="welcome-name" type="text" placeholder="e.g. Viyas" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;font-weight:500;color:var(--text-1);background:var(--bg-card);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:16px;">
+<!-- ═══ AUTH SCREEN (Login / Sign Up) ═══ -->
+<div id="auth-screen" style="display:none;">
+    <div class="auth-screen">
+        <div class="auth-brand">Welcome to</div>
+        <div class="auth-title">My Finance</div>
+        <div class="auth-sub" id="auth-sub">Track your money, your way.</div>
 
-            <label style="font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);font-family:'Space Mono',monospace;display:block;margin-bottom:6px;">User ID</label>
-            <input id="welcome-uid" type="text" placeholder="e.g. viyas (lowercase, no spaces)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;font-weight:500;color:var(--text-1);background:var(--bg-card);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:6px;">
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:28px;">This is your unique ID. Your friends will have their own.</div>
+        <div class="auth-form">
+            <!-- Sign Up extra fields -->
+            <div id="auth-name-group" style="display:none;">
+                <label class="auth-label">Your Name</label>
+                <input id="auth-name" class="auth-input" type="text" placeholder="e.g. Viyas" autocomplete="name">
 
-            <button onclick="completeWelcome()" style="width:100%;padding:14px;border-radius:12px;background:var(--text-1);color:var(--bg);border:none;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;letter-spacing:0.02em;">Get Started</button>
+                <label class="auth-label">Username</label>
+                <input id="auth-username" class="auth-input" type="text" placeholder="e.g. viyas (lowercase, no spaces)" style="margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--text-3);margin-bottom:16px;">Used for your data path. Existing users: enter your current ID.</div>
+            </div>
+
+            <label class="auth-label">Email</label>
+            <input id="auth-email" class="auth-input" type="email" placeholder="you@example.com" autocomplete="email">
+
+            <label class="auth-label">Password</label>
+            <input id="auth-password" class="auth-input" type="password" placeholder="At least 6 characters" autocomplete="current-password">
+
+            <div class="auth-error" id="auth-error"></div>
+
+            <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">Log In</button>
+
+            <div class="auth-divider"><span>or</span></div>
+
+            <button class="auth-btn-outline" id="auth-google-btn" onclick="authGoogle()">
+                <span style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    Continue with Google
+                </span>
+            </button>
+
+            <div class="auth-toggle" id="auth-toggle">
+                Don't have an account? <a onclick="toggleAuthMode()">Sign up</a>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- ═══ MAIN APP ═══ -->
-<div id="main-app">
+<div id="main-app" style="display:none;">
 
 <!-- ═══ TOP BAR ═══ -->
 <div class="top-bar">
@@ -1307,7 +1410,6 @@
                         <div class="setting-label" id="settings-user-name"></div>
                         <div class="setting-desc" id="settings-user-id"></div>
                     </div>
-                    <button onclick="switchUser()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-2);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;">Switch User</button>
                 </div>
             </div>
 
@@ -1339,6 +1441,32 @@
                 <div class="setting-row" style="border-bottom:none;">
                     <div><div class="setting-label">Dark Mode</div></div>
                     <div class="toggle" id="dark-toggle" onclick="toggleDark()"><div class="toggle-thumb"></div></div>
+                </div>
+            </div>
+
+            <!-- Security -->
+            <div class="label setting-group-label">Security</div>
+            <div class="card" style="margin-bottom:12px;">
+                <div class="setting-row" onclick="showPinSetup()" style="cursor:pointer;">
+                    <div>
+                        <div class="setting-label" id="pin-label">Set PIN</div>
+                        <div class="setting-desc">4-digit lock on app open</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="setting-row" style="border-bottom:none;" id="bio-setting-row">
+                    <div>
+                        <div class="setting-label">Fingerprint Unlock</div>
+                        <div class="setting-desc" id="bio-desc">Use biometric instead of PIN</div>
+                    </div>
+                    <div class="toggle" id="bio-toggle" onclick="toggleBiometric()"><div class="toggle-thumb"></div></div>
+                </div>
+                <div class="setting-row" style="border-bottom:none;">
+                    <div>
+                        <div class="setting-label" style="color:#FF3B30;">Log Out</div>
+                        <div class="setting-desc" id="settings-email-display"></div>
+                    </div>
+                    <button onclick="authLogout()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid #FF3B30;background:transparent;color:#FF3B30;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;">Log Out</button>
                 </div>
             </div>
 
@@ -1888,7 +2016,13 @@ function openSettings() {
     const nameEl = document.getElementById('settings-user-name');
     const idEl   = document.getElementById('settings-user-id');
     if (nameEl) nameEl.textContent = USER_NAME || 'User';
-    if (idEl)   idEl.textContent   = '@' + (USER_ID || 'unknown');
+    if (idEl)   idEl.textContent   = '@' + (USER_ID || 'unknown').substring(0, 12);
+    // Security
+    updateSecurityUI();
+    const emailEl = document.getElementById('settings-email-display');
+    if (emailEl && firebaseAuth && firebaseAuth.currentUser) {
+        emailEl.textContent = firebaseAuth.currentUser.email || '';
+    }
     const sheet = document.getElementById('settings-sheet');
     sheet.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1987,15 +2121,28 @@ function jumpToMonth(key) {
 }
 
 /* ─── FIREBASE ─── */
+let firebaseApp = null, firebaseAuth = null;
+
+async function initFirebaseCore() {
+    if (firebaseApp) return;
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where }
+        = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+            signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile }
+        = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    firebaseApp = initializeApp(firebaseConfig);
+    db = getFirestore(firebaseApp);
+    firebaseAuth = getAuth(firebaseApp);
+    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where };
+    window.fbAuth = { signInWithEmailAndPassword, createUserWithEmailAndPassword,
+                      signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile };
+}
+
 async function initFirebase() {
-    if (!USER_ID) return; // Welcome screen must set USER_ID first
+    if (!USER_ID) return;
     try {
-        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-        const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where }
-            = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where };
+        await initFirebaseCore();
         firebaseReady = true;
 
         // Load per-user config (linked accounts)
@@ -2003,7 +2150,7 @@ async function initFirebase() {
         renderAcctFilterChips();
 
         populateMonths();
-        loadRules(); // pre-cache contact keys before loadMonth filters uncatEntries
+        loadRules();
         loadMonth();
         loadLinkedAccounts();
         loadCatManager();
@@ -3478,22 +3625,192 @@ function showToast(msg, action) {
     _toastTimer = setTimeout(() => { t.classList.remove('show'); _toastTimer = null; }, duration);
 }
 
-/* ─── WELCOME / USER SETUP ─── */
-function completeWelcome() {
-    const nameEl = document.getElementById('welcome-name');
-    const uidEl  = document.getElementById('welcome-uid');
-    const name = (nameEl.value || '').trim();
-    const uid  = (uidEl.value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-    if (!name) { nameEl.focus(); showToast('Enter your name'); return; }
-    if (!uid || uid.length < 2) { uidEl.focus(); showToast('Enter a valid user ID (2+ chars)'); return; }
+/* ─── AUTH SYSTEM ─── */
+let _authMode = 'login'; // 'login' or 'signup'
 
-    localStorage.setItem('pft_user_id', uid);
-    localStorage.setItem('pft_user_name', name);
-    USER_ID   = uid;
-    USER_NAME = name;
+function showScreen(name) {
+    document.getElementById('auth-screen').style.display = name === 'auth' ? '' : 'none';
+    document.getElementById('lock-screen').classList.toggle('hidden', name !== 'lock');
+    document.getElementById('main-app').style.display = name === 'app' ? '' : 'none';
+}
 
-    document.getElementById('welcome-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = '';
+function toggleAuthMode() {
+    _authMode = _authMode === 'login' ? 'signup' : 'login';
+    document.getElementById('auth-name-group').style.display = _authMode === 'signup' ? '' : 'none';
+    document.getElementById('auth-submit-btn').textContent = _authMode === 'signup' ? 'Create Account' : 'Log In';
+    document.getElementById('auth-toggle').innerHTML = _authMode === 'signup'
+        ? 'Already have an account? <a onclick="toggleAuthMode()">Log in</a>'
+        : 'Don\'t have an account? <a onclick="toggleAuthMode()">Sign up</a>';
+    document.getElementById('auth-password').placeholder = _authMode === 'signup' ? 'At least 6 characters' : 'Your password';
+    document.getElementById('auth-password').autocomplete = _authMode === 'signup' ? 'new-password' : 'current-password';
+    hideAuthError();
+}
+
+function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+function hideAuthError() { document.getElementById('auth-error').style.display = 'none'; }
+
+async function authSubmit() {
+    hideAuthError();
+    const email = (document.getElementById('auth-email').value || '').trim();
+    const pass  = document.getElementById('auth-password').value || '';
+    if (!email) { document.getElementById('auth-email').focus(); return showAuthError('Enter your email'); }
+    if (pass.length < 6) { document.getElementById('auth-password').focus(); return showAuthError('Password must be at least 6 characters'); }
+
+    const btn = document.getElementById('auth-submit-btn');
+    btn.disabled = true;
+    btn.textContent = _authMode === 'signup' ? 'Creating account…' : 'Logging in…';
+
+    try {
+        await initFirebaseCore();
+        if (_authMode === 'signup') {
+            const name = (document.getElementById('auth-name').value || '').trim();
+            if (!name) { document.getElementById('auth-name').focus(); btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Enter your name'); }
+            const usernameRaw = (document.getElementById('auth-username').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+            const username = usernameRaw || name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16);
+            if (!username || username.length < 2) { btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Enter a valid username (2+ chars)'); }
+            // Check if username is taken
+            const existingSnap = await window.fb.getDoc(window.fb.doc(db, 'usernames', username));
+            if (existingSnap.exists()) { btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Username "' + username + '" is taken'); }
+
+            const cred = await window.fbAuth.createUserWithEmailAndPassword(firebaseAuth, email, pass);
+            await window.fbAuth.updateProfile(cred.user, { displayName: name });
+            // Create username → uid mapping
+            await window.fb.setDoc(window.fb.doc(db, 'usernames', username), { uid: cred.user.uid });
+            // Store username in auth user's Firestore profile
+            await window.fb.setDoc(window.fb.doc(db, 'auth_users', cred.user.uid), {
+                username: username,
+                name: name,
+                email: email,
+                created_at: new Date().toISOString(),
+            });
+            // Create user config in Firestore under username path (don't overwrite existing)
+            const existingProfile = await window.fb.getDoc(window.fb.doc(db, 'users', username, 'config', 'profile'));
+            if (existingProfile.exists()) {
+                // Existing user (e.g. viyas) — just link auth_uid
+                const { updateDoc } = window.fb;
+                await updateDoc(window.fb.doc(db, 'users', username, 'config', 'profile'), { auth_uid: cred.user.uid, email: email });
+            } else {
+                await window.fb.setDoc(window.fb.doc(db, 'users', username, 'config', 'profile'), {
+                    name: name,
+                    email: email,
+                    auth_uid: cred.user.uid,
+                    api_key: 'myfinance_' + username + '_2026',
+                    created_at: new Date().toISOString(),
+                });
+            }
+        } else {
+            await window.fbAuth.signInWithEmailAndPassword(firebaseAuth, email, pass);
+        }
+        // onAuthStateChanged will handle the rest
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = _authMode === 'signup' ? 'Create Account' : 'Log In';
+        const msg = err.code === 'auth/user-not-found' ? 'No account with that email'
+                  : err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? 'Wrong password'
+                  : err.code === 'auth/email-already-in-use' ? 'Email already registered — try logging in'
+                  : err.code === 'auth/invalid-email' ? 'Invalid email address'
+                  : err.code === 'auth/weak-password' ? 'Password too weak (6+ characters)'
+                  : err.message || 'Something went wrong';
+        showAuthError(msg);
+    }
+}
+
+async function authGoogle() {
+    hideAuthError();
+    try {
+        await initFirebaseCore();
+        const provider = new window.fbAuth.GoogleAuthProvider();
+        const cred = await window.fbAuth.signInWithPopup(firebaseAuth, provider);
+        // Create profile if first time
+        const uid = cred.user.uid;
+        const authDocRef = window.fb.doc(db, 'auth_users', uid);
+        const authSnap = await window.fb.getDoc(authDocRef);
+        if (!authSnap.exists()) {
+            const name = cred.user.displayName || 'User';
+            const username = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16) || uid.substring(0, 8);
+            await window.fb.setDoc(window.fb.doc(db, 'usernames', username), { uid });
+            await window.fb.setDoc(authDocRef, {
+                username: username,
+                name: name,
+                email: cred.user.email || '',
+                created_at: new Date().toISOString(),
+            });
+            await window.fb.setDoc(window.fb.doc(db, 'users', username, 'config', 'profile'), {
+                name: name,
+                email: cred.user.email || '',
+                auth_uid: uid,
+                api_key: 'myfinance_' + username + '_2026',
+                created_at: new Date().toISOString(),
+            });
+        }
+    } catch (err) {
+        if (err.code !== 'auth/popup-closed-by-user') {
+            showAuthError(err.message || 'Google sign-in failed');
+        }
+    }
+}
+
+async function authLogout() {
+    try {
+        await initFirebaseCore();
+        await window.fbAuth.signOut(firebaseAuth);
+    } catch (err) { console.error('Logout failed:', err); }
+    localStorage.removeItem('pft_user_id');
+    localStorage.removeItem('pft_user_name');
+    USER_ID = null; USER_NAME = null;
+    firebaseReady = false;
+    closeSettings();
+    showScreen('auth');
+}
+
+async function onAuthReady(user) {
+    if (!user) {
+        showScreen('auth');
+        return;
+    }
+    // Resolve Firebase UID → username (used for Firestore paths)
+    try {
+        const authDocRef = window.fb.doc(db, 'auth_users', user.uid);
+        const authSnap = await window.fb.getDoc(authDocRef);
+        if (authSnap.exists()) {
+            const data = authSnap.data();
+            USER_ID   = data.username;
+            USER_NAME = data.name || user.displayName || user.email.split('@')[0];
+        } else {
+            // Fallback: first-time user or legacy — use short uid
+            USER_ID   = user.uid.substring(0, 12);
+            USER_NAME = user.displayName || user.email.split('@')[0];
+        }
+    } catch (err) {
+        console.error('Failed to resolve username:', err);
+        USER_ID   = user.uid.substring(0, 12);
+        USER_NAME = user.displayName || user.email.split('@')[0];
+    }
+
+    localStorage.setItem('pft_user_id', USER_ID);
+    localStorage.setItem('pft_user_name', USER_NAME);
+
+    // Check PIN lock
+    const pinHash = lsGet('pin_hash');
+    if (pinHash) {
+        showScreen('lock');
+        document.getElementById('lock-greeting').textContent = 'Welcome back, ' + USER_NAME;
+        // Show biometric button if enabled
+        const bioEnabled = lsGet('bio_enabled') === '1';
+        document.getElementById('lock-bio-key').style.display = bioEnabled ? '' : 'none';
+        document.getElementById('lock-bio-btn').style.display = bioEnabled ? '' : 'none';
+        if (bioEnabled) setTimeout(() => triggerBiometric(), 300);
+    } else {
+        enterApp();
+    }
+}
+
+function enterApp() {
+    showScreen('app');
     migrateLocalStorage();
     loadUserPrefs();
     setGreeting();
@@ -3501,34 +3818,229 @@ function completeWelcome() {
     initFirebase();
 }
 
-function switchUser() {
-    document.getElementById('main-app').style.display = 'none';
-    document.getElementById('welcome-screen').style.display = '';
-    document.getElementById('welcome-name').value = '';
-    document.getElementById('welcome-uid').value = '';
-    closeSettings();
+/* ─── PIN SYSTEM ─── */
+let _pinBuffer = '';
+
+function pinInput(n) {
+    if (_pinBuffer.length >= 4) return;
+    _pinBuffer += n;
+    updatePinDots();
+    if (_pinBuffer.length === 4) {
+        setTimeout(() => verifyPin(), 100);
+    }
 }
 
-function logoutUser() {
-    localStorage.removeItem('pft_user_id');
-    localStorage.removeItem('pft_user_name');
-    location.reload();
+function pinDelete() {
+    _pinBuffer = _pinBuffer.slice(0, -1);
+    updatePinDots();
+}
+
+function updatePinDots() {
+    const dots = document.querySelectorAll('#pin-dots .pin-dot');
+    dots.forEach((d, i) => {
+        d.classList.toggle('filled', i < _pinBuffer.length);
+        d.classList.remove('error');
+    });
+}
+
+async function hashPin(pin) {
+    const enc = new TextEncoder().encode(pin + '_pft_salt_2026');
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyPin() {
+    const stored = lsGet('pin_hash');
+    const hash = await hashPin(_pinBuffer);
+    if (hash === stored) {
+        _pinBuffer = '';
+        enterApp();
+    } else {
+        // Shake animation
+        const dots = document.querySelectorAll('#pin-dots .pin-dot');
+        dots.forEach(d => { d.classList.add('error'); });
+        const pad = document.querySelector('.pin-dots');
+        pad.style.animation = 'none';
+        pad.offsetHeight; // reflow
+        pad.style.animation = 'shake 0.4s ease';
+        setTimeout(() => {
+            _pinBuffer = '';
+            updatePinDots();
+        }, 500);
+    }
+}
+
+/* ─── PIN SETUP (from settings) ─── */
+let _pinSetupStep = 0, _pinSetupFirst = '';
+
+function showPinSetup() {
+    const existing = lsGet('pin_hash');
+    if (existing) {
+        // Offer change or remove
+        const action = confirm('You have a PIN set.\n\nOK = Change PIN\nCancel = Remove PIN');
+        if (action) {
+            _pinSetupStep = 0;
+            _pinSetupFirst = '';
+            showPinSetupModal('Enter a new 4-digit PIN');
+        } else {
+            lsSet('pin_hash', '');
+            localStorage.removeItem(lsKey('pin_hash'));
+            lsSet('bio_enabled', '');
+            localStorage.removeItem(lsKey('bio_enabled'));
+            showToast('PIN removed');
+            updateSecurityUI();
+        }
+    } else {
+        _pinSetupStep = 0;
+        _pinSetupFirst = '';
+        showPinSetupModal('Set a 4-digit PIN');
+    }
+}
+
+function showPinSetupModal(title) {
+    // Reuse the lock screen for PIN setup
+    document.getElementById('lock-greeting').textContent = title;
+    document.querySelector('.lock-sub').textContent = _pinSetupStep === 1 ? 'Confirm your PIN' : 'Choose something easy to remember';
+    document.getElementById('lock-bio-key').style.display = 'none';
+    document.getElementById('lock-bio-btn').style.display = 'none';
+    _pinBuffer = '';
+    updatePinDots();
+    closeSettings();
+    showScreen('lock');
+    window._pinSetupMode = true;
+}
+
+// Override pin verify during setup
+const _origVerifyPin = verifyPin;
+verifyPin = async function() {
+    if (!window._pinSetupMode) return _origVerifyPin();
+
+    if (_pinSetupStep === 0) {
+        _pinSetupFirst = _pinBuffer;
+        _pinSetupStep = 1;
+        _pinBuffer = '';
+        updatePinDots();
+        document.getElementById('lock-greeting').textContent = 'Confirm your PIN';
+        document.querySelector('.lock-sub').textContent = 'Enter the same PIN again';
+    } else {
+        if (_pinBuffer === _pinSetupFirst) {
+            const hash = await hashPin(_pinBuffer);
+            lsSet('pin_hash', hash);
+            _pinBuffer = '';
+            window._pinSetupMode = false;
+            showToast('PIN set successfully');
+            updateSecurityUI();
+            enterApp();
+        } else {
+            const dots = document.querySelectorAll('#pin-dots .pin-dot');
+            dots.forEach(d => d.classList.add('error'));
+            setTimeout(() => {
+                _pinBuffer = '';
+                _pinSetupStep = 0;
+                _pinSetupFirst = '';
+                updatePinDots();
+                document.getElementById('lock-greeting').textContent = 'PINs didn\'t match';
+                document.querySelector('.lock-sub').textContent = 'Try again — enter a 4-digit PIN';
+            }, 500);
+        }
+    }
+};
+
+function updateSecurityUI() {
+    const hasPin = !!lsGet('pin_hash');
+    const pinLabel = document.getElementById('pin-label');
+    if (pinLabel) pinLabel.textContent = hasPin ? 'Change / Remove PIN' : 'Set PIN';
+    const bioRow = document.getElementById('bio-setting-row');
+    if (bioRow) bioRow.style.display = hasPin ? '' : 'none';
+    const bioToggle = document.getElementById('bio-toggle');
+    if (bioToggle) bioToggle.classList.toggle('active', lsGet('bio_enabled') === '1');
+}
+
+/* ─── BIOMETRIC (WebAuthn) ─── */
+async function toggleBiometric() {
+    if (!lsGet('pin_hash')) { showToast('Set a PIN first'); return; }
+
+    if (lsGet('bio_enabled') === '1') {
+        lsSet('bio_enabled', '');
+        localStorage.removeItem(lsKey('bio_enabled'));
+        localStorage.removeItem(lsKey('bio_cred_id'));
+        showToast('Fingerprint disabled');
+        updateSecurityUI();
+        return;
+    }
+
+    // Register biometric credential
+    if (!window.PublicKeyCredential) {
+        showToast('Biometric not supported on this device');
+        return;
+    }
+
+    try {
+        const userId = new TextEncoder().encode(USER_ID);
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const credential = await navigator.credentials.create({
+            publicKey: {
+                challenge,
+                rp: { name: 'My Finance', id: location.hostname || 'localhost' },
+                user: { id: userId, name: USER_ID, displayName: USER_NAME || USER_ID },
+                pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+                authenticatorSelection: {
+                    authenticatorAttachment: 'platform',
+                    userVerification: 'required',
+                },
+                timeout: 60000,
+            },
+        });
+        const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+        lsSet('bio_cred_id', credId);
+        lsSet('bio_enabled', '1');
+        showToast('Fingerprint enabled');
+        updateSecurityUI();
+    } catch (err) {
+        if (err.name !== 'NotAllowedError') console.error('WebAuthn register failed:', err);
+        showToast('Biometric setup cancelled');
+    }
+}
+
+async function triggerBiometric() {
+    const credIdB64 = lsGet('bio_cred_id');
+    if (!credIdB64 || !window.PublicKeyCredential) return;
+
+    try {
+        const credIdRaw = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        await navigator.credentials.get({
+            publicKey: {
+                challenge,
+                rpId: location.hostname || 'localhost',
+                allowCredentials: [{ id: credIdRaw, type: 'public-key', transports: ['internal'] }],
+                userVerification: 'required',
+                timeout: 60000,
+            },
+        });
+        // Biometric passed
+        _pinBuffer = '';
+        if (window._pinSetupMode) { window._pinSetupMode = false; }
+        enterApp();
+    } catch (err) {
+        // User cancelled or failed — stay on PIN screen
+        if (err.name !== 'NotAllowedError') console.error('WebAuthn auth failed:', err);
+    }
 }
 
 /* ─── INIT ─── */
 initTheme();
-if (USER_ID) {
-    migrateLocalStorage();
-    loadUserPrefs();
-    setGreeting();
-    initDots();
-    document.getElementById('welcome-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = '';
-    initFirebase();
-} else {
-    document.getElementById('main-app').style.display = 'none';
-    document.getElementById('welcome-screen').style.display = '';
-}
+(async function boot() {
+    try {
+        await initFirebaseCore();
+        window.fbAuth.onAuthStateChanged(firebaseAuth, (user) => {
+            onAuthReady(user);
+        });
+    } catch (err) {
+        console.error('Boot failed:', err);
+        showScreen('auth');
+    }
+})();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
 
