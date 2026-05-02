@@ -2295,24 +2295,33 @@ async function deleteFromModal() {
 
         // If it's a self-transfer, find and delete the paired leg too
         let pairedSnapshot = null;
-        if (snapshot && snapshot.category_type === 'transfer' && snapshot.created_at) {
-            // Paired leg has same created_at, same amount, opposite type
-            pairedSnapshot = allTxns.find(x =>
-                x.id !== id &&
-                x.category_type === 'transfer' &&
-                x.created_at === snapshot.created_at &&
-                x.amount === snapshot.amount
-            );
-            // If not in memory, query Firestore
-            if (!pairedSnapshot) {
-                try {
-                    const snap = await getDocs(query(
-                        collection(db, "personal_transactions"),
-                        where("created_at", "==", snapshot.created_at),
-                        where("category_type", "==", "transfer")
-                    ));
-                    snap.forEach(d => { if (d.id !== id) pairedSnapshot = { id: d.id, ...d.data() }; });
-                } catch(e) { /* ignore query errors */ }
+        if (snapshot && snapshot.category_type === 'transfer') {
+            // Match by upi_ref (same on both SMS legs) — created_at differs since each SMS is processed separately
+            if (snapshot.upi_ref) {
+                pairedSnapshot = allTxns.find(x =>
+                    x.id !== id &&
+                    x.category_type === 'transfer' &&
+                    x.upi_ref === snapshot.upi_ref
+                );
+                if (!pairedSnapshot) {
+                    try {
+                        const snap = await getDocs(query(
+                            collection(db, "personal_transactions"),
+                            where("upi_ref", "==", snapshot.upi_ref),
+                            where("category_type", "==", "transfer")
+                        ));
+                        snap.forEach(d => { if (d.id !== id) pairedSnapshot = { id: d.id, ...d.data() }; });
+                    } catch(e) { /* ignore */ }
+                }
+            }
+            // Fallback for manually-added transfers: match by created_at + amount
+            if (!pairedSnapshot && snapshot.created_at) {
+                pairedSnapshot = allTxns.find(x =>
+                    x.id !== id &&
+                    x.category_type === 'transfer' &&
+                    x.created_at === snapshot.created_at &&
+                    x.amount === snapshot.amount
+                );
             }
         }
 
