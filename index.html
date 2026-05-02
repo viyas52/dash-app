@@ -983,6 +983,29 @@
 </head>
 <body>
 
+<!-- ═══ WELCOME SCREEN ═══ -->
+<div id="welcome-screen" style="display:none;">
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 30px;text-align:center;">
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--text-3);text-transform:uppercase;margin-bottom:8px;">Welcome to</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.03em;margin-bottom:6px;">My Finance</div>
+        <div style="font-size:13px;color:var(--text-3);margin-bottom:40px;">Track your money, your way.</div>
+
+        <div style="width:100%;max-width:320px;text-align:left;">
+            <label style="font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);font-family:'Space Mono',monospace;display:block;margin-bottom:6px;">Your Name</label>
+            <input id="welcome-name" type="text" placeholder="e.g. Viyas" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;font-weight:500;color:var(--text-1);background:var(--bg-card);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:16px;">
+
+            <label style="font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);font-family:'Space Mono',monospace;display:block;margin-bottom:6px;">User ID</label>
+            <input id="welcome-uid" type="text" placeholder="e.g. viyas (lowercase, no spaces)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;font-weight:500;color:var(--text-1);background:var(--bg-card);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:6px;">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:28px;">This is your unique ID. Your friends will have their own.</div>
+
+            <button onclick="completeWelcome()" style="width:100%;padding:14px;border-radius:12px;background:var(--text-1);color:var(--bg);border:none;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;letter-spacing:0.02em;">Get Started</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="main-app">
+
 <!-- ═══ TOP BAR ═══ -->
 <div class="top-bar">
     <div>
@@ -1068,12 +1091,7 @@
         <div class="sec-link" id="txn-count-label">0 transactions</div>
     </div>
     <!-- Account filter -->
-    <div class="acct-filter" id="acct-filter">
-        <button class="acct-chip active" onclick="setAcctFilter('icici',this)" style="--chip-color:#FF6B00">ICICI ••2472</button>
-        <button class="acct-chip" onclick="setAcctFilter('hdfc',this)"  style="--chip-color:#004C8F">HDFC ••2065</button>
-        <button class="acct-chip" onclick="setAcctFilter('cub',this)"   style="--chip-color:#7B3F9E">CUB ••4745</button>
-        <button class="acct-chip" onclick="setAcctFilter('all',this)">All</button>
-    </div>
+    <div class="acct-filter" id="acct-filter"></div>
     <div class="txn-section" id="txn-list-wrap">
         <div class="card txn-card" id="txn-list" style="display:none;"></div>
     </div>
@@ -1281,6 +1299,18 @@
                 </button>
             </div>
 
+            <!-- Account -->
+            <div class="label setting-group-label">Account</div>
+            <div class="card" style="margin-bottom:12px;">
+                <div class="setting-row" style="border-bottom:none;">
+                    <div>
+                        <div class="setting-label" id="settings-user-name"></div>
+                        <div class="setting-desc" id="settings-user-id"></div>
+                    </div>
+                    <button onclick="switchUser()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-2);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;">Switch User</button>
+                </div>
+            </div>
+
             <!-- Budget -->
             <div class="label setting-group-label">Preferences</div>
             <div class="card" style="margin-bottom:12px;">
@@ -1379,10 +1409,10 @@
             <div class="card" style="margin-bottom:24px;">
                 <div class="setting-row">
                     <div><div class="setting-label">Version</div></div>
-                    <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">3.9.0</span>
+                    <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">4.0.0</span>
                 </div>
                 <div class="setting-row" style="border-bottom:none;">
-                    <div><div class="setting-label">My Finance</div><div class="setting-desc">Built by Viyas</div></div>
+                    <div><div class="setting-label">My Finance</div><div class="setting-desc">Multi-user PWA</div></div>
                     <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">PWA</span>
                 </div>
             </div>
@@ -1416,18 +1446,48 @@
     </div>
 </div>
 
+</div><!-- /main-app -->
+
 <div class="toast" id="toast"></div>
 
 <script>
+/* ─── MULTI-USER ─── */
+let USER_ID   = localStorage.getItem('pft_user_id') || null;
+let USER_NAME = localStorage.getItem('pft_user_name') || null;
+
+// Namespaced localStorage helpers (theme stays global, everything else per-user)
+function lsKey(key) { return key === 'pft_theme' ? key : 'pft_' + USER_ID + '_' + key.replace(/^pft_/, ''); }
+function lsGet(key) { return localStorage.getItem(lsKey(key)); }
+function lsSet(key, val) { localStorage.setItem(lsKey(key), val); }
+
+// Firestore path helpers
+function txnCol() { return 'users/' + USER_ID + '/transactions'; }
+function ruleCol() { return 'users/' + USER_ID + '/rules'; }
+
 /* ─── CONFIG ─── */
-let BUDGET = parseInt(localStorage.getItem('pft_budget')) || 25000;
+let BUDGET, INVEST_TARGET;
+function loadUserPrefs() {
+    BUDGET = parseInt(lsGet('budget')) || 25000;
+    INVEST_TARGET = parseInt(lsGet('invest_target')) || 22000;
+}
+
+// Migrate old flat localStorage keys to namespaced (for existing viyas install)
+function migrateLocalStorage() {
+    if (USER_ID !== 'viyas') return;
+    const bankIds = ['icici', 'hdfc', 'cub'];
+    const keys = ['pft_budget', 'pft_invest_target'];
+    bankIds.forEach(b => { keys.push('pft_bal_' + b, 'pft_bal_upd_' + b); });
+    keys.forEach(oldKey => {
+        const val = localStorage.getItem(oldKey);
+        if (val !== null) {
+            const newKey = lsKey(oldKey);
+            if (localStorage.getItem(newKey) === null) localStorage.setItem(newKey, val);
+        }
+    });
+}
 
 /* ─── LINKED ACCOUNTS ─── */
-const LINKED_ACCOUNTS = [
-    { id: 'icici', name: 'ICICI Bank',      last4: '2472', color: '#FF6B00', initials: 'IC' },
-    { id: 'hdfc',  name: 'HDFC Bank',       last4: '2065', color: '#004C8F', initials: 'HD' },
-    { id: 'cub',   name: 'City Union Bank', last4: '4745', color: '#7B3F9E', initials: 'CU' },
-];
+let LINKED_ACCOUNTS = [];
 let _acctExpanded = null; // id of currently open card
 let _acctEditing  = null; // id of card currently showing input
 
@@ -1438,8 +1498,8 @@ function loadLinkedAccounts() {
 }
 
 function computeLiveBalance(bankId) {
-    const baseRaw = localStorage.getItem('pft_bal_' + bankId);
-    const since   = localStorage.getItem('pft_bal_upd_' + bankId);
+    const baseRaw = lsGet('bal_' + bankId);
+    const since   = lsGet('bal_upd_' + bankId);
     if (baseRaw === null || baseRaw === '') return null;
     const base = parseFloat(baseRaw);
     if (isNaN(base) || !since) return base;
@@ -1460,7 +1520,7 @@ function computeLiveBalance(bankId) {
 
 function renderAcctCard(a) {
     const bal    = computeLiveBalance(a.id);
-    const updAt  = localStorage.getItem('pft_bal_upd_' + a.id);
+    const updAt  = lsGet('bal_upd_' + a.id);
     const isOpen = _acctExpanded === a.id;
     const isEdit = _acctEditing  === a.id;
 
@@ -1519,8 +1579,8 @@ function saveAcctBal(id) {
     if (!inp) return;
     const val = parseFloat(inp.value);
     if (isNaN(val) || val < 0) { showToast('Enter a valid balance'); return; }
-    localStorage.setItem('pft_bal_' + id, val);
-    localStorage.setItem('pft_bal_upd_' + id, new Date().toISOString());
+    lsSet('bal_' + id, val);
+    lsSet('bal_upd_' + id, new Date().toISOString());
     _acctEditing = null;
     loadLinkedAccounts();
     showToast('Balance saved');
@@ -1532,7 +1592,7 @@ let _catMgrExpanded = null;
 async function loadRules() {
     if (!firebaseReady) return;
     const { collection, getDocs, deleteDoc, doc, setDoc } = window.fb;
-    const snap = await getDocs(collection(db, 'personal_rules'));
+    const snap = await getDocs(collection(db, ruleCol()));
     const rules = []; snap.forEach(d => rules.push({ id: d.id, ...d.data() }));
     // Cache contact keys so uncatEntries can skip them
     window._contactKeys = new Set(rules.filter(r => r.contact).map(r => r.id));
@@ -1598,14 +1658,14 @@ function toggleContactsPanel() {
 async function deleteRule(id) {
     if (!firebaseReady) return;
     const { deleteDoc, doc } = window.fb;
-    await deleteDoc(doc(db, 'personal_rules', id));
+    await deleteDoc(doc(db, ruleCol(), id));
     showToast('Rule deleted');
     loadRules();
 }
 async function toggleContactRule(id, makeContact) {
     if (!firebaseReady) return;
     const { doc, updateDoc } = window.fb;
-    await updateDoc(doc(db, 'personal_rules', id), { contact: makeContact });
+    await updateDoc(doc(db, ruleCol(), id), { contact: makeContact });
     showToast(makeContact ? 'Marked as person — will always ask' : 'Rule restored');
     loadRules();
 }
@@ -1671,7 +1731,7 @@ function catMgrDelSub(catName, sub) {
     showToast('Removed');
 }
 
-let INVEST_TARGET = parseInt(localStorage.getItem('pft_invest_target')) || 22000;
+// INVEST_TARGET now loaded via loadUserPrefs()
 
 const SPENDING_CATS = [
     { name: "Food", color: "#E53935", bg: "#FDECEA", subs: ["Breakfast","Lunch","Dinner","Snacks","Beverages"] },
@@ -1775,7 +1835,8 @@ function initDots() {
 function setGreeting() {
     const h = new Date().getHours();
     const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-    document.getElementById('greeting').textContent = g;
+    const name = USER_NAME ? ', ' + USER_NAME : '';
+    document.getElementById('greeting').textContent = g + name;
 }
 
 /* ─── VIEW SWITCHING ─── */
@@ -1823,6 +1884,11 @@ function openSettings() {
     loadCatManager();
     loadRules();
     initSettingsSliders();
+    // Populate account section
+    const nameEl = document.getElementById('settings-user-name');
+    const idEl   = document.getElementById('settings-user-id');
+    if (nameEl) nameEl.textContent = USER_NAME || 'User';
+    if (idEl)   idEl.textContent   = '@' + (USER_ID || 'unknown');
     const sheet = document.getElementById('settings-sheet');
     sheet.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1871,8 +1937,8 @@ function addNewCat() {
 async function exportData() {
     showToast('Preparing export…');
     try {
-        const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-        const snap = await getDocs(collection(db, 'personal_transactions'));
+        const { getDocs, collection } = window.fb;
+        const snap = await getDocs(collection(db, txnCol()));
         const rows = [['Date','Amount','Category','Sub-Category','Type','Description','Bank']];
         snap.forEach(d => {
             const e = d.data();
@@ -1922,14 +1988,20 @@ function jumpToMonth(key) {
 
 /* ─── FIREBASE ─── */
 async function initFirebase() {
+    if (!USER_ID) return; // Welcome screen must set USER_ID first
     try {
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-        const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, setDoc, query, orderBy, where }
+        const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where }
             = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app);
-        window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, setDoc, query, orderBy, where };
+        window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where };
         firebaseReady = true;
+
+        // Load per-user config (linked accounts)
+        await loadUserConfig();
+        renderAcctFilterChips();
+
         populateMonths();
         loadRules(); // pre-cache contact keys before loadMonth filters uncatEntries
         loadMonth();
@@ -1938,6 +2010,21 @@ async function initFirebase() {
     } catch (err) {
         console.error("Firebase init failed:", err);
         showToast("Firebase connection failed");
+    }
+}
+
+async function loadUserConfig() {
+    if (!firebaseReady || !USER_ID) return;
+    try {
+        const { getDoc, doc } = window.fb;
+        const snap = await getDoc(doc(db, 'users', USER_ID, 'config', 'accounts'));
+        if (snap.exists()) {
+            const data = snap.data();
+            LINKED_ACCOUNTS = data.linked_accounts || [];
+        }
+        // If no config yet (new user), LINKED_ACCOUNTS stays empty
+    } catch (err) {
+        console.error("Failed to load user config:", err);
     }
 }
 
@@ -1978,12 +2065,12 @@ async function loadMonth() {
         const { collection, getDocs, query, where, orderBy } = window.fb;
         let q;
         try {
-            q = query(collection(db, "personal_transactions"), where("date", ">=", start), where("date", "<", end), orderBy("date", "desc"));
+            q = query(collection(db, txnCol()), where("date", ">=", start), where("date", "<", end), orderBy("date", "desc"));
             const snap = await getDocs(q);
             const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
             updateDashboard(entries);
         } catch {
-            q = query(collection(db, "personal_transactions"), where("date", ">=", start), where("date", "<", end));
+            q = query(collection(db, txnCol()), where("date", ">=", start), where("date", "<", end));
             const snap = await getDocs(q);
             const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
             entries.sort((a, b) => b.date.localeCompare(a.date));
@@ -1998,10 +2085,10 @@ function updateDashboard(entries) {
     // Auto-seed balance from NEFT credits that include balance_after (first-time only)
     entries.forEach(e => {
         if (e.balance_after == null || !e.bank || !e.created_at) return;
-        const existing = localStorage.getItem('pft_bal_' + e.bank);
+        const existing = lsGet('bal_' + e.bank);
         if (existing !== null) return; // never overwrite a user-set balance
-        localStorage.setItem('pft_bal_' + e.bank, e.balance_after);
-        localStorage.setItem('pft_bal_upd_' + e.bank, e.created_at);
+        lsSet('bal_' + e.bank, e.balance_after);
+        lsSet('bal_upd_' + e.bank, e.created_at);
     });
     let totalIncome = 0, totalExpense = 0, totalInvest = 0;
     uncatEntries = [];
@@ -2195,7 +2282,18 @@ function computeInsights(curEntries) {
     }
 }
 
-let _acctFilter = 'icici';
+let _acctFilter = 'all';
+
+function renderAcctFilterChips() {
+    const el = document.getElementById('acct-filter');
+    if (!el || !LINKED_ACCOUNTS.length) return;
+    _acctFilter = LINKED_ACCOUNTS[0].id; // default to first account
+    el.innerHTML = LINKED_ACCOUNTS.map((a, i) =>
+        '<button class="acct-chip' + (i === 0 ? ' active' : '') + '" onclick="setAcctFilter(\'' + a.id + '\',this)" style="--chip-color:' + a.color + '">' +
+        a.name.split(' ')[0] + ' ••' + a.last4 + '</button>'
+    ).join('') + '<button class="acct-chip" onclick="setAcctFilter(\'all\',this)">All</button>';
+}
+
 function setAcctFilter(bank, btn) {
     _acctFilter = bank;
     document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
@@ -2458,16 +2556,16 @@ function reverseBalance(txn) {
     if (!txn || !txn.bank) return;
     const bank = txn.bank;
     const amount = txn.amount || 0;
-    const cur = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+    const cur = parseFloat(lsGet('bal_' + bank)) || 0;
     // Reverse: debit was a subtraction → add back; credit was addition → subtract back
     const reversed = txn.type === 'credit' ? cur - amount : cur + amount;
-    localStorage.setItem('pft_bal_' + bank, reversed);
-    localStorage.setItem('pft_bal_upd_' + bank, new Date().toISOString());
+    lsSet('bal_' + bank, reversed);
+    lsSet('bal_upd_' + bank, new Date().toISOString());
     // Also handle transfer to-bank if present
     if (txn.bank_to) {
-        const cur2 = parseFloat(localStorage.getItem('pft_bal_' + txn.bank_to)) || 0;
-        localStorage.setItem('pft_bal_' + txn.bank_to, cur2 - amount); // reverse the credit
-        localStorage.setItem('pft_bal_upd_' + txn.bank_to, new Date().toISOString());
+        const cur2 = parseFloat(lsGet('bal_' + txn.bank_to)) || 0;
+        lsSet('bal_' + txn.bank_to, cur2 - amount); // reverse the credit
+        lsSet('bal_upd_' + txn.bank_to, new Date().toISOString());
     }
     loadLinkedAccounts();
 }
@@ -2494,7 +2592,7 @@ async function deleteFromModal() {
                 if (!pairedSnapshot) {
                     try {
                         const snap = await getDocs(query(
-                            collection(db, "personal_transactions"),
+                            collection(db, txnCol()),
                             where("upi_ref", "==", snapshot.upi_ref),
                             where("category_type", "==", "transfer")
                         ));
@@ -2514,12 +2612,12 @@ async function deleteFromModal() {
         }
 
         // Delete primary
-        await deleteDoc(doc(db, "personal_transactions", id));
+        await deleteDoc(doc(db, txnCol(), id));
         reverseBalance(snapshot);
 
         // Delete paired leg if found
         if (pairedSnapshot) {
-            await deleteDoc(doc(db, "personal_transactions", pairedSnapshot.id));
+            await deleteDoc(doc(db, txnCol(), pairedSnapshot.id));
             reverseBalance(pairedSnapshot);
         }
 
@@ -2532,16 +2630,16 @@ async function deleteFromModal() {
                     for (const s of toRestore) {
                         const { id: oldId, ...data } = s;
                         if (data.dedup_key) {
-                            await setDoc(doc(db, "personal_transactions", data.dedup_key), data);
+                            await setDoc(doc(db, txnCol(), data.dedup_key), data);
                         } else {
-                            await addDoc(collection(db, "personal_transactions"), data);
+                            await addDoc(collection(db, txnCol()), data);
                         }
                         // Re-apply balance
                         if (data.bank) {
-                            const cur = parseFloat(localStorage.getItem('pft_bal_' + data.bank)) || 0;
+                            const cur = parseFloat(lsGet('bal_' + data.bank)) || 0;
                             const restored = data.type === 'credit' ? cur + data.amount : cur - data.amount;
-                            localStorage.setItem('pft_bal_' + data.bank, restored);
-                            localStorage.setItem('pft_bal_upd_' + data.bank, new Date().toISOString());
+                            lsSet('bal_' + data.bank, restored);
+                            lsSet('bal_upd_' + data.bank, new Date().toISOString());
                         }
                     }
                     loadLinkedAccounts();
@@ -2634,14 +2732,14 @@ async function addEntry() {
             if (!bankTo || bankTo === bank) { showToast("Pick a different To account"); return; }
 
             // Debit from-account
-            await addDoc(collection(db, "personal_transactions"), {
+            await addDoc(collection(db, txnCol()), {
                 date, amount, type: 'debit', category, sub_category, category_type: 'transfer',
                 bank: bank || null, bank_to: bankTo,
                 note: baseNote + ' → ' + (LINKED_ACCOUNTS.find(a=>a.id===bankTo)?.name.split(' ')[0] || bankTo),
                 recipient: '', upi_ref: '', created_at: now
             });
             // Credit to-account
-            await addDoc(collection(db, "personal_transactions"), {
+            await addDoc(collection(db, txnCol()), {
                 date, amount, type: 'credit', category, sub_category, category_type: 'transfer',
                 bank: bankTo, bank_from: bank || null,
                 note: baseNote + ' ← ' + (LINKED_ACCOUNTS.find(a=>a.id===bank)?.name.split(' ')[0] || bank),
@@ -2650,27 +2748,27 @@ async function addEntry() {
 
             // Update balances: from-account down, to-account up
             if (bank) {
-                const b1 = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
-                localStorage.setItem('pft_bal_' + bank, b1 - amount);
-                localStorage.setItem('pft_bal_upd_' + bank, now);
+                const b1 = parseFloat(lsGet('bal_' + bank)) || 0;
+                lsSet('bal_' + bank, b1 - amount);
+                lsSet('bal_upd_' + bank, now);
             }
             if (bankTo) {
-                const b2 = parseFloat(localStorage.getItem('pft_bal_' + bankTo)) || 0;
-                localStorage.setItem('pft_bal_' + bankTo, b2 + amount);
-                localStorage.setItem('pft_bal_upd_' + bankTo, now);
+                const b2 = parseFloat(lsGet('bal_' + bankTo)) || 0;
+                lsSet('bal_' + bankTo, b2 + amount);
+                lsSet('bal_upd_' + bankTo, now);
             }
         } else {
             const type = typeVal === 'credit' ? 'credit' : 'debit';
 
             // Update account balance
             if (bank) {
-                const curBal = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+                const curBal = parseFloat(lsGet('bal_' + bank)) || 0;
                 const newBal = type === 'credit' ? curBal + amount : curBal - amount;
-                localStorage.setItem('pft_bal_' + bank, newBal);
-                localStorage.setItem('pft_bal_upd_' + bank, now);
+                lsSet('bal_' + bank, newBal);
+                lsSet('bal_upd_' + bank, now);
             }
 
-            await addDoc(collection(db, "personal_transactions"), {
+            await addDoc(collection(db, txnCol()), {
                 date, amount, type, category, sub_category, category_type,
                 bank: bank || null,
                 note: baseNote,
@@ -2707,15 +2805,15 @@ async function saveEditedEntry() {
     const oldTxn = (window._allCategorized || []).find(x => x.id === editingId);
     if (oldTxn) reverseBalance(oldTxn);
     if (bank) {
-        const cur = parseFloat(localStorage.getItem('pft_bal_' + bank)) || 0;
+        const cur = parseFloat(lsGet('bal_' + bank)) || 0;
         const newBal = type === 'credit' ? cur + amount : cur - amount;
-        localStorage.setItem('pft_bal_' + bank, newBal);
-        localStorage.setItem('pft_bal_upd_' + bank, new Date().toISOString());
+        lsSet('bal_' + bank, newBal);
+        lsSet('bal_upd_' + bank, new Date().toISOString());
     }
 
     try {
         const { doc, updateDoc } = window.fb;
-        await updateDoc(doc(db, "personal_transactions", editingId), {
+        await updateDoc(doc(db, txnCol(), editingId), {
             date, amount, type, category, sub_category, category_type,
             bank: bank || null,
             note: note || (sub_category ? category + ' · ' + sub_category : category)
@@ -2878,7 +2976,7 @@ async function confirmUncat(i) {
         const isSub = parentCat !== s.sel;
         const noteEl = document.getElementById('unote-' + i);
         const editedNote = noteEl ? noteEl.value.trim() : null;
-        await updateDoc(doc(db, "personal_transactions", s.id), {
+        await updateDoc(doc(db, txnCol(), s.id), {
             category: parentCat,
             sub_category: isSub ? s.sel : null,
             category_type: s.type,
@@ -2893,7 +2991,7 @@ async function confirmUncat(i) {
         if (entry && entry.type === 'debit' && entry.recipient && s.type !== 'transfer' && shouldRemember) {
             const key = normalizeKey(entry.recipient);
             if (key) {
-                await setDoc(doc(db, "personal_rules", key), {
+                await setDoc(doc(db, ruleCol(), key), {
                     match: key,
                     recipient: entry.recipient,
                     category: parentCat,
@@ -3260,7 +3358,7 @@ async function loadHistory() {
     if (!firebaseReady) return;
     try {
         const { collection, getDocs } = window.fb;
-        const snap = await getDocs(collection(db, "personal_transactions"));
+        const snap = await getDocs(collection(db, txnCol()));
         const all = []; snap.forEach(d => all.push(d.data()));
         window._allHistoryEntries = all;
         buildChartForPeriod();
@@ -3314,7 +3412,7 @@ function updateBudget() {
     const val = parseInt(document.getElementById('settings-budget').value);
     if (val > 0) {
         BUDGET = val;
-        localStorage.setItem('pft_budget', val);
+        lsSet('budget', val);
         loadMonth();
         showToast('Budget: ₹' + fmt(val));
     }
@@ -3324,7 +3422,7 @@ function updateInvestTarget() {
     const val = parseInt((document.getElementById('settings-invest') || document.getElementById('settings-invest-target') || {}).value || 0);
     if (val > 0) {
         INVEST_TARGET = val;
-        localStorage.setItem('pft_invest_target', val);
+        lsSet('invest_target', val);
         loadMonth();
         showToast('Target: ₹' + fmt(val));
     }
@@ -3367,12 +3465,58 @@ function showToast(msg, action) {
     _toastTimer = setTimeout(() => { t.classList.remove('show'); _toastTimer = null; }, duration);
 }
 
+/* ─── WELCOME / USER SETUP ─── */
+function completeWelcome() {
+    const nameEl = document.getElementById('welcome-name');
+    const uidEl  = document.getElementById('welcome-uid');
+    const name = (nameEl.value || '').trim();
+    const uid  = (uidEl.value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (!name) { nameEl.focus(); showToast('Enter your name'); return; }
+    if (!uid || uid.length < 2) { uidEl.focus(); showToast('Enter a valid user ID (2+ chars)'); return; }
+
+    localStorage.setItem('pft_user_id', uid);
+    localStorage.setItem('pft_user_name', name);
+    USER_ID   = uid;
+    USER_NAME = name;
+
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    migrateLocalStorage();
+    loadUserPrefs();
+    setGreeting();
+    initDots();
+    initFirebase();
+}
+
+function switchUser() {
+    document.getElementById('main-app').style.display = 'none';
+    document.getElementById('welcome-screen').style.display = '';
+    document.getElementById('welcome-name').value = '';
+    document.getElementById('welcome-uid').value = '';
+    closeSettings();
+}
+
+function logoutUser() {
+    localStorage.removeItem('pft_user_id');
+    localStorage.removeItem('pft_user_name');
+    location.reload();
+}
+
 /* ─── INIT ─── */
 initTheme();
-setGreeting();
-initDots();
+if (USER_ID) {
+    migrateLocalStorage();
+    loadUserPrefs();
+    setGreeting();
+    initDots();
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+    initFirebase();
+} else {
+    document.getElementById('main-app').style.display = 'none';
+    document.getElementById('welcome-screen').style.display = '';
+}
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-initFirebase();
 </script>
 
 </body>
