@@ -1873,6 +1873,17 @@ async function loadMonth() {
 /* ─── DASHBOARD UPDATE ─── */
 function updateDashboard(entries) {
     currentEntries = entries;
+    // Auto-update linked account balances from most recent transaction with balance_after
+    const latestBalByBank = {};
+    entries.forEach(e => {
+        if (e.balance_after == null || !e.bank || !e.created_at) return;
+        const prev = latestBalByBank[e.bank];
+        if (!prev || e.created_at > prev.created_at) latestBalByBank[e.bank] = e;
+    });
+    Object.values(latestBalByBank).forEach(e => {
+        localStorage.setItem('pft_bal_' + e.bank, e.balance_after);
+        localStorage.setItem('pft_bal_upd_' + e.bank, e.created_at);
+    });
     let totalIncome = 0, totalExpense = 0, totalInvest = 0;
     uncatEntries = [];
 
@@ -1982,16 +1993,17 @@ function applyAcctFilter() {
 const TXN_LIMIT = 8;
 function renderTxnList(entries, expanded) {
     const container = document.getElementById('txn-list');
-    const visible = expanded ? entries : entries.slice(0, TXN_LIMIT);
     const hasMore = entries.length > TXN_LIMIT;
 
-    const groups = {};
-    // Sort by date desc, then by created_at desc within same day
-    const sorted_visible = [...visible].sort((a, b) => {
+    // Sort ALL entries first (date desc, then created_at desc within same day), THEN slice
+    const sorted_all = [...entries].sort((a, b) => {
         if (b.date !== a.date) return (b.date || '').localeCompare(a.date || '');
         return (b.created_at || '').localeCompare(a.created_at || '');
     });
-    sorted_visible.forEach(e => { const d = e.date || 'unknown'; if (!groups[d]) groups[d] = []; groups[d].push(e); });
+    const visible = expanded ? sorted_all : sorted_all.slice(0, TXN_LIMIT);
+
+    const groups = {};
+    visible.forEach(e => { const d = e.date || 'unknown'; if (!groups[d]) groups[d] = []; groups[d].push(e); });
     const sortedDates = Object.keys(groups).sort().reverse();
 
     let html = sortedDates.map(date => {
@@ -1999,9 +2011,22 @@ function renderTxnList(entries, expanded) {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
             const catLabel = e.sub_category ? e.category + ' · ' + e.sub_category : e.category;
+            // For self-transfers: resolve note to "(me) → BANK" using paired leg in currentEntries
+            let displayNote = e.note || e.category;
+            if (e.category_type === 'transfer' && e.upi_ref && currentEntries) {
+                const paired = currentEntries.find(x => x.upi_ref === e.upi_ref && x.id !== e.id && x.bank !== e.bank);
+                if (paired) {
+                    displayNote = isCredit
+                        ? '(me) ← ' + paired.bank.toUpperCase()
+                        : '(me) → ' + paired.bank.toUpperCase();
+                } else {
+                    // fallback: strip raw names, just show "(me)"
+                    displayNote = isCredit ? '(me) ← own account' : '(me) → own account';
+                }
+            }
             return '<div class="txn-row" onclick="rowTap(\'' + e.id + '\')">' +
                 '<div class="txn-icon" style="background:' + (info.bg || info.color + '18') + ';color:' + info.color + '"><div style="width:18px;height:18px">' + getCatIcon(e.category) + '</div></div>' +
-                '<div class="txn-mid"><div class="txn-name">' + esc(e.note || e.category) + '</div>' +
+                '<div class="txn-mid"><div class="txn-name">' + esc(displayNote) + '</div>' +
                 '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(catLabel) + '</div></div>' +
                 '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +

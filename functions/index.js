@@ -346,8 +346,8 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
     parsed.category_type = "transfer";
     // Label note as "(me)" so the app shows clearly it's own-account transfer
     parsed.note = parsed.type === "debit"
-      ? "(me) → " + (parsed.bank_to ? parsed.bank_to.toUpperCase() : parsed.recipient || "own account")
-      : "(me) ← " + (parsed.bank_from ? parsed.bank_from.toUpperCase() : parsed.source || "own account");
+      ? "(me) → " + (parsed.bank_to ? parsed.bank_to.toUpperCase() : "own account")
+      : "(me) ← " + (parsed.bank_from ? parsed.bank_from.toUpperCase() : "own account");
     parsed.recipient = parsed.type === "debit" ? "(me)" : "";
     parsed.source    = parsed.type === "credit" ? "(me)" : "";
   } else {
