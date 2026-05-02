@@ -395,14 +395,57 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
 
   // ── Dedupe + write to per-user subcollection ──
   try {
-    const docRef = db.collection(`users/${effectiveUser}/transactions`).doc(parsed.dedup_key);
+    const txnCol = `users/${effectiveUser}/transactions`;
+    const docRef = db.collection(txnCol).doc(parsed.dedup_key);
     await docRef.create(parsed);
+
+    // ── Auto-create paired leg for self-transfers ──
+    // When we see a debit self-transfer with a known destination bank,
+    // create the credit leg automatically (the destination bank may not send an SMS)
+    let pairedId = null;
+    if (parsed.category_type === "transfer" && parsed.category === "Self Transfer") {
+      const destBank = parsed.type === "debit" ? parsed.bank_to : null;
+      const srcBank  = parsed.type === "credit" ? parsed.bank_from : null;
+      const otherBank = destBank || srcBank;
+
+      if (otherBank) {
+        const pairedType = parsed.type === "debit" ? "credit" : "debit";
+        const pairedKey  = parsed.dedup_key + "_paired";
+        const paired = {
+          raw_sms: "", bank: otherBank, account: "",
+          amount: parsed.amount, date: parsed.date,
+          type: pairedType, category: "Self Transfer", category_type: "transfer",
+          recipient: pairedType === "debit" ? "(me)" : "",
+          source: pairedType === "credit" ? "(me)" : "",
+          source_account: "", balance_after: null,
+          note: pairedType === "credit"
+            ? "(me) ← " + parsed.bank.toUpperCase()
+            : "(me) → " + parsed.bank.toUpperCase(),
+          upi_ref: parsed.upi_ref || "",
+          created_at: parsed.created_at,
+          dedup_key: pairedKey,
+          auto_paired: true, // flag so we know this was auto-generated
+        };
+        try {
+          const pairedRef = db.collection(txnCol).doc(pairedKey);
+          await pairedRef.create(paired);
+          pairedId = pairedRef.id;
+        } catch (pairErr) {
+          // Duplicate is fine — the other bank's SMS may have already created it
+          if (pairErr.code !== 6 && !/already exists/i.test(pairErr.message || "")) {
+            console.error("Failed to create paired leg:", pairErr);
+          }
+        }
+      }
+    }
+
     return res.status(200).json({
       status: "saved", id: docRef.id, user: effectiveUser,
       bank: parsed.bank, type: parsed.type,
       amount: parsed.amount, date: parsed.date,
       category: parsed.category, category_type: parsed.category_type,
       recipient: parsed.recipient || parsed.source,
+      paired: pairedId || undefined,
     });
   } catch (err) {
     if (err.code === 6 || /already exists/i.test(err.message || "")) {
