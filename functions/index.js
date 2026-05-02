@@ -59,6 +59,24 @@ function cleanRecipient(raw) {
   return raw;
 }
 
+// ── Strip UPI ID domain: "baalambigai@okicici" → "baalambigai" ──
+function cleanUpiId(raw) {
+  if (!raw) return raw;
+  const at = raw.indexOf("@");
+  if (at > 0) return raw.substring(0, at).trim();
+  return raw.trim();
+}
+
+// ── Account number → bank id ──
+const ACCT_BANK = { "2472": "icici", "2065": "hdfc", "4745": "cub" };
+function acctToBank(acct) {
+  if (!acct) return null;
+  for (const [last4, bank] of Object.entries(ACCT_BANK)) {
+    if (acct.endsWith(last4)) return bank;
+  }
+  return null;
+}
+
 // ── SMS Pattern Table ──
 // Each pattern returns the parsed transaction (or null if regex doesn't match).
 const PATTERNS = [
@@ -112,8 +130,8 @@ const PATTERNS = [
         amount: parseFloat(m[2].replace(/,/g, "")),
         date: parseDateAlpha(m[3]),
         type: "credit", category: null, category_type: null,
-        recipient: "", source: m[4].trim(), source_account: "",
-        note: m[4].trim(), upi_ref, balance_after: null,
+        recipient: "", source: cleanUpiId(m[4].trim()), source_account: "",
+        note: cleanUpiId(m[4].trim()), upi_ref, balance_after: null,
         created_at: new Date().toISOString(),
         dedup_key: "icici_cu_" + upi_ref,
       };
@@ -131,8 +149,8 @@ const PATTERNS = [
         amount: parseFloat(m[1].replace(/,/g, "")),
         date: parseDateNum(m[3]),
         type: "credit", category: null, category_type: null,
-        recipient: "", source: m[4].trim(), source_account: "",
-        note: m[4].trim(), upi_ref, balance_after: null,
+        recipient: "", source: cleanUpiId(m[4].trim()), source_account: "",
+        note: cleanUpiId(m[4].trim()), upi_ref, balance_after: null,
         created_at: new Date().toISOString(),
         dedup_key: "hdfc_c_" + upi_ref,
       };
@@ -172,8 +190,9 @@ const PATTERNS = [
         amount: parseFloat(m[2].replace(/,/g, "")),
         date: parseDateNumLong(m[3]),
         type: "credit", category: null, category_type: null,
-        recipient: "", source: "From a/c XX" + sourceAcct.slice(-4),
+        recipient: "", source: "From XX" + sourceAcct.slice(-4),
         source_account: sourceAcct,
+        bank_from: acctToBank(sourceAcct) || null,
         note: "From XX" + sourceAcct.slice(-4),
         upi_ref, balance_after: null,
         created_at: new Date().toISOString(),
@@ -223,6 +242,7 @@ const PATTERNS = [
         type: "debit", category: null, category_type: null,
         recipient: "To XX" + destAcct.slice(-4),
         source: "", source_account: destAcct,
+        bank_to: acctToBank(destAcct) || null,
         note: "To XX" + destAcct.slice(-4),
         upi_ref, balance_after: null,
         created_at: new Date().toISOString(),
@@ -324,6 +344,12 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   if (isSelfTransfer(parsed)) {
     parsed.category = "Self Transfer";
     parsed.category_type = "transfer";
+    // Label note as "(me)" so the app shows clearly it's own-account transfer
+    parsed.note = parsed.type === "debit"
+      ? "(me) → " + (parsed.bank_to ? parsed.bank_to.toUpperCase() : parsed.recipient || "own account")
+      : "(me) ← " + (parsed.bank_from ? parsed.bank_from.toUpperCase() : parsed.source || "own account");
+    parsed.recipient = parsed.type === "debit" ? "(me)" : "";
+    parsed.source    = parsed.type === "credit" ? "(me)" : "";
   } else {
     // 2. User-defined rules (debits only — recipient is stable; credit source is noisy)
     let autoTagged = false;
@@ -333,9 +359,12 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
         const ruleSnap = await db.collection("personal_rules").doc(k).get();
         if (ruleSnap.exists) {
           const rule = ruleSnap.data();
-          parsed.category = rule.category;
-          parsed.category_type = rule.category_type;
-          autoTagged = true;
+          // contact:true means "always ask" — skip auto-categorization
+          if (!rule.contact) {
+            parsed.category = rule.category;
+            parsed.category_type = rule.category_type;
+            autoTagged = true;
+          }
         }
       }
     }
