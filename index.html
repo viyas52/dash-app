@@ -526,6 +526,21 @@
         .uncat-amt.cr { color: var(--green); }
         .uncat-type-label { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 2px; }
 
+        /* Rule / person pill toggles on uncat card */
+        .rule-pill {
+            font-size: 11px; font-weight: 500; letter-spacing: 0.03em;
+            padding: 5px 12px; border-radius: 20px;
+            border: 1px solid var(--border); background: var(--bg);
+            color: var(--text-3); cursor: pointer; font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s;
+        }
+        .rule-pill.active {
+            background: var(--text-1); color: var(--bg); border-color: var(--text-1);
+        }
+        .rule-pill.person-pill.active {
+            background: #5856D6; border-color: #5856D6; color: #fff;
+        }
+
         /* Modal bank chips */
         .bank-chips { display: flex; gap: 6px; flex-wrap: wrap; }
         .bank-chip {
@@ -1028,10 +1043,10 @@
     </div>
     <!-- Account filter -->
     <div class="acct-filter" id="acct-filter">
-        <button class="acct-chip active" onclick="setAcctFilter('all',this)">All</button>
-        <button class="acct-chip" onclick="setAcctFilter('icici',this)" style="--chip-color:#FF6B00">ICICI ••2472</button>
+        <button class="acct-chip active" onclick="setAcctFilter('icici',this)" style="--chip-color:#FF6B00">ICICI ••2472</button>
         <button class="acct-chip" onclick="setAcctFilter('hdfc',this)"  style="--chip-color:#004C8F">HDFC ••2065</button>
         <button class="acct-chip" onclick="setAcctFilter('cub',this)"   style="--chip-color:#7B3F9E">CUB ••4745</button>
+        <button class="acct-chip" onclick="setAcctFilter('all',this)">All</button>
     </div>
     <div class="txn-section" id="txn-list-wrap">
         <div class="card txn-card" id="txn-list" style="display:none;"></div>
@@ -1458,6 +1473,8 @@ async function loadRules() {
     const { collection, getDocs, deleteDoc, doc, setDoc } = window.fb;
     const snap = await getDocs(collection(db, 'personal_rules'));
     const rules = []; snap.forEach(d => rules.push({ id: d.id, ...d.data() }));
+    // Cache contact keys so uncatEntries can skip them
+    window._contactKeys = new Set(rules.filter(r => r.contact).map(r => r.id));
     const list = document.getElementById('rules-list');
     const empty = document.getElementById('rules-empty');
     if (!list) return;
@@ -1810,6 +1827,7 @@ async function initFirebase() {
         window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, setDoc, query, orderBy, where };
         firebaseReady = true;
         populateMonths();
+        loadRules(); // pre-cache contact keys before loadMonth filters uncatEntries
         loadMonth();
         loadLinkedAccounts();
         loadCatManager();
@@ -1887,8 +1905,14 @@ function updateDashboard(entries) {
     let totalIncome = 0, totalExpense = 0, totalInvest = 0;
     uncatEntries = [];
 
+    const contactKeys = window._contactKeys || new Set();
     entries.forEach(e => {
-        if (!e.category || !e.category_type) { uncatEntries.push(e); return; }
+        if (!e.category || !e.category_type) {
+            // Skip contacts — they appear in Recent but don't prompt for categorization
+            const recipKey = (e.recipient || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            if (contactKeys.has(recipKey)) return;
+            uncatEntries.push(e); return;
+        }
         if (e.category_type === 'income') totalIncome += e.amount || 0;
         else if (e.category_type === 'investment') totalInvest += e.amount || 0;
         else if (e.category_type === 'spending') totalExpense += e.amount || 0;
@@ -1971,7 +1995,7 @@ function updateDashboard(entries) {
     requestAnimationFrame(() => { buildStats(); });
 }
 
-let _acctFilter = 'all';
+let _acctFilter = 'icici';
 function setAcctFilter(bank, btn) {
     _acctFilter = bank;
     document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
@@ -2521,14 +2545,11 @@ function renderUncatCards() {
             '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
             '</div>' +
             '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
-            '<div style="display:flex;align-items:center;gap:8px;padding:8px 0 2px;">' +
-            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-3);">' +
-            '<input type="checkbox" id="uremember-' + i + '" checked style="accent-color:var(--text-1);width:14px;height:14px;">' +
-            'Remember rule</label>' +
-            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#C2185B;margin-left:auto;">' +
-            '<input type="checkbox" id="uperson-' + i + '" style="accent-color:#C2185B;width:14px;height:14px;" onchange="togglePersonMode(' + i + ',this.checked)">' +
-            '👤 Person (always ask)</label></div>' +
-            '<button class="confirm-btn" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">CONFIRM</button>' +
+            '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px;">' +
+            '<button class="rule-pill active" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>' +
+            '<button class="rule-pill person-pill" id="uperson-' + i + '" onclick="togglePersonMode(' + i + ',this)">👤 Person</button>' +
+            '<button class="confirm-btn" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">Confirm</button>' +
+            '</div>' +
             '</div>';
     }).join('');
 }
@@ -2566,10 +2587,14 @@ function renderCatChips(i) {
     return html;
 }
 
-function togglePersonMode(i, isPerson) {
-    // When "Person" is checked, uncheck "Remember rule" (contacts are saved with contact:true)
+function toggleRulePill(btn) {
+    btn.classList.toggle('active');
+}
+function togglePersonMode(i, btn) {
+    btn.classList.toggle('active');
+    // When Person is active, always keep Save rule active too (we save contact:true)
     const remEl = document.getElementById('uremember-' + i);
-    if (remEl) remEl.checked = true; // keep remember ON so we save contact:true flag
+    if (btn.classList.contains('active') && remEl) remEl.classList.add('active');
 }
 
 function switchUncatType(i, type) {
@@ -2636,8 +2661,8 @@ async function confirmUncat(i) {
         // Remember rule for future SMSes from this recipient (debits only, not for transfers).
         const rememberEl = document.getElementById('uremember-' + i);
         const personEl   = document.getElementById('uperson-' + i);
-        const shouldRemember = rememberEl ? rememberEl.checked : true;
-        const isPerson       = personEl   ? personEl.checked   : false;
+        const shouldRemember = rememberEl ? rememberEl.classList.contains('active') : true;
+        const isPerson       = personEl   ? personEl.classList.contains('active')   : false;
         if (entry && entry.type === 'debit' && entry.recipient && s.type !== 'transfer' && shouldRemember) {
             const key = normalizeKey(entry.recipient);
             if (key) {
