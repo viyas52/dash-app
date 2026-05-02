@@ -1073,10 +1073,10 @@
             <!-- Sign Up extra fields -->
             <div id="auth-name-group" style="display:none;">
                 <label class="auth-label">Your Name</label>
-                <input id="auth-name" class="auth-input" type="text" placeholder="e.g. Viyas" autocomplete="name">
+                <input id="auth-name" class="auth-input" type="text" placeholder="Enter your name" autocomplete="name">
 
                 <label class="auth-label">Username</label>
-                <input id="auth-username" class="auth-input" type="text" placeholder="e.g. viyas (lowercase, no spaces)" style="margin-bottom:6px;">
+                <input id="auth-username" class="auth-input" type="text" placeholder="Pick a username (lowercase, no spaces)" style="margin-bottom:6px;">
                 <div style="font-size:11px;color:var(--text-3);margin-bottom:16px;">Used for your data path. Existing users: enter your current ID.</div>
             </div>
 
@@ -1084,7 +1084,12 @@
             <input id="auth-email" class="auth-input" type="email" placeholder="you@example.com" autocomplete="email">
 
             <label class="auth-label">Password</label>
-            <input id="auth-password" class="auth-input" type="password" placeholder="At least 6 characters" autocomplete="current-password">
+            <div style="position:relative;">
+                <input id="auth-password" class="auth-input" type="password" placeholder="At least 6 characters" autocomplete="current-password" style="padding-right:44px;">
+                <button type="button" onclick="togglePasswordVis()" id="pw-eye-btn" style="position:absolute;right:12px;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;color:var(--text-3);padding:4px;">
+                    <svg id="pw-eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
 
             <div class="auth-error" id="auth-error"></div>
 
@@ -3644,6 +3649,18 @@ function toggleAuthMode() {
     document.getElementById('auth-password').placeholder = _authMode === 'signup' ? 'At least 6 characters' : 'Your password';
     document.getElementById('auth-password').autocomplete = _authMode === 'signup' ? 'new-password' : 'current-password';
     hideAuthError();
+}
+
+function togglePasswordVis() {
+    const inp = document.getElementById('auth-password');
+    const icon = document.getElementById('pw-eye-icon');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 01-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    } else {
+        inp.type = 'password';
+        icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
 }
 
 function showAuthError(msg) {
