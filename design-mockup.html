@@ -148,15 +148,22 @@
   .bio-btn { margin-top: 20px; padding: 10px 24px; border-radius: 12px; border: 1px solid var(--border); background: transparent; font-size: 13px; color: var(--text-2); font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 8px; }
 
   /* ── Stats screen ── */
-  .stats-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); padding: 52px 20px 12px; }
+  .stats-title { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); margin-bottom: 16px; padding: 52px 20px 0; }
   .period-tabs { display: flex; gap: 6px; padding: 0 20px 12px; }
   .period-btn { flex: 1; padding: 7px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 11px; font-weight: 600; color: var(--text-3); font-family: 'DM Sans', sans-serif; }
-  .period-btn.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
-  .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin: 0 20px 12px; padding: 14px 16px; }
-  .chart-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--text-1); font-family: 'Space Mono', monospace; margin-bottom: 10px; }
+  .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+  .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin: 0 20px 16px; padding: 14px 16px; }
+  .chart-badge-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .chart-toggle { display: flex; gap: 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .chart-toggle-btn { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--text-3); }
+  .chart-toggle-btn.active { background: var(--text-1); color: #fff; }
+  /* ── Financial Summary ── */
+  .fin-tile { background: #F5F3EE; border-radius: 12px; padding: 10px 6px; text-align: center; min-width: 0; }
+  .fin-tile-lbl { font-size: 9px; font-weight: 600; letter-spacing: .04em; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
+  .fin-tile-val { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; line-height: 1.3; }
 
   /* ── Uncat screen ── */
-  .uncat-head { display: flex; align-items: center; gap: 12px; padding: 52px 20px 12px; }
+  .uncat-head { display: flex; align-items: center; gap: 12px; padding: 52px 20px 0; }
   .back-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
   .uncat-title { font-size: 20px; font-weight: 600; color: var(--text-1); flex: 1; }
   .uncat-pill { background: #FF3B3015; color: var(--red); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
@@ -164,14 +171,17 @@
   .ucard-name { font-size: 15px; font-weight: 700; color: var(--text-1); }
   .ucard-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
   .ucard-amt { font-size: 16px; font-weight: 700; }
-  .type-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+  .type-toggle { display: flex; gap: 6px; margin: 10px 0; }
   .type-btn { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 12px; font-weight: 600; color: var(--text-3); font-family: 'DM Sans', sans-serif; }
   .type-btn.on { background: var(--text-1); color: #fff; border-color: var(--text-1); }
-  .cat-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .cat-chip { display: flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--border); font-size: 12px; font-weight: 500; color: var(--text-2); background: var(--bg); }
-  .cat-chip.on { border-width: 2px; }
+  /* Category grid — 4-col square tiles with SVG icons */
+  .cat-grid-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 12px; }
+  .cat-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 4px 8px; border: 1px solid var(--border); border-radius: 12px; background: #FAFAF8; position: relative; }
+  .cat-btn.sel { border-width: 2px; }
+  .cat-btn .sel-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; }
+  .cat-label { font-size: 9px; font-weight: 600; color: var(--text-2); text-align: center; letter-spacing: 0.03em; line-height: 1.2; }
   .rule-pill { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-3); background: var(--bg); font-family: 'DM Sans', sans-serif; }
-  .confirm-btn { width: 100%; padding: 13px; background: var(--text-1); color: var(--bg); border: none; border-radius: 12px; font-size: 14px; font-weight: 700; font-family: 'DM Sans', sans-serif; }
+  .confirm-btn { padding: 9px 16px; background: var(--text-1); color: #fff; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; margin-left: auto; }
 
   /* ── Settings sheet ── */
   .settings-sheet { background: var(--bg-card); border-radius: 24px 24px 0 0; min-height: 640px; }
@@ -474,23 +484,20 @@
 
       <div class="stats-title">Analytics</div>
 
-      <!-- Period tabs -->
+      <!-- Period tabs: 4 tabs -->
       <div class="period-tabs">
         <button class="period-btn active">Daily</button>
         <button class="period-btn">Weekly</button>
         <button class="period-btn">Monthly</button>
-      </div>
-
-      <!-- Active point badge -->
-      <div style="padding:0 20px 8px;">
-        <div class="chart-badge">
-          <span>₹1,840</span>
-          <span style="color:var(--text-3);font-size:10px;">· 11 May</span>
-        </div>
+        <button class="period-btn">Annual</button>
       </div>
 
       <!-- Line chart card -->
       <div class="chart-card">
+        <div class="chart-badge-row">
+          <div style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text-1);">₹1,840</div>
+          <div class="lbl">Last 7 Days</div>
+        </div>
         <svg viewBox="0 0 288 80" style="width:100%;height:80px;overflow:visible;">
           <defs>
             <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
@@ -500,7 +507,6 @@
           </defs>
           <path d="M 16 60 C 42 55 42 40 68 40 C 94 40 94 22 120 22 C 146 22 146 50 172 50 C 198 50 198 30 224 30 C 250 30 250 12 272 12 L 272 80 L 16 80 Z" fill="url(#g1)"/>
           <path d="M 16 60 C 42 55 42 40 68 40 C 94 40 94 22 120 22 C 146 22 146 50 172 50 C 198 50 198 30 224 30 C 250 30 250 12 272 12" fill="none" stroke="#0D0D0D" stroke-width="2" stroke-linecap="round"/>
-          <!-- Dashed drop line on active point (last = 11 May) -->
           <line x1="272" y1="12" x2="272" y2="80" stroke="#0D0D0D" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
           <circle cx="16" cy="60" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
           <circle cx="68" cy="40" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
@@ -509,7 +515,6 @@
           <circle cx="224" cy="30" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
           <circle cx="272" cy="12" r="5" fill="#0D0D0D" stroke="white" stroke-width="2"/>
         </svg>
-        <!-- X-axis labels (tappable in real app) -->
         <div style="display:flex;justify-content:space-between;padding:6px 0 2px;">
           <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">5</span>
           <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">6</span>
@@ -520,29 +525,69 @@
         </div>
       </div>
 
-      <!-- Category breakdown -->
+      <!-- Category breakdown with bar/pie toggle -->
       <div class="chart-card">
-        <div class="lbl" style="margin-bottom:12px;">By Category</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="lbl">By Category</div>
+          <div class="chart-toggle">
+            <div class="chart-toggle-btn active">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="14" height="14"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
+            </div>
+            <div class="chart-toggle-btn">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="14" height="14"><circle cx="8" cy="8" r="6"/><path d="M8 8V2"/><path d="M8 8l5.2 3"/></svg>
+            </div>
+          </div>
+        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="display:flex;align-items:center;gap:8px;"><div class="dot6" style="background:#E53935;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Food</span></div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:80px;height:4px;border-radius:2px;background:var(--border);"><div style="width:45%;height:100%;background:#E53935;border-radius:2px;"></div></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:52px;text-align:right;">₹8,340</span>
+            <div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:45%;height:100%;background:#E53935;border-radius:2px;"></div></div>
+            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹8,340</span>
           </div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="display:flex;align-items:center;gap:8px;"><div class="dot6" style="background:#1565C0;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Transport</span></div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:80px;height:4px;border-radius:2px;background:var(--border);"><div style="width:22%;height:100%;background:#1565C0;border-radius:2px;"></div></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:52px;text-align:right;">₹3,800</span>
+            <div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:22%;height:100%;background:#1565C0;border-radius:2px;"></div></div>
+            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹3,800</span>
           </div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:8px;"><div class="dot6" style="background:#F57C00;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Bill</span></div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:80px;height:4px;border-radius:2px;background:var(--border);"><div style="width:18%;height:100%;background:#F57C00;border-radius:2px;"></div></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:52px;text-align:right;">₹3,200</span>
+            <div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:18%;height:100%;background:#F57C00;border-radius:2px;"></div></div>
+            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹3,200</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Financial Summary (collapsible, shown expanded) -->
+      <div class="chart-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div class="lbl">Financial Summary</div>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="transform:rotate(180deg);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <!-- 3-column tiles -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div class="fin-tile"><div class="fin-tile-lbl">Income</div><div class="fin-tile-val" style="color:#2E7D32;">₹72,000</div></div>
+          <div class="fin-tile"><div class="fin-tile-lbl">Expense</div><div class="fin-tile-val" style="color:#E53935;">₹18,450</div></div>
+          <div class="fin-tile"><div class="fin-tile-lbl">Invested</div><div class="fin-tile-val" style="color:#1565C0;">₹7,000</div></div>
+        </div>
+        <!-- Net saved row -->
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--border-light);">
+          <span style="font-size:12px;color:var(--text-3);font-weight:500;">Net Saved</span>
+          <span style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--text-1);">₹46,550</span>
+        </div>
+        <!-- Flow bar -->
+        <div style="height:6px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin-top:4px;">
+          <div style="width:64%;height:100%;background:#E53935;border-radius:99px;"></div>
+          <div style="width:10%;height:100%;background:#1565C0;border-radius:99px;"></div>
+          <div style="flex:1;height:100%;background:#5856D6;border-radius:99px;"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+          <span style="font-size:10px;color:#E53935;font-weight:500;">■ Spent</span>
+          <span style="font-size:10px;color:#1565C0;font-weight:500;">■ Invested</span>
+          <span style="font-size:10px;color:#5856D6;font-weight:500;">■ Saved</span>
         </div>
       </div>
 
@@ -579,33 +624,91 @@
 
       <!-- Uncat card 1 (expanded/active) -->
       <div class="uncat-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div>
             <div class="ucard-name">Zomato</div>
             <div class="ucard-meta">2 May · UPI:612345678</div>
           </div>
           <div style="text-align:right;">
             <div class="ucard-amt" style="color:var(--red);">-₹485</div>
-            <div style="font-size:11px;color:var(--text-3);">ICICI Debit</div>
+            <div style="font-size:11px;color:var(--text-3);">Debit</div>
           </div>
         </div>
-        <input style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text-1);font-family:'DM Sans',sans-serif;margin-bottom:10px;" value="Zomato" readonly>
+        <!-- Note input -->
+        <div style="margin-top:10px;">
+          <input style="width:100%;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-1);font-family:'DM Sans',sans-serif;" value="Zomato" readonly>
+        </div>
+        <!-- Type toggle -->
         <div class="type-toggle">
           <button class="type-btn on">Spending</button>
           <button class="type-btn">Investment</button>
           <button class="type-btn">Income</button>
         </div>
-        <div class="cat-grid">
-          <div class="cat-chip on" style="border-color:#E53935;color:#E53935;background:#FDECEA;border-width:2px;"><span style="font-size:14px;">🍕</span>Food</div>
-          <div class="cat-chip"><span style="font-size:14px;">🚗</span>Transport</div>
-          <div class="cat-chip"><span style="font-size:14px;">🧾</span>Bill</div>
-          <div class="cat-chip"><span style="font-size:14px;">💊</span>Health</div>
-          <div class="cat-chip"><span style="font-size:14px;">🛒</span>Shopping</div>
+        <!-- Category grid — 4-col square tiles with SVG icons -->
+        <div class="cat-grid-inner">
+          <!-- Food (selected) -->
+          <div class="cat-btn sel" style="border-color:#E53935;background:#FDECEA;">
+            <div class="sel-dot" style="background:#E53935;"></div>
+            <div style="width:20px;height:20px;color:#E53935;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg>
+            </div>
+            <div class="cat-label" style="color:#E53935;">Food</div>
+          </div>
+          <!-- Transport -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="cat-label">Transport</div>
+          </div>
+          <!-- Bill -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2" width="14" height="16" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="6" y1="13" x2="10" y2="13"/></svg>
+            </div>
+            <div class="cat-label">Bill</div>
+          </div>
+          <!-- Health -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="17"/><line x1="3" y1="10" x2="17" y2="10"/></svg>
+            </div>
+            <div class="cat-label">Health</div>
+          </div>
+          <!-- Apparel -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7 6,4 10,6 14,4 17,7 14,9 14,17 6,17 6,9"/></svg>
+            </div>
+            <div class="cat-label">Apparel</div>
+          </div>
+          <!-- Gift -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="16" height="10" rx="1"/><rect x="2" y="5" width="16" height="3" rx="1"/><line x1="10" y1="5" x2="10" y2="18"/><path d="M10 5C10 5 7 5 7 3s3-2 3 2"/><path d="M10 5C10 5 13 5 13 3s-3-2-3 2"/></svg>
+            </div>
+            <div class="cat-label">Gift</div>
+          </div>
+          <!-- Miscellaneous -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="cat-label">Misc</div>
+          </div>
+          <!-- Household -->
+          <div class="cat-btn">
+            <div style="width:20px;height:20px;color:#888;">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9.5L10 3l8 6.5"/><path d="M4 8.5V17h5v-4h2v4h5V8.5"/></svg>
+            </div>
+            <div class="cat-label">Household</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding-top:4px;">
+        <!-- Actions row -->
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
           <button class="rule-pill">Save rule</button>
           <button class="rule-pill">👤 Person</button>
-          <button class="confirm-btn" style="width:auto;flex:1;padding:8px 12px;font-size:13px;">Confirm</button>
+          <button class="confirm-btn">Confirm</button>
         </div>
       </div>
 
@@ -649,9 +752,9 @@
           <input class="modal-inp" style="width:100px;flex:none;margin-bottom:0;" value="2026-05-02" readonly>
         </div>
         <div class="type-toggle" style="margin-bottom:10px;">
-          <button class="type-btn on">Spending</button>
-          <button class="type-btn">Investment</button>
+          <button class="type-btn on">Expense</button>
           <button class="type-btn">Income</button>
+          <button class="type-btn">Invest</button>
           <button class="type-btn">Transfer</button>
         </div>
         <!-- Bank selector -->
