@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Finance — Full App Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a1a; font-family: 'DM Sans', sans-serif; padding: 40px 20px; }
+
+  /* ── Layout ── */
+  .page-title { color: #888; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; text-align: center; margin-bottom: 40px; }
+  .section-label { color: #666; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; margin: 48px 0 16px; text-align: center; }
+  .screens-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+
+  /* ── Phone Frame ── */
+  .phone { width: 375px; border-radius: 40px; overflow: hidden; background: #EDEBE6; box-shadow: 0 32px 80px rgba(0,0,0,0.6); flex-shrink: 0; position: relative; }
+  .phone.dark { background: #1C1C1E; }
+  .phone-label { color: #555; font-size: 11px; font-family: 'Space Mono', monospace; text-align: center; margin-top: 12px; letter-spacing: 0.08em; }
+  .phone-inner { padding: 0; min-height: 812px; position: relative; overflow: hidden; }
+
+  /* ── Design Tokens (Light) ── */
+  .light { --bg: #EDEBE6; --bg-card: #F5F3EF; --text-1: #1C1C1E; --text-2: #48484A; --text-3: #8E8E93; --border: #D8D5CF; --green: #22C55E; --red: #FF3B30; --blue: #007AFF; --orange: #FF9500; }
+  .dark-theme { --bg: #1C1C1E; --bg-card: #2C2C2E; --text-1: #F5F5F0; --text-2: #AEAEB2; --text-3: #636366; --border: #3A3A3C; --green: #22C55E; --red: #FF3B30; --blue: #007AFF; --orange: #FF9500; }
+
+  /* ── Common UI ── */
+  .screen { background: var(--bg); min-height: 812px; position: relative; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 56px 20px 12px; }
+  .greeting { font-size: 12px; color: var(--text-3); font-weight: 500; }
+  .app-name { font-size: 22px; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; }
+  .mono { font-family: 'Space Mono', monospace; }
+  .label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; padding: 0 20px; margin: 0 0 8px; display: block; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin: 0 20px 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .row-label { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .row-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .row-val { font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .badge { background: var(--text-1); color: var(--bg); font-size: 10px; font-weight: 600; border-radius: 6px; padding: 3px 8px; font-family: 'Space Mono', monospace; }
+  .badge-green { background: rgba(34,197,94,0.15); color: #22C55E; }
+  .badge-red { background: rgba(255,59,48,0.15); color: #FF3B30; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 20px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-2); }
+  .chip.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .btn-primary { background: var(--text-1); color: var(--bg); border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; width: 100%; }
+  .btn-outline { background: transparent; color: var(--text-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; width: 100%; }
+  .toggle { width: 44px; height: 26px; border-radius: 13px; background: #D8D5CF; position: relative; flex-shrink: 0; }
+  .toggle.on { background: #1C1C1E; }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: left 0.2s; }
+  .toggle.on::after { left: 21px; }
+
+  /* ── Bottom Nav ── */
+  .nav { position: absolute; bottom: 0; left: 0; right: 0; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 0; }
+  .nav-item svg { color: var(--text-3); }
+  .nav-item.active svg { color: var(--text-1); }
+  .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-1); opacity: 0; }
+  .nav-item.active .nav-dot { opacity: 1; }
+  .nav-label { font-size: 10px; color: var(--text-3); font-weight: 500; }
+  .nav-item.active .nav-label { color: var(--text-1); }
+
+  /* ── Hero ── */
+  .hero { padding: 20px 20px 12px; text-align: center; }
+  .hero-label { font-size: 11px; color: var(--text-3); font-weight: 500; font-family: 'Space Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+  .hero-amount { font-size: 48px; font-weight: 700; color: var(--text-1); letter-spacing: -0.04em; margin: 4px 0; }
+  .hero-sub { font-size: 13px; color: var(--text-3); }
+  .hero-sub span { color: #22C55E; font-weight: 600; }
+  .donut-wrap { display: flex; justify-content: center; padding: 16px 0 8px; }
+  .stats-row { display: flex; justify-content: space-between; padding: 0 20px 16px; gap: 8px; }
+  .stat-box { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  .stat-lbl { font-size: 10px; color: var(--text-3); font-family: 'Space Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+  .stat-val { font-size: 15px; font-weight: 600; color: var(--text-1); margin-top: 2px; }
+
+  /* ── Ticker ── */
+  .ticker { display: flex; align-items: center; gap: 8px; margin: 0 20px 12px; }
+  .ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); opacity: 0.5; flex-shrink: 0; }
+  .ticker-text { font-size: 12px; color: var(--text-3); font-style: italic; }
+
+  /* ── Txn Row ── */
+  .txn { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  .txn-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .txn-name { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .txn-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .txn-amt { font-size: 14px; font-weight: 600; margin-left: auto; }
+  .txn-amt.debit { color: var(--text-1); }
+  .txn-amt.credit { color: #22C55E; }
+
+  /* ── Auth Screen ── */
+  .auth-screen { min-height: 812px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 30px; }
+  .auth-brand { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
+  .auth-title { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-1); margin-bottom: 6px; }
+  .auth-sub { font-size: 13px; color: var(--text-3); margin-bottom: 40px; }
+  .auth-form { width: 100%; max-width: 315px; }
+  .auth-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; display: block; margin-bottom: 6px; }
+  .auth-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-weight: 500; color: var(--text-1); background: var(--bg-card); font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 16px; }
+  .auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .auth-divider span { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .auth-toggle { font-size: 13px; color: var(--text-3); margin-top: 20px; text-align: center; }
+  .auth-toggle a { color: var(--text-1); font-weight: 600; }
+
+  /* ── PIN Screen ── */
+  .pin-screen { min-height: 812px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 30px; }
+  .pin-title { font-size: 18px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+  .pin-sub { font-size: 13px; color: var(--text-3); margin-bottom: 32px; }
+  .pin-dots { display: flex; gap: 14px; margin-bottom: 32px; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); }
+  .pin-dot.filled { background: var(--text-1); border-color: var(--text-1); }
+  .pin-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+  .pin-key { width: 72px; height: 72px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); font-size: 24px; font-weight: 500; color: var(--text-1); display: flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; }
+  .pin-key.fn { font-size: 11px; font-weight: 600; border: none; background: transparent; color: var(--text-3); }
+  .bio-btn { margin-top: 20px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+
+  /* ── Net Worth Card ── */
+  .nw-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin: 0 20px 12px; overflow: hidden; }
+  .nw-header { padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+  .nw-label { font-size: 10px; color: var(--text-3); font-family: 'Space Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+  .nw-amount { font-size: 26px; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; }
+  .nw-change { font-size: 12px; font-weight: 600; }
+  .nw-chart { height: 60px; margin: 0 16px 12px; position: relative; }
+  .nw-bars { display: flex; gap: 6px; padding: 0 16px 14px; }
+  .nw-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .nw-bar { border-radius: 4px; background: var(--border); width: 100%; }
+  .nw-bar.active { background: var(--text-1); }
+  .nw-bar-lbl { font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace; }
+  .nw-breakdown { border-top: 1px solid var(--border); }
+  .nw-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .nw-row:last-child { border-bottom: none; }
+  .nw-bank-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .nw-bank-name { font-size: 13px; font-weight: 500; color: var(--text-1); flex: 1; }
+  .nw-bank-bar-wrap { flex: 2; height: 4px; background: var(--border); border-radius: 2px; }
+  .nw-bank-bar { height: 100%; border-radius: 2px; }
+  .nw-bank-amt { font-size: 13px; font-weight: 600; color: var(--text-1); min-width: 70px; text-align: right; font-family: 'Space Mono', monospace; font-size: 12px; }
+
+  /* ── Portfolio Screen ── */
+  .port-header { padding: 56px 20px 16px; }
+  .port-total-label { font-size: 11px; color: var(--text-3); font-family: 'Space Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+  .port-total { font-size: 36px; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; margin: 4px 0; }
+  .port-returns { font-size: 13px; }
+  .port-returns .pos { color: #22C55E; font-weight: 600; }
+  .port-donut-row { display: flex; align-items: center; gap: 20px; padding: 16px 20px; }
+  .port-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .port-leg-item { display: flex; align-items: center; gap: 8px; }
+  .port-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .port-leg-name { font-size: 13px; color: var(--text-2); flex: 1; }
+  .port-leg-pct { font-size: 13px; font-weight: 600; color: var(--text-1); }
+  .port-section-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 8px; }
+  .port-section-title { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; }
+  .fund-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; margin: 0 20px 10px; padding: 14px 16px; }
+  .fund-name { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 2px; }
+  .fund-meta { font-size: 11px; color: var(--text-3); margin-bottom: 12px; }
+  .fund-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .fund-key { font-size: 12px; color: var(--text-3); }
+  .fund-val { font-size: 12px; font-weight: 600; color: var(--text-1); }
+  .fund-val.pos { color: #22C55E; }
+  .fund-val.neg { color: #FF3B30; }
+  .fund-progress { height: 3px; background: var(--border); border-radius: 2px; margin-top: 10px; }
+  .fund-progress-bar { height: 100%; border-radius: 2px; background: #22C55E; }
+  .add-fund-btn { margin: 4px 20px 80px; border: 1.5px dashed var(--border); border-radius: 14px; padding: 14px; text-align: center; color: var(--text-3); font-size: 13px; font-weight: 500; cursor: pointer; }
+
+  /* ── Settings ── */
+  .settings-header { padding: 56px 20px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .settings-title { font-size: 20px; font-weight: 700; color: var(--text-1); letter-spacing: -0.02em; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .setting-desc { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .acct-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; margin: 0 20px 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .acct-avatar { width: 44px; height: 44px; border-radius: 12px; background: var(--text-1); display: flex; align-items: center; justify-content: center; color: var(--bg); font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .acct-name { font-size: 16px; font-weight: 600; color: var(--text-1); }
+  .acct-email { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+  /* ── Onboarding / MacroDroid ── */
+  .setup-screen { min-height: 812px; background: var(--bg); padding: 56px 20px 20px; }
+  .setup-title { font-size: 22px; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; margin-bottom: 6px; }
+  .setup-sub { font-size: 13px; color: var(--text-3); margin-bottom: 28px; line-height: 1.5; }
+  .setup-step { display: flex; gap: 14px; margin-bottom: 20px; align-items: flex-start; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--text-1); color: var(--bg); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .step-num.done { background: #22C55E; }
+  .step-body {}
+  .step-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .step-desc { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+  .step-action { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--text-1); cursor: pointer; }
+  .progress-bar-wrap { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 28px; }
+  .progress-bar-fill { height: 100%; background: var(--text-1); border-radius: 2px; }
+
+  /* ── Mini SVG donut ── */
+  svg.donut { display: block; }
+
+  /* ─ Scrollable phone content ─ */
+  .scrollable { overflow: hidden; }
+</style>
+</head>
+<body>
+
+<div class="page-title">My Finance — Full App Design · All Screens</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN SET 1 — AUTH
+════════════════════════════════════════ -->
+<div class="section-label">Auth Screens</div>
+<div class="screens-row">
+
+  <!-- Login -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light">
+        <div class="auth-screen screen">
+          <div class="auth-brand">Welcome to</div>
+          <div class="auth-title" style="color:var(--text-1)">My Finance</div>
+          <div class="auth-sub">Track your money, your way.</div>
+          <div class="auth-form">
+            <label class="auth-label">Email</label>
+            <input class="auth-input" style="background:var(--bg-card);color:var(--text-1);border-color:var(--border);" placeholder="you@example.com" readonly>
+            <label class="auth-label">Password</label>
+            <div style="position:relative;margin-bottom:20px;">
+              <input class="auth-input" style="background:var(--bg-card);color:var(--text-1);border-color:var(--border);margin-bottom:0;padding-right:44px;" placeholder="••••••••" readonly>
+              <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-3);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+            </div>
+            <button class="btn-primary" style="margin-bottom:12px;">Log In</button>
+            <div class="auth-divider"><span>or</span></div>
+            <button class="btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;">
+              <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+              Continue with Google
+            </button>
+            <div class="auth-toggle">Don't have an account? <a>Sign up</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Login</div>
+  </div>
+
+  <!-- Sign Up -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light">
+        <div class="auth-screen screen" style="justify-content:flex-start;padding-top:80px;">
+          <div class="auth-brand">Create Account</div>
+          <div class="auth-title" style="color:var(--text-1)">My Finance</div>
+          <div class="auth-sub">Your data. Your privacy.</div>
+          <div class="auth-form">
+            <label class="auth-label">Your Name</label>
+            <input class="auth-input" style="background:var(--bg-card);color:var(--text-1);border-color:var(--border);" placeholder="Enter your name" readonly>
+            <label class="auth-label">Username</label>
+            <input class="auth-input" style="background:var(--bg-card);color:var(--text-1);border-color:var(--border);margin-bottom:4px;" placeholder="e.g. viyas" readonly>
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:14px;">Used for your data. Pick something unique.</div>
+            <label class="auth-label">Email</label>
+            <input class="auth-input" style="background:var(--bg-card);color:var(--text-1);border-color:var(--border);" placeholder="you@example.com" readonly>
+            <label class="auth-label">Password</label>
+            <input class="auth-input" style="background:var(--bg-card);color:var(--text-1);border-color:var(--border);" placeholder="At least 6 characters" readonly>
+            <button class="btn-primary">Create Account</button>
+            <div class="auth-toggle" style="margin-top:14px;">Already have an account? <a>Log in</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Sign Up</div>
+  </div>
+
+  <!-- PIN Lock -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light">
+        <div class="pin-screen screen">
+          <div class="pin-title" style="color:var(--text-1)">Welcome back, Viyas</div>
+          <div class="pin-sub">Enter your PIN to continue</div>
+          <div class="pin-dots">
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+          </div>
+          <div class="pin-pad">
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">1</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">2</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">3</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">4</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">5</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">6</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">7</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">8</div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">9</div>
+            <div class="pin-key fn" style="color:var(--text-3);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 11c0-1.1.9-2 2-2s2 .9 2 2v1"/><path d="M8 11V9a4 4 0 018 0v2"/><path d="M5 11V8a7 7 0 0114 0v3"/><path d="M12 14v3"/></svg>
+            </div>
+            <div class="pin-key" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">0</div>
+            <div class="pin-key fn" style="color:var(--text-3);">⌫</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">PIN Lock</div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN SET 2 — HOME (LIGHT + DARK)
+════════════════════════════════════════ -->
+<div class="section-label">Home Screen</div>
+<div class="screens-row">
+
+  <!-- Home Light -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light scrollable" style="padding-bottom:80px;">
+        <div class="screen" style="background:var(--bg);">
+          <div class="top-bar">
+            <div>
+              <div class="greeting">Good morning,</div>
+              <div class="app-name">Viyas</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:4px 10px;display:flex;align-items:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--text-3)"><path d="M15 18l-6-6 6-6"/></svg>
+                <span style="font-size:13px;font-weight:500;color:var(--text-1);">May 2026</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--text-3)"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div style="width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Insights ticker -->
+          <div class="ticker">
+            <div class="ticker-dot"></div>
+            <div class="ticker-text">"Food spending up 34% vs last month 🍕"</div>
+          </div>
+
+          <!-- Hero -->
+          <div class="hero">
+            <div class="hero-label">Spent this month</div>
+            <div class="hero-amount" style="color:var(--text-1);">₹18,450</div>
+            <div class="hero-sub">of ₹25,000 · <span>₹6,550 left</span></div>
+          </div>
+
+          <!-- Donut -->
+          <div class="donut-wrap">
+            <svg class="donut" width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#D8D5CF" stroke-width="12"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#1C1C1E" stroke-width="12" stroke-dasharray="314" stroke-dashoffset="94" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+              <text x="60" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#1C1C1E" font-family="DM Sans">74%</text>
+              <text x="60" y="70" text-anchor="middle" font-size="9" fill="#8E8E93" font-family="Space Mono">of budget</text>
+            </svg>
+          </div>
+
+          <!-- Stats row -->
+          <div class="stats-row">
+            <div class="stat-box" style="background:var(--bg-card);border-color:var(--border);">
+              <div class="stat-lbl">Income</div>
+              <div class="stat-val" style="color:var(--text-1);">₹72,000</div>
+            </div>
+            <div class="stat-box" style="background:var(--bg-card);border-color:var(--border);">
+              <div class="stat-lbl">Invest</div>
+              <div class="stat-val" style="color:var(--text-1);">₹7,000</div>
+            </div>
+            <div class="stat-box" style="background:var(--bg-card);border-color:var(--border);">
+              <div class="stat-lbl">Saved</div>
+              <div class="stat-val" style="color:#22C55E;">₹46,550</div>
+            </div>
+          </div>
+
+          <!-- Bank chips -->
+          <div style="display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap;">
+            <div class="chip active" style="background:var(--text-1);color:var(--bg);border-color:var(--text-1);">All</div>
+            <div class="chip" style="background:var(--bg-card);border-color:var(--border);color:var(--text-2);"><div class="dot" style="background:#FF6B00;"></div>ICICI</div>
+            <div class="chip" style="background:var(--bg-card);border-color:var(--border);color:var(--text-2);"><div class="dot" style="background:#004C8F;"></div>HDFC</div>
+            <div class="chip" style="background:var(--bg-card);border-color:var(--border);color:var(--text-2);"><div class="dot" style="background:#7B3F9E;"></div>CUB</div>
+          </div>
+
+          <!-- NET WORTH CARD (NEW) -->
+          <span class="label">Net Worth</span>
+          <div class="nw-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="nw-header">
+              <div>
+                <div class="nw-label">Total Net Worth</div>
+                <div class="nw-amount" style="color:var(--text-1);">₹1,24,350</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="nw-change" style="color:#22C55E;">↑ ₹12,400</div>
+                <div style="font-size:11px;color:var(--text-3);">vs last month</div>
+              </div>
+            </div>
+            <!-- Tiny sparkline bars -->
+            <div class="nw-bars">
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:24px;background:var(--border);"></div><div class="nw-bar-lbl">Dec</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:30px;background:var(--border);"></div><div class="nw-bar-lbl">Jan</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:28px;background:var(--border);"></div><div class="nw-bar-lbl">Feb</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:34px;background:var(--border);"></div><div class="nw-bar-lbl">Mar</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:40px;background:var(--border);"></div><div class="nw-bar-lbl">Apr</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar active" style="height:48px;background:var(--text-1);"></div><div class="nw-bar-lbl" style="color:var(--text-1);font-weight:700;">May</div></div>
+            </div>
+            <div class="nw-breakdown" style="border-top-color:var(--border);">
+              <div class="nw-row" style="border-bottom-color:var(--border);">
+                <div class="nw-bank-dot" style="background:#FF6B00;"></div>
+                <div class="nw-bank-name" style="color:var(--text-1);">ICICI</div>
+                <div class="nw-bank-bar-wrap" style="background:var(--border);"><div class="nw-bank-bar" style="width:50%;background:#FF6B00;"></div></div>
+                <div class="nw-bank-amt" style="color:var(--text-1);">₹62,100</div>
+              </div>
+              <div class="nw-row" style="border-bottom-color:var(--border);">
+                <div class="nw-bank-dot" style="background:#004C8F;"></div>
+                <div class="nw-bank-name" style="color:var(--text-1);">HDFC</div>
+                <div class="nw-bank-bar-wrap" style="background:var(--border);"><div class="nw-bank-bar" style="width:36%;background:#004C8F;"></div></div>
+                <div class="nw-bank-amt" style="color:var(--text-1);">₹45,200</div>
+              </div>
+              <div class="nw-row">
+                <div class="nw-bank-dot" style="background:#7B3F9E;"></div>
+                <div class="nw-bank-name" style="color:var(--text-1);">CUB</div>
+                <div class="nw-bank-bar-wrap" style="background:var(--border);"><div class="nw-bank-bar" style="width:14%;background:#7B3F9E;"></div></div>
+                <div class="nw-bank-amt" style="color:var(--text-1);">₹17,050</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spending categories -->
+          <span class="label" style="margin-top:4px;">Spending</span>
+          <div style="display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap;">
+            <div class="chip" style="background:var(--bg-card);border-color:var(--border);color:var(--text-2);"><div class="dot" style="background:#FF6B00;"></div>Food 42%</div>
+            <div class="chip" style="background:var(--bg-card);border-color:var(--border);color:var(--text-2);"><div class="dot" style="background:#007AFF;"></div>Transport 18%</div>
+            <div class="chip" style="background:var(--bg-card);border-color:var(--border);color:var(--text-2);"><div class="dot" style="background:#22C55E;"></div>Bill 15%</div>
+          </div>
+
+          <!-- Transactions -->
+          <span class="label">Transactions · 12</span>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;margin:0 20px;overflow:hidden;">
+            <div class="txn">
+              <div class="txn-icon" style="background:rgba(255,107,0,0.1);">🍕</div>
+              <div><div class="txn-name" style="color:var(--text-1);">Swiggy</div><div class="txn-meta">Food · 2 May</div></div>
+              <div class="txn-amt debit" style="color:var(--text-1);">−₹342</div>
+            </div>
+            <div class="txn">
+              <div class="txn-icon" style="background:rgba(34,197,94,0.1);">💰</div>
+              <div><div class="txn-name" style="color:var(--text-1);">Salary</div><div class="txn-meta">Income · 1 May</div></div>
+              <div class="txn-amt credit">+₹72,000</div>
+            </div>
+            <div class="txn" style="border-bottom:none;">
+              <div class="txn-icon" style="background:rgba(0,76,143,0.1);">🚗</div>
+              <div><div class="txn-name" style="color:var(--text-1);">Ola</div><div class="txn-meta">Transport · 1 May</div></div>
+              <div class="txn-amt debit" style="color:var(--text-1);">−₹189</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Home — Light</div>
+  </div>
+
+  <!-- Home Dark -->
+  <div>
+    <div class="phone dark">
+      <div class="phone-inner dark-theme scrollable" style="padding-bottom:80px;">
+        <div class="screen" style="background:var(--bg);">
+          <div class="top-bar">
+            <div>
+              <div class="greeting" style="color:var(--text-3);">Good morning,</div>
+              <div class="app-name" style="color:var(--text-1);">Viyas</div>
+            </div>
+            <div style="width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#AEAEB2" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            </div>
+          </div>
+          <div class="ticker"><div class="ticker-dot"></div><div class="ticker-text" style="color:var(--text-3);">"You saved ₹12k more than last month 💰"</div></div>
+          <div class="hero">
+            <div class="hero-label" style="color:var(--text-3);">Spent this month</div>
+            <div class="hero-amount" style="color:var(--text-1);">₹18,450</div>
+            <div class="hero-sub" style="color:var(--text-3);">of ₹25,000 · <span style="color:#22C55E;font-weight:600;">₹6,550 left</span></div>
+          </div>
+          <div class="donut-wrap">
+            <svg class="donut" width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#3A3A3C" stroke-width="12"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#F5F5F0" stroke-width="12" stroke-dasharray="314" stroke-dashoffset="94" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+              <text x="60" y="55" text-anchor="middle" font-size="14" font-weight="700" fill="#F5F5F0" font-family="DM Sans">74%</text>
+              <text x="60" y="70" text-anchor="middle" font-size="9" fill="#636366" font-family="Space Mono">of budget</text>
+            </svg>
+          </div>
+          <div class="stats-row">
+            <div class="stat-box" style="background:var(--bg-card);border-color:var(--border);"><div class="stat-lbl" style="color:var(--text-3);">Income</div><div class="stat-val" style="color:var(--text-1);">₹72,000</div></div>
+            <div class="stat-box" style="background:var(--bg-card);border-color:var(--border);"><div class="stat-lbl" style="color:var(--text-3);">Invest</div><div class="stat-val" style="color:var(--text-1);">₹7,000</div></div>
+            <div class="stat-box" style="background:var(--bg-card);border-color:var(--border);"><div class="stat-lbl" style="color:var(--text-3);">Saved</div><div class="stat-val" style="color:#22C55E;">₹46,550</div></div>
+          </div>
+
+          <!-- Net Worth dark -->
+          <span class="label" style="color:var(--text-3);">Net Worth</span>
+          <div class="nw-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="nw-header">
+              <div>
+                <div class="nw-label" style="color:var(--text-3);">Total Net Worth</div>
+                <div class="nw-amount" style="color:var(--text-1);">₹1,24,350</div>
+              </div>
+              <div style="text-align:right;"><div class="nw-change" style="color:#22C55E;">↑ ₹12,400</div><div style="font-size:11px;color:var(--text-3);">vs last month</div></div>
+            </div>
+            <div class="nw-bars">
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:24px;background:var(--border);"></div><div class="nw-bar-lbl" style="color:var(--text-3);">Dec</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:30px;background:var(--border);"></div><div class="nw-bar-lbl" style="color:var(--text-3);">Jan</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:28px;background:var(--border);"></div><div class="nw-bar-lbl" style="color:var(--text-3);">Feb</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:34px;background:var(--border);"></div><div class="nw-bar-lbl" style="color:var(--text-3);">Mar</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:40px;background:var(--border);"></div><div class="nw-bar-lbl" style="color:var(--text-3);">Apr</div></div>
+              <div class="nw-bar-wrap"><div class="nw-bar" style="height:48px;background:var(--text-1);"></div><div class="nw-bar-lbl" style="color:var(--text-1);font-weight:700;">May</div></div>
+            </div>
+            <div class="nw-breakdown" style="border-top-color:var(--border);">
+              <div class="nw-row" style="border-bottom-color:var(--border);"><div class="nw-bank-dot" style="background:#FF6B00;"></div><div class="nw-bank-name" style="color:var(--text-1);">ICICI</div><div class="nw-bank-bar-wrap" style="background:var(--border);"><div class="nw-bank-bar" style="width:50%;background:#FF6B00;"></div></div><div class="nw-bank-amt" style="color:var(--text-1);">₹62,100</div></div>
+              <div class="nw-row" style="border-bottom-color:var(--border);"><div class="nw-bank-dot" style="background:#004C8F;"></div><div class="nw-bank-name" style="color:var(--text-1);">HDFC</div><div class="nw-bank-bar-wrap" style="background:var(--border);"><div class="nw-bank-bar" style="width:36%;background:#004C8F;"></div></div><div class="nw-bank-amt" style="color:var(--text-1);">₹45,200</div></div>
+              <div class="nw-row"><div class="nw-bank-dot" style="background:#7B3F9E;"></div><div class="nw-bank-name" style="color:var(--text-1);">CUB</div><div class="nw-bank-bar-wrap" style="background:var(--border);"><div class="nw-bank-bar" style="width:14%;background:#7B3F9E;"></div></div><div class="nw-bank-amt" style="color:var(--text-1);">₹17,050</div></div>
+            </div>
+          </div>
+
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;margin:8px 20px;overflow:hidden;">
+            <div class="txn"><div class="txn-icon" style="background:rgba(255,107,0,0.15);">🍕</div><div><div class="txn-name" style="color:var(--text-1);">Swiggy</div><div class="txn-meta" style="color:var(--text-3);">Food · 2 May</div></div><div class="txn-amt debit" style="color:var(--text-1);">−₹342</div></div>
+            <div class="txn" style="border-bottom:none;"><div class="txn-icon" style="background:rgba(34,197,94,0.15);">💰</div><div><div class="txn-name" style="color:var(--text-1);">Salary</div><div class="txn-meta" style="color:var(--text-3);">Income · 1 May</div></div><div class="txn-amt credit">+₹72,000</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label" style="color:#888;">Home — Dark</div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN SET 3 — PORTFOLIO
+════════════════════════════════════════ -->
+<div class="section-label">Portfolio Screen (3rd Swipe — swipe left from Stats)</div>
+<div class="screens-row">
+
+  <!-- Portfolio Light -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light scrollable" style="padding-bottom:80px;">
+        <div class="screen" style="background:var(--bg);">
+          <div class="port-header">
+            <div class="port-total-label" style="color:var(--text-3);">Total Invested</div>
+            <div class="port-total" style="color:var(--text-1);">₹88,000</div>
+            <div class="port-returns">Current value <strong style="color:var(--text-1);">₹95,240</strong> &nbsp;<span class="pos">↑ ₹7,240 (8.2%)</span></div>
+          </div>
+
+          <!-- Donut allocation -->
+          <div class="port-donut-row">
+            <svg width="110" height="110" viewBox="0 0 110 110">
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#22C55E" stroke-width="16" stroke-dasharray="264" stroke-dashoffset="80" transform="rotate(-90 55 55)"/>
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#007AFF" stroke-width="16" stroke-dasharray="264" stroke-dashoffset="198" stroke-dashoffset="198" transform="rotate(136 55 55)"/>
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#FF9500" stroke-width="16" stroke-dasharray="264" stroke-dashoffset="238" transform="rotate(228 55 55)"/>
+              <circle cx="55" cy="55" r="30" fill="var(--bg)"/>
+              <text x="55" y="51" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-1)" font-family="DM Sans">3 funds</text>
+              <text x="55" y="65" text-anchor="middle" font-size="9" fill="#8E8E93" font-family="Space Mono">active</text>
+            </svg>
+            <div class="port-legend">
+              <div class="port-leg-item"><div class="port-leg-dot" style="background:#22C55E;"></div><div class="port-leg-name" style="color:var(--text-2);">Mutual Funds</div><div class="port-leg-pct" style="color:var(--text-1);">70%</div></div>
+              <div class="port-leg-item"><div class="port-leg-dot" style="background:#007AFF;"></div><div class="port-leg-name" style="color:var(--text-2);">PPF</div><div class="port-leg-pct" style="color:var(--text-1);">25%</div></div>
+              <div class="port-leg-item"><div class="port-leg-dot" style="background:#FF9500;"></div><div class="port-leg-name" style="color:var(--text-2);">Fixed Deposit</div><div class="port-leg-pct" style="color:var(--text-1);">5%</div></div>
+            </div>
+          </div>
+
+          <!-- Mutual Funds section -->
+          <div class="port-section-header">
+            <div class="port-section-title" style="color:var(--text-3);">Mutual Funds</div>
+            <div style="font-size:11px;color:var(--text-3);">NAV updated today</div>
+          </div>
+
+          <div class="fund-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="fund-name" style="color:var(--text-1);">SBI Bluechip Fund</div>
+            <div class="fund-meta" style="color:var(--text-3);">₹5,000/mo · Direct Growth · 8 months</div>
+            <div class="fund-row">
+              <div class="fund-key" style="color:var(--text-3);">Invested</div>
+              <div class="fund-val" style="color:var(--text-1);">₹40,000</div>
+            </div>
+            <div class="fund-row">
+              <div class="fund-key" style="color:var(--text-3);">Current Value</div>
+              <div class="fund-val pos">₹43,200 <span style="font-size:11px;">↑ 8%</span></div>
+            </div>
+            <div class="fund-row">
+              <div class="fund-key" style="color:var(--text-3);">Today's NAV</div>
+              <div class="fund-val" style="color:var(--text-1);">₹84.23 <span style="font-size:10px;color:#22C55E;">+0.4%</span></div>
+            </div>
+            <div class="fund-progress" style="background:var(--border);"><div class="fund-progress-bar" style="width:70%;"></div></div>
+          </div>
+
+          <div class="fund-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="fund-name" style="color:var(--text-1);">Tata Digital India</div>
+            <div class="fund-meta" style="color:var(--text-3);">₹2,000/mo · Direct Growth · 3 months</div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Invested</div><div class="fund-val" style="color:var(--text-1);">₹6,000</div></div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Current Value</div><div class="fund-val neg">₹5,820 <span style="font-size:11px;">↓ 3%</span></div></div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Today's NAV</div><div class="fund-val" style="color:var(--text-1);">₹52.10 <span style="font-size:10px;color:#FF3B30;">−0.8%</span></div></div>
+            <div class="fund-progress" style="background:var(--border);"><div class="fund-progress-bar" style="width:30%;background:#FF3B30;"></div></div>
+          </div>
+
+          <!-- PPF section -->
+          <div class="port-section-header">
+            <div class="port-section-title" style="color:var(--text-3);">PPF</div>
+            <div style="font-size:11px;color:var(--text-3);">7.1% p.a.</div>
+          </div>
+
+          <div class="fund-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="fund-name" style="color:var(--text-1);">PPF Account</div>
+            <div class="fund-meta" style="color:var(--text-3);">SBI · Auto-detected from SMS</div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Invested</div><div class="fund-val" style="color:var(--text-1);">₹22,000</div></div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Est. Current Value</div><div class="fund-val pos">₹22,400 <span style="font-size:11px;">↑ 1.8%</span></div></div>
+          </div>
+
+          <div class="add-fund-btn" style="border-color:var(--border);color:var(--text-3);">+ Link a Fund</div>
+        </div>
+
+        <!-- Swipe hint + same 2-item nav -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 0 2px;">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--border);"></div>
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--border);"></div>
+          <div style="width:18px;height:6px;border-radius:3px;background:var(--text-1);"></div>
+        </div>
+        <div style="text-align:center;font-size:10px;color:var(--text-3);font-family:'Space Mono',monospace;letter-spacing:0.08em;padding-bottom:4px;">← swipe · Home · Stats · Portfolio</div>
+        <div class="nav" style="background:var(--bg-card);border-top-color:var(--border);">
+          <div class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+            <div class="nav-dot" style="opacity:0;"></div>
+            <div class="nav-label" style="color:var(--text-3);">Home</div>
+          </div>
+          <div class="nav-item active">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" stroke-width="1.8"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+            <div class="nav-dot" style="background:var(--text-1);opacity:1;"></div>
+            <div class="nav-label" style="color:var(--text-1);">Stats</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Portfolio — Light</div>
+  </div>
+
+  <!-- Portfolio Dark -->
+  <div>
+    <div class="phone dark">
+      <div class="phone-inner dark-theme scrollable" style="padding-bottom:80px;">
+        <div class="screen" style="background:var(--bg);">
+          <div class="port-header">
+            <div class="port-total-label" style="color:var(--text-3);">Total Invested</div>
+            <div class="port-total" style="color:var(--text-1);">₹88,000</div>
+            <div class="port-returns" style="color:var(--text-3);">Current value <strong style="color:var(--text-1);">₹95,240</strong> &nbsp;<span class="pos">↑ ₹7,240 (8.2%)</span></div>
+          </div>
+          <div class="port-donut-row">
+            <svg width="110" height="110" viewBox="0 0 110 110">
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#22C55E" stroke-width="16" stroke-dasharray="264" stroke-dashoffset="80" transform="rotate(-90 55 55)"/>
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#007AFF" stroke-width="16" stroke-dasharray="264" stroke-dashoffset="198" transform="rotate(136 55 55)"/>
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#FF9500" stroke-width="16" stroke-dasharray="264" stroke-dashoffset="238" transform="rotate(228 55 55)"/>
+              <circle cx="55" cy="55" r="30" fill="var(--bg)"/>
+              <text x="55" y="51" text-anchor="middle" font-size="12" font-weight="700" fill="#F5F5F0" font-family="DM Sans">3 funds</text>
+              <text x="55" y="65" text-anchor="middle" font-size="9" fill="#636366" font-family="Space Mono">active</text>
+            </svg>
+            <div class="port-legend">
+              <div class="port-leg-item"><div class="port-leg-dot" style="background:#22C55E;"></div><div class="port-leg-name" style="color:var(--text-2);">Mutual Funds</div><div class="port-leg-pct" style="color:var(--text-1);">70%</div></div>
+              <div class="port-leg-item"><div class="port-leg-dot" style="background:#007AFF;"></div><div class="port-leg-name" style="color:var(--text-2);">PPF</div><div class="port-leg-pct" style="color:var(--text-1);">25%</div></div>
+              <div class="port-leg-item"><div class="port-leg-dot" style="background:#FF9500;"></div><div class="port-leg-name" style="color:var(--text-2);">Fixed Deposit</div><div class="port-leg-pct" style="color:var(--text-1);">5%</div></div>
+            </div>
+          </div>
+          <div class="port-section-header"><div class="port-section-title" style="color:var(--text-3);">Mutual Funds</div><div style="font-size:11px;color:var(--text-3);">NAV updated today</div></div>
+          <div class="fund-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="fund-name" style="color:var(--text-1);">SBI Bluechip Fund</div>
+            <div class="fund-meta" style="color:var(--text-3);">₹5,000/mo · Direct Growth · 8 months</div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Invested</div><div class="fund-val" style="color:var(--text-1);">₹40,000</div></div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Current Value</div><div class="fund-val pos">₹43,200 <span style="font-size:11px;">↑ 8%</span></div></div>
+            <div class="fund-row"><div class="fund-key" style="color:var(--text-3);">Today's NAV</div><div class="fund-val" style="color:var(--text-1);">₹84.23 <span style="font-size:10px;color:#22C55E;">+0.4%</span></div></div>
+            <div class="fund-progress" style="background:var(--border);"><div class="fund-progress-bar" style="width:70%;"></div></div>
+          </div>
+          <div class="add-fund-btn" style="border-color:var(--border);color:var(--text-3);">+ Link a Fund</div>
+        </div>
+        <div class="nav" style="background:var(--bg-card);border-top-color:var(--border);">
+          <div class="nav-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><div class="nav-dot" style="opacity:0;"></div><div class="nav-label" style="color:var(--text-3);">Home</div></div>
+          <div class="nav-item active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" stroke-width="1.8"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg><div class="nav-dot" style="background:var(--text-1);opacity:1;"></div><div class="nav-label" style="color:var(--text-1);">Stats</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label" style="color:#888;">Portfolio — Dark</div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN SET 4 — SETTINGS + ONBOARDING
+════════════════════════════════════════ -->
+<div class="section-label">Settings & Onboarding</div>
+<div class="screens-row">
+
+  <!-- Settings -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light scrollable" style="padding-bottom:40px;">
+        <div class="screen" style="background:var(--bg);">
+          <div class="settings-header">
+            <div class="settings-title" style="color:var(--text-1);">Settings</div>
+            <div style="width:32px;height:32px;background:var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+          </div>
+
+          <!-- Account -->
+          <span class="label">Account</span>
+          <div class="acct-card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="acct-avatar">V</div>
+            <div>
+              <div class="acct-name" style="color:var(--text-1);">Viyas</div>
+              <div class="acct-email" style="color:var(--text-3);">viyas.ventures@gmail.com</div>
+            </div>
+          </div>
+
+          <!-- Security -->
+          <span class="label" style="margin-top:4px;">Security</span>
+          <div class="card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="setting-row" style="border-bottom-color:var(--border);">
+              <div><div class="setting-label" style="color:var(--text-1);">Change PIN</div><div class="setting-desc" style="color:var(--text-3);">4-digit app lock</div></div>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <div class="setting-row" style="border-bottom-color:var(--border);">
+              <div><div class="setting-label" style="color:var(--text-1);">Fingerprint Unlock</div><div class="setting-desc" style="color:var(--text-3);">Use biometric instead of PIN</div></div>
+              <div class="toggle on" style="background:var(--text-1);"></div>
+            </div>
+            <div class="setting-row" style="border-bottom:none;">
+              <div><div class="setting-label" style="color:#FF3B30;">Log Out</div><div class="setting-desc" style="color:var(--text-3);">viyas.ventures@gmail.com</div></div>
+              <button style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid #FF3B30;background:transparent;color:#FF3B30;font-weight:500;">Log Out</button>
+            </div>
+          </div>
+
+          <!-- Preferences -->
+          <span class="label" style="margin-top:4px;">Preferences</span>
+          <div class="card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="setting-row" style="border-bottom-color:var(--border);">
+              <div><div class="setting-label" style="color:var(--text-1);">Monthly Budget</div><div class="setting-desc" style="color:var(--text-3);">Used for spending ring</div></div>
+              <span style="font-size:12px;font-weight:600;color:var(--text-1);background:var(--border);padding:3px 8px;border-radius:6px;">₹25,000</span>
+            </div>
+            <div class="setting-row" style="border-bottom-color:var(--border);">
+              <div><div class="setting-label" style="color:var(--text-1);">Investment Target</div><div class="setting-desc" style="color:var(--text-3);">Monthly SIP goal</div></div>
+              <span style="font-size:12px;font-weight:600;color:var(--text-1);background:var(--border);padding:3px 8px;border-radius:6px;">₹7,000</span>
+            </div>
+            <div class="setting-row" style="border-bottom:none;">
+              <div><div class="setting-label" style="color:var(--text-1);">Dark Mode</div></div>
+              <div class="toggle" style="background:#D8D5CF;"></div>
+            </div>
+          </div>
+
+          <!-- MacroDroid Setup -->
+          <span class="label" style="margin-top:4px;">SMS Setup</span>
+          <div class="card" style="background:var(--bg-card);border-color:var(--border);">
+            <div class="setting-row" style="border-bottom:none;">
+              <div><div class="setting-label" style="color:var(--text-1);">MacroDroid Setup</div><div class="setting-desc" style="color:var(--text-3);">Auto-track bank SMS</div></div>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Settings</div>
+  </div>
+
+  <!-- MacroDroid Onboarding -->
+  <div>
+    <div class="phone">
+      <div class="phone-inner light scrollable" style="padding-bottom:40px;">
+        <div class="screen" style="background:var(--bg);">
+          <div class="setup-screen" style="background:var(--bg);">
+            <div style="font-size:11px;color:var(--text-3);font-family:'Space Mono',monospace;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Step 2 of 3</div>
+            <div class="progress-bar-wrap" style="background:var(--border);"><div class="progress-bar-fill" style="width:66%;background:var(--text-1);"></div></div>
+            <div class="setup-title" style="color:var(--text-1);">Set up SMS Tracking</div>
+            <div class="setup-sub" style="color:var(--text-3);">Auto-track every bank transaction by forwarding SMS to My Finance. One-time setup, takes 2 minutes.</div>
+
+            <div class="setup-step">
+              <div class="step-num done" style="background:#22C55E;color:white;">✓</div>
+              <div class="step-body">
+                <div class="step-title" style="color:var(--text-1);">Install MacroDroid</div>
+                <div class="step-desc" style="color:var(--text-3);">Free app from Play Store. Already done ✓</div>
+              </div>
+            </div>
+
+            <div class="setup-step">
+              <div class="step-num" style="background:var(--text-1);color:var(--bg);">2</div>
+              <div class="step-body">
+                <div class="step-title" style="color:var(--text-1);">Import your macro</div>
+                <div class="step-desc" style="color:var(--text-3);">Tap below to download a pre-configured macro. Open it in MacroDroid — done in one tap.</div>
+                <div class="step-action" style="background:var(--bg-card);border-color:var(--border);color:var(--text-1);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download Macro File
+                </div>
+              </div>
+            </div>
+
+            <div class="setup-step">
+              <div class="step-num" style="background:var(--border);color:var(--text-3);">3</div>
+              <div class="step-body">
+                <div class="step-title" style="color:var(--text-3);">Test it</div>
+                <div class="step-desc" style="color:var(--text-3);">Send a test SMS — your transaction should appear in the app within seconds.</div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;">
+              <button class="btn-primary" style="margin-bottom:10px;">I've Imported the Macro →</button>
+              <button class="btn-outline">Copy URL manually instead</button>
+            </div>
+
+            <div style="margin-top:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-size:10px;color:var(--text-3);font-family:'Space Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Your API URL</div>
+              <div style="font-size:11px;color:var(--text-2);word-break:break-all;line-height:1.5;">https://parsesms-...cloudfunctions.net/parseSms?user=<strong style="color:var(--text-1);">viyas</strong>&key=myfinance_viyas_2026</div>
+              <div style="margin-top:8px;display:flex;gap:6px;">
+                <div class="step-action" style="background:var(--bg);border-color:var(--border);color:var(--text-1);font-size:11px;padding:6px 10px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy URL
+                </div>
+                <div class="step-action" style="background:var(--bg);border-color:var(--border);color:var(--text-1);font-size:11px;padding:6px 10px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy Key
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">MacroDroid Setup Wizard</div>
+  </div>
+
+</div>
+
+<div style="text-align:center;margin-top:60px;padding-bottom:40px;">
+  <div style="font-family:'Space Mono',monospace;font-size:10px;color:#444;letter-spacing:0.15em;text-transform:uppercase;">My Finance · Design System v5.0</div>
+  <div style="font-size:12px;color:#555;margin-top:6px;">Colors: #EDEBE6 bg · #1C1C1E text · #22C55E green · #FF3B30 red · #007AFF blue</div>
+  <div style="font-size:12px;color:#555;margin-top:2px;">Fonts: DM Sans (UI) · Space Mono (labels/mono)</div>
+</div>
+
+</body>
+</html>
