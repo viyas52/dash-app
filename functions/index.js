@@ -18,7 +18,7 @@ const MONTHS = {
 
 function parseDateAlpha(raw) {
   const [day, mon, yr] = raw.split("-");
-  return `20${yr}-${MONTHS[mon]}-${day.padStart(2, "0")}`;
+  return `20${yr}-${MONTHS[mon] || "01"}-${day.padStart(2, "0")}`;
 }
 function parseDateAlphaLong(raw) {
   const [day, mon, yr] = raw.split("-");
@@ -72,7 +72,7 @@ function buildPatterns(acctToBank) {
     // ── ICICI debit (UPI) ──
     {
       name: "icici_debit_upi",
-      rx: /ICICI Bank Acct XX(\d+) debited for Rs\.? ([\d,]+\.?\d*) on (\d{2}-\w{3}-\d{2}); (.+?) credited\. UPI:(\d+)/,
+      rx: /ICICI Bank Acct XX(\d+) debited for Rs\.?\s*([\d,]+\.?\d*) on (\d{1,2}-\w{3}-\d{2}); (.+?) credited\. UPI:(\d+)/i,
       parse: (m, sms) => ({
         raw_sms: sms, bank: "icici", account: m[1],
         amount: parseFloat(m[2].replace(/,/g, "")),
@@ -342,7 +342,10 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   // ── Parse SMS with per-user account mapping ──
   const acctToBank = (acct) => acctToBankDynamic(acct, userConfig.acctBankMap);
   const parsed = parseSms(sms, acctToBank);
-  if (!parsed) return res.status(200).json({ status: "skipped", reason: "SMS format not recognized" });
+  if (!parsed) {
+    console.warn("SMS not recognized:", sms.substring(0, 120));
+    return res.status(200).json({ status: "skipped", reason: "SMS format not recognized" });
+  }
 
   // ── Auto-categorize pipeline ──
   // 1. Self-transfer (highest priority — structural)
