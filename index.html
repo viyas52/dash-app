@@ -2626,6 +2626,14 @@ function renderTxnList(entries, expanded) {
     const sortedDates = Object.keys(groups).sort().reverse();
 
     let html = sortedDates.map(date => {
+        const dayEntries = groups[date];
+        const daySpent  = dayEntries.filter(e => e.category_type === 'spending').reduce((s,e) => s + (e.amount||0), 0);
+        const dayIncome = dayEntries.filter(e => e.category_type === 'income').reduce((s,e) => s + (e.amount||0), 0);
+        const daySummary = [
+            daySpent  > 0 ? '<span style="color:#FF3B30;">-₹' + fmt(daySpent)  + '</span>' : '',
+            dayIncome > 0 ? '<span style="color:#22C55E;">+₹' + fmt(dayIncome) + '</span>' : ''
+        ].filter(Boolean).join('<span style="color:var(--text-3);margin:0 4px;">·</span>');
+
         const rows = groups[date].map(e => {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
@@ -2658,7 +2666,10 @@ function renderTxnList(entries, expanded) {
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +
                 '</div>';
         }).join('');
-        return '<div class="date-label">' + fmtDateFull(date) + '</div>' + rows;
+        return '<div class="date-label" style="display:flex;align-items:center;justify-content:space-between;">' +
+            '<span>' + fmtDateFull(date) + '</span>' +
+            (daySummary ? '<span style="font-size:11px;font-weight:500;">' + daySummary + '</span>' : '') +
+            '</div>' + rows;
     }).join('');
 
     container.innerHTML = html;
