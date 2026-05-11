@@ -3609,18 +3609,29 @@ function updateFinSummary(entries) {
 }
 
 /* ─── LINE CHART ─── */
-function buildLineChart(points, labels, activeIdx) {
+let _chartPoints = [], _chartLabels = [], _chartActiveIdx = 0;
+
+function selectChartPoint(i) {
+    _chartActiveIdx = i;
+    const badge = document.getElementById('chart-total-badge');
+    if (badge && _chartPoints[i] !== undefined) {
+        const val = _chartPoints[i];
+        const label = _chartLabels[i] || '';
+        badge.textContent = (val > 0 ? '₹' + fmt(val) : '₹0') + (label ? '  ·  ' + label : '');
+    }
+    // Re-render chart with new active index
+    _buildLineChartSvg(_chartPoints, _chartLabels, i);
+}
+
+function _buildLineChartSvg(points, labels, activeIdx) {
     const wrap = document.getElementById('line-chart-wrap');
-    if (!wrap || points.length < 2) { if (wrap) wrap.innerHTML = ''; return; }
+    if (!wrap) return;
     const W = 320, H = 100, PAD = 16;
     const maxV = Math.max(...points, 1);
-    const minV = 0;
     const xStep = (W - PAD * 2) / (points.length - 1);
     const yScale = v => H - PAD - (v / maxV) * (H - PAD * 2);
-
     const pts = points.map((v, i) => ({ x: PAD + i * xStep, y: yScale(v), v }));
 
-    // Smooth bezier path
     let pathD = 'M ' + pts[0].x + ' ' + pts[0].y;
     for (let i = 1; i < pts.length; i++) {
         const cp1x = pts[i-1].x + xStep * 0.45;
@@ -3631,34 +3642,52 @@ function buildLineChart(points, labels, activeIdx) {
     }
     const fillD = pathD + ' L ' + pts[pts.length-1].x + ' ' + H + ' L ' + pts[0].x + ' ' + H + ' Z';
 
-    const total = points.reduce((s, v) => s + v, 0);
-    const badge = document.getElementById('chart-total-badge');
-    if (badge) badge.textContent = total > 0 ? '₹' + fmt(total) : '';
+    // Tooltip bubble above active point
+    const ap = pts[activeIdx];
+    const tipX = Math.min(Math.max(ap.x, 28), W - 28);
+    const tipY = Math.max(ap.y - 14, 2);
 
     wrap.innerHTML =
         '<div style="position:relative;">' +
-        '<svg class="line-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px;">' +
-        '<defs>' +
-        '<linearGradient id="lgfill" x1="0" y1="0" x2="0" y2="1">' +
+        '<svg class="line-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px;overflow:visible;">' +
+        '<defs><linearGradient id="lgfill" x1="0" y1="0" x2="0" y2="1">' +
         '<stop offset="0%" stop-color="var(--text-1)" stop-opacity="0.18"/>' +
         '<stop offset="100%" stop-color="var(--text-1)" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
         '<path d="' + fillD + '" fill="url(#lgfill)"/>' +
         '<path d="' + pathD + '" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        // Vertical drop line on active point
+        '<line x1="' + ap.x + '" y1="' + ap.y + '" x2="' + ap.x + '" y2="' + H + '" stroke="var(--text-1)" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>' +
         pts.map((p, i) => {
             const isActive = i === activeIdx;
             const r = isActive ? 5 : 3;
             const fill = isActive ? 'var(--text-1)' : p.v > 0 ? 'var(--text-1)' : '#D8D5CF';
-            const stroke = 'white';
             const sw = isActive ? 2 : 1.5;
-            let tip = '';
-            return tip + '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"/>';
+            return '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '" stroke="white" stroke-width="' + sw + '"/>';
         }).join('') +
         '</svg>' +
         '</div>' +
         '<div class="line-chart-labels">' +
-        labels.map((l, i) => '<span class="line-chart-label' + (i === activeIdx ? ' active' : '') + '">' + l + '</span>').join('') +
+        labels.map((l, i) =>
+            '<span class="line-chart-label' + (i === activeIdx ? ' active' : '') + '" ' +
+            'onclick="selectChartPoint(' + i + ')" style="cursor:pointer;padding:4px 0;">' + l + '</span>'
+        ).join('') +
         '</div>';
+}
+
+function buildLineChart(points, labels, activeIdx) {
+    const wrap = document.getElementById('line-chart-wrap');
+    if (!wrap || points.length < 2) { if (wrap) wrap.innerHTML = ''; return; }
+
+    _chartPoints = points;
+    _chartLabels = labels;
+    _chartActiveIdx = activeIdx;
+
+    const total = points.reduce((s, v) => s + v, 0);
+    const badge = document.getElementById('chart-total-badge');
+    if (badge) badge.textContent = total > 0 ? '₹' + fmt(total) : '';
+
+    _buildLineChartSvg(points, labels, activeIdx);
 }
 
 /* ─── HISTORY (data only — for annual/monthly chart) ─── */
