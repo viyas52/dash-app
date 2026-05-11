@@ -1766,33 +1766,57 @@ async function loadRules() {
     if (merchants.length === 0) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; }
     else {
         if (empty) empty.style.display = 'none';
-        list.innerHTML = merchants.map((r, i) =>
-            '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;' + (i < merchants.length-1 ? 'border-bottom:1px solid var(--border-light);' : '') + '">' +
-            '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.recipient || r.id) + '</div>' +
-            '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">→ ' + (r.category || '?') + ' · ' + (r.category_type || '') + '</div>' +
-            '</div>' +
-            '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid #E5353540;background:#FDF0F0;color:#E53535;cursor:pointer;">Delete</button>' +
-            '</div>'
-        ).join('');
+        list.innerHTML = merchants.map((r, i) => {
+            const catInfo = getCatInfo(r.category);
+            const color = catInfo ? catInfo.color : '#8E8E93';
+            const bg    = catInfo ? (catInfo.bg || color + '18') : '#F0F0F0';
+            const typeLabel = { spending: 'Spending', income: 'Income', investment: 'Investment', transfer: 'Transfer' }[r.category_type] || r.category_type || '';
+            const typeColor = { spending: '#FF3B30', income: '#22C55E', investment: '#007AFF', transfer: '#8E8E93' }[r.category_type] || '#8E8E93';
+            const name = (r.recipient || r.id || '').replace(/@\S+/g, '').trim();
+            const sep = i < merchants.length - 1 ? 'border-bottom:1px solid var(--border-light);' : '';
+            return '<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;' + sep + '">' +
+                '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+                '<div style="width:18px;height:18px;color:' + color + '">' + getCatIcon(r.category) + '</div></div>' +
+                '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-1);">' + esc(name) + '</div>' +
+                '<div style="display:flex;align-items:center;gap:5px;margin-top:3px;">' +
+                '<span style="font-size:11px;color:' + color + ';font-weight:600;">' + esc(r.category || '?') + '</span>' +
+                '<span style="font-size:10px;color:var(--text-3);">·</span>' +
+                '<span style="font-size:10px;color:' + typeColor + ';font-weight:500;background:' + typeColor + '15;padding:1px 6px;border-radius:20px;">' + typeLabel + '</span>' +
+                '</div></div>' +
+                '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:11px;padding:5px 10px;border-radius:8px;border:none;background:#FF3B3012;color:#FF3B30;cursor:pointer;font-weight:600;flex-shrink:0;">Delete</button>' +
+                '</div>';
+        }).join('');
     }
 
     // Contacts section
-    const countEl  = document.getElementById('contacts-count');
-    const cList    = document.getElementById('contacts-list');
-    const cEmpty   = document.getElementById('contacts-empty');
+    const countEl = document.getElementById('contacts-count');
+    const cList   = document.getElementById('contacts-list');
+    const cEmpty  = document.getElementById('contacts-empty');
     if (countEl) countEl.textContent = contacts.length ? contacts.length + ' saved' : '';
     if (cList) {
         if (contacts.length === 0) { cList.innerHTML = ''; if (cEmpty) cEmpty.style.display = 'block'; }
         else {
             if (cEmpty) cEmpty.style.display = 'none';
-            cList.innerHTML = contacts.map((r, i) =>
-                '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;' + (i < contacts.length-1 ? 'border-bottom:1px solid var(--border-light);' : '') + '">' +
-                '<div style="width:32px;height:32px;border-radius:50%;background:var(--border-light);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>' +
-                '<div style="flex:1;min-width:0;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.recipient || r.id) + '</div>' +
-                '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:10px;padding:4px 8px;border-radius:8px;border:1px solid #E5353540;background:#FDF0F0;color:#E53535;cursor:pointer;">Remove</button>' +
-                '</div>'
-            ).join('');
+            cList.innerHTML = contacts.map((r, i) => {
+                const raw  = r.recipient || r.id || '';
+                const name = raw.replace(/@\S+/g, '').trim()
+                               .replace(/\b\w/g, c => c.toUpperCase()).toLowerCase()
+                               .replace(/\b\w/g, c => c.toUpperCase()) || raw;
+                const initials = name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+                const hue = [...name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
+                const avatarBg = 'hsl(' + hue + ',40%,88%)';
+                const avatarColor = 'hsl(' + hue + ',40%,35%)';
+                const sep = i < contacts.length - 1 ? 'border-bottom:1px solid var(--border-light);' : '';
+                return '<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;' + sep + '">' +
+                    '<div style="width:34px;height:34px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:' + avatarColor + ';flex-shrink:0;">' + initials + '</div>' +
+                    '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-1);">' + esc(name) + '</div>' +
+                    '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">Always ask to categorize</div>' +
+                    '</div>' +
+                    '<button onclick="deleteRule(\'' + r.id + '\')" style="font-size:11px;padding:5px 10px;border-radius:8px;border:none;background:#FF3B3012;color:#FF3B30;cursor:pointer;font-weight:600;flex-shrink:0;">Remove</button>' +
+                    '</div>';
+            }).join('');
         }
     }
 }
