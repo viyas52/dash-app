@@ -900,6 +900,24 @@
             cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
             -webkit-tap-highlight-color: transparent;
         }
+        .cat-mgr-del-btn {
+            padding: 6px 12px; border-radius: 8px; background: #FF3B3015;
+            color: #FF3B30; border: 1px solid #FF3B3030; font-size: 12px; font-weight: 600;
+            cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .cat-color-swatches {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+        }
+        .cat-color-swatch {
+            width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: transform 0.15s;
+            -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+        }
+        .cat-color-swatch.selected { border-color: var(--text-1); transform: scale(1.15); }
+        .cat-color-section { margin-bottom: 10px; }
+        .cat-color-section-label { font-size: 11px; color: var(--text-3); margin-bottom: 6px; font-weight: 500; }
+        .cat-color-row { display: flex; align-items: center; gap: 8px; }
 
         /* ─── SETTINGS VIEW ─── */
         .settings-section { padding: 0 20px; }
@@ -1564,11 +1582,14 @@
             <div id="cat-manager-wrap"></div>
             <!-- Add new category -->
             <div class="label setting-group-label" style="margin-top:8px;">Add New Category</div>
-            <div class="card" style="margin-bottom:12px;">
-                <div style="display:flex;gap:8px;padding:4px 0;">
-                    <input class="cat-mgr-input" id="new-cat-name" placeholder="Category name…" style="flex:1;">
-                    <input class="cat-mgr-input" id="new-cat-color" type="color" value="#5856D6" style="width:48px;padding:4px;flex:none;">
-                    <button class="cat-mgr-add-btn" onclick="addNewCat()">+ Add</button>
+            <div class="card" style="margin-bottom:12px;padding:14px 16px;">
+                <input class="cat-mgr-input" id="new-cat-name" placeholder="Category name…" style="width:100%;margin-bottom:10px;box-sizing:border-box;">
+                <div class="cat-color-section-label">Pick a color</div>
+                <div class="cat-color-swatches" id="new-cat-swatches"></div>
+                <div class="cat-color-row">
+                    <input class="cat-mgr-input" id="new-cat-color" type="color" value="#5856D6" style="width:44px;height:36px;padding:2px 4px;flex:none;" oninput="syncNewCatColorFromPicker(this.value)">
+                    <span style="font-size:11px;color:var(--text-3);">Custom</span>
+                    <button class="cat-mgr-add-btn" style="margin-left:auto;" onclick="addNewCat()">+ Add</button>
                 </div>
             </div>
         </div>
@@ -1799,6 +1820,20 @@ async function toggleContactRule(id, makeContact) {
     loadRules();
 }
 
+const CAT_PRESET_COLORS = [
+    "#E53935","#F57C00","#FDD835","#43A047","#00897B",
+    "#1565C0","#5856D6","#C2185B","#6A1B9A","#0277BD",
+    "#FF6482","#00ACC1","#8D6E63","#546E7A","#8E8E93",
+    "#FF9500","#22C55E","#007AFF","#FF3B30","#34C759"
+];
+
+function colorSwatchesHtml(selectedColor, onclickFn) {
+    return CAT_PRESET_COLORS.map(c =>
+        '<div class="cat-color-swatch' + (c === selectedColor ? ' selected' : '') + '" ' +
+        'style="background:' + c + '" onclick="' + onclickFn + '(\'' + c + '\')" title="' + c + '"></div>'
+    ).join('');
+}
+
 function loadCatManager() {
     const el = document.getElementById('cat-manager-wrap');
     if (!el) return;
@@ -1806,8 +1841,9 @@ function loadCatManager() {
     SPENDING_CATS.forEach((cat, idx) => {
         const isExp = _catMgrExpanded === cat.name;
         const subCount = (cat.subs || []).length;
+        const safeName = cat.name.replace(/'/g, "\\'");
         html += '<div class="cat-mgr-card">' +
-            '<div class="cat-mgr-row" onclick="toggleCatMgr(\'' + cat.name + '\')">' +
+            '<div class="cat-mgr-row" onclick="toggleCatMgr(\'' + safeName + '\')">' +
             '<div class="cat-mgr-dot" style="background:' + cat.color + '"></div>' +
             '<div class="cat-mgr-name">' + cat.name + '</div>' +
             '<div class="cat-mgr-count">' + subCount + ' sub' + (subCount!==1?'s':'') + '</div>' +
@@ -1815,22 +1851,38 @@ function loadCatManager() {
             '</div>';
         if (isExp) {
             html += '<div class="cat-mgr-body">' +
+                // Sub-categories
                 '<div class="cat-mgr-subs">';
             (cat.subs || []).forEach(s => {
                 html += '<div class="cat-mgr-sub-chip" style="border-color:' + cat.color + '55;color:' + cat.color + ';background:' + (cat.bg||'#F5F5F5') + '">' +
-                    s + '<button class="cat-mgr-sub-del" onclick="catMgrDelSub(\'' + cat.name + '\',\'' + s.replace(/'/g,"\\'") + '\')" title="Remove">×</button>' +
+                    s + '<button class="cat-mgr-sub-del" onclick="catMgrDelSub(\'' + safeName + '\',\'' + s.replace(/'/g,"\\'") + '\')" title="Remove">×</button>' +
                     '</div>';
             });
             html += '</div>' +
-                '<div class="cat-mgr-add-row">' +
+                '<div class="cat-mgr-add-row" style="margin-bottom:14px;">' +
                 '<input class="cat-mgr-input" id="cat-mgr-inp-' + idx + '" placeholder="Add sub-category…" ' +
-                'onkeydown="if(event.key===\'Enter\')catMgrAddSub(\'' + cat.name + '\',' + idx + ')">' +
-                '<button class="cat-mgr-add-btn" onclick="catMgrAddSub(\'' + cat.name + '\',' + idx + ')">+ Add</button>' +
-                '</div></div>';
+                'onkeydown="if(event.key===\'Enter\')catMgrAddSub(\'' + safeName + '\',' + idx + ')">' +
+                '<button class="cat-mgr-add-btn" onclick="catMgrAddSub(\'' + safeName + '\',' + idx + ')">+ Add</button>' +
+                '</div>' +
+                // Color change section
+                '<div class="cat-color-section-label">Change color</div>' +
+                '<div class="cat-color-swatches">' + colorSwatchesHtml(cat.color, 'catMgrChangeColor_' + idx) + '</div>' +
+                '<div class="cat-color-row" style="margin-bottom:12px;">' +
+                '<input class="cat-mgr-input" id="cat-clr-' + idx + '" type="color" value="' + cat.color + '" ' +
+                'style="width:44px;height:36px;padding:2px 4px;flex:none;" oninput="catMgrChangeColor(\'' + safeName + '\',this.value,' + idx + ')">' +
+                '<span style="font-size:11px;color:var(--text-3);">Custom</span>' +
+                '</div>' +
+                // Delete category
+                '<button class="cat-mgr-del-btn" onclick="catMgrDeleteCat(\'' + safeName + '\')">Delete category</button>' +
+                '</div>';
         }
         html += '</div>';
     });
     el.innerHTML = html;
+    // Wire up per-cat swatch onclick handlers
+    SPENDING_CATS.forEach((cat, idx) => {
+        window['catMgrChangeColor_' + idx] = (color) => catMgrChangeColor(cat.name, color, idx);
+    });
 }
 
 function toggleCatMgr(name) {
@@ -1858,6 +1910,50 @@ function catMgrDelSub(catName, sub) {
     cat.subs = cat.subs.filter(s => s !== sub);
     loadCatManager();
     showToast('Removed');
+}
+
+function catMgrChangeColor(catName, color, idx) {
+    const cat = SPENDING_CATS.find(c => c.name === catName);
+    if (!cat) return;
+    cat.color = color;
+    cat.bg = color + '22';
+    // Update the color picker input without full re-render (avoid losing focus)
+    const inp = document.getElementById('cat-clr-' + idx);
+    if (inp) inp.value = color;
+    // Re-render swatches only to update selected state
+    const swatchWrap = inp && inp.parentElement && inp.parentElement.previousElementSibling;
+    if (swatchWrap && swatchWrap.classList.contains('cat-color-swatches')) {
+        swatchWrap.innerHTML = colorSwatchesHtml(color, 'catMgrChangeColor_' + idx);
+    }
+    // Update the dot in the row header
+    const card = inp && inp.closest('.cat-mgr-card');
+    if (card) { const dot = card.querySelector('.cat-mgr-dot'); if (dot) dot.style.background = color; }
+}
+
+function catMgrDeleteCat(catName) {
+    if (!confirm('Delete "' + catName + '"? This won\'t affect existing transactions.')) return;
+    const idx = SPENDING_CATS.findIndex(c => c.name === catName);
+    if (idx === -1) return;
+    SPENDING_CATS.splice(idx, 1);
+    if (_catMgrExpanded === catName) _catMgrExpanded = null;
+    loadCatManager();
+    showToast('Category deleted');
+}
+
+// Preset color selection for new category form
+let _newCatColor = '#5856D6';
+function selectNewCatSwatch(color) {
+    _newCatColor = color;
+    document.getElementById('new-cat-color').value = color;
+    document.getElementById('new-cat-swatches').innerHTML = colorSwatchesHtml(color, 'selectNewCatSwatch');
+}
+function syncNewCatColorFromPicker(color) {
+    _newCatColor = color;
+    document.getElementById('new-cat-swatches').innerHTML = colorSwatchesHtml(color, 'selectNewCatSwatch');
+}
+function initNewCatSwatches() {
+    const el = document.getElementById('new-cat-swatches');
+    if (el) el.innerHTML = colorSwatchesHtml(_newCatColor, 'selectNewCatSwatch');
 }
 
 // INVEST_TARGET now loaded via loadUserPrefs()
@@ -2047,6 +2143,7 @@ function initSettingsSliders() {
 /* ─── CAT EDITOR SHEET ─── */
 function openCatEditor() {
     loadCatManager();
+    initNewCatSwatches();
     const sheet = document.getElementById('cat-editor-sheet');
     sheet.classList.add('open');
 }
@@ -2057,11 +2154,10 @@ function closeCatEditor(e) {
 
 function addNewCat() {
     const nameEl = document.getElementById('new-cat-name');
-    const colorEl = document.getElementById('new-cat-color');
     const name = (nameEl.value || '').trim();
     if (!name) return;
     if (SPENDING_CATS.find(c => c.name === name)) { showToast('Already exists'); return; }
-    const color = colorEl.value || '#8E8E93';
+    const color = _newCatColor || '#8E8E93';
     SPENDING_CATS.push({ name, color, bg: color + '22', subs: [] });
     nameEl.value = '';
     loadCatManager();
