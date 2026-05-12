@@ -13,41 +13,34 @@
   .section-label { color: #555; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; margin: 56px 0 20px; text-align: center; }
   .screens-row { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
 
-  /* Phone frame */
   .phone { width: 375px; border-radius: 44px; overflow: hidden; background: #EDEBE6; box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05); flex-shrink: 0; }
   .phone-label { color: #555; font-size: 11px; font-family: 'Space Mono', monospace; text-align: center; margin-top: 14px; letter-spacing: 0.08em; }
   .phone-inner { min-height: 780px; position: relative; overflow: hidden; background: #EDEBE6; }
 
-  /* Design tokens — light only */
+  /* ── Live app tokens (light) ── */
   :root {
-    --bg: #EDEBE6;
-    --bg-card: #ffffff;
-    --border: #E0DDD7;
-    --border-light: #F0EDE8;
-    --text-1: #0D0D0D;
-    --text-2: #444;
-    --text-3: #888;
-    --green: #22C55E;
-    --red: #FF3B30;
-    --orange: #FF9500;
-    --blue: #007AFF;
-    --purple: #5856D6;
+    --bg: #EDEBE6; --bg-card: #ffffff; --bg-2: #F5F3EE;
+    --border: #E0DDD7; --border-light: #F0EDE8;
+    --text-1: #0D0D0D; --text-2: #444; --text-3: #888;
+    --green: #22C55E; --red: #FF3B30; --orange: #FF9500;
+    --blue: #007AFF; --purple: #5856D6; --gray: #8E8E93;
+    --radius: 16px; --radius-sm: 12px;
   }
 
-  /* Shared utils */
   .mono { font-family: 'Space Mono', monospace; }
   .lbl { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; }
-  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
-  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; background: transparent; border: 1px solid var(--border); color: var(--text-3); }
-  .chip.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
-  .dot6 { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); }
+
+  /* ── SVG icon helpers ── */
+  .ico { width: 20px; height: 20px; display: block; }
+  .ico-sm { width: 18px; height: 18px; display: block; }
 
   /* ── Top bar ── */
-  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; padding: 52px 20px 0; }
+  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 0; }
   .greeting { font-size: 11px; color: var(--text-3); font-weight: 400; font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
   .app-name { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; color: var(--text-1); }
-  .month-pill { display: flex; align-items: center; gap: 2px; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-1); margin-top: 4px; }
-  .month-arrow { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #D8D5CF; background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-1); }
+  .month-pill { display: flex; align-items: center; gap: 2px; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-1); }
+  .month-arrow { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #D8D5CF; background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-1); flex-shrink: 0; }
   .month-label { padding: 6px 4px; white-space: nowrap; }
   .gear-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
 
@@ -67,30 +60,29 @@
   .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px 20px 0; }
   .stat-card { padding: 14px 16px; }
   .stat-val { font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace; margin-top: 6px; }
-  .stat-val.inc { color: var(--green); }
-  .stat-val.inv { color: var(--blue); }
-  .stat-val.sav { color: var(--purple); }
+  .stat-val.inc { color: var(--green); } .stat-val.inv { color: var(--blue); } .stat-val.sav { color: var(--purple); }
   .stat-progress { height: 3px; background: var(--border-light); border-radius: 2px; margin-top: 8px; overflow: hidden; }
   .stat-meta { font-size: 10px; color: var(--text-3); margin-top: 4px; font-family: 'Space Mono', monospace; }
 
   /* ── Uncat banner ── */
-  .notif-strip { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin: 16px 20px 0; display: flex; align-items: center; gap: 10px; }
+  .notif-strip { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; margin: 16px 20px 0; display: flex; align-items: center; gap: 10px; }
   .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
   .notif-txt { font-size: 13px; font-weight: 500; flex: 1; color: var(--text-1); }
   .notif-count { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; background: var(--orange); color: #fff; border-radius: 10px; padding: 2px 8px; }
 
-  /* ── Spending badges ── */
+  /* ── Spending badges + ticker ── */
   .badge-section { padding: 0 20px; margin-top: 20px; }
   .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
   .tag-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 11px; color: var(--text-2); font-weight: 500; }
-
-  /* ── Insights ticker ── */
+  .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .insights-ticker { margin: 12px 20px 0; display: flex; align-items: center; gap: 8px; }
   .insights-ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); opacity: 0.5; }
   .insights-ticker-text { font-size: 12px; color: var(--text-3); font-style: italic; }
 
-  /* ── Account filter (bank chips) ── */
-  .acct-filter { display: flex; gap: 6px; padding: 0 20px 4px; margin-top: 16px; overflow-x: auto; scrollbar-width: none; }
+  /* ── Account filter chips ── */
+  .acct-filter { display: flex; gap: 6px; padding: 0 20px 4px; }
+  .acct-chip { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); font-size: 11px; font-weight: 600; background: transparent; color: var(--text-3); font-family: 'DM Sans', sans-serif; }
+  .acct-chip.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
 
   /* ── Transactions ── */
   .sec-head { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin: 20px 0 10px; }
@@ -100,10 +92,9 @@
   .txn-card { padding: 0 16px; }
   .date-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 4px; }
   .date-txt { font-size: 10px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Space Mono', monospace; }
-  .date-totals { font-size: 11px; font-weight: 500; }
   .txn-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
   .txn-row:last-child { border-bottom: none; }
-  .txn-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .txn-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .txn-mid { flex: 1; min-width: 0; }
   .txn-name { font-size: 14px; font-weight: 500; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .txn-cat { font-size: 11px; color: var(--text-3); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
@@ -115,22 +106,21 @@
 
   /* ── FAB ── */
   .fab { position: absolute; bottom: 56px; right: 20px; width: 52px; height: 52px; border-radius: 16px; background: var(--text-1); color: var(--bg-card); border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
-  .fab svg { width: 22px; height: 22px; }
 
-  /* ── Swipe dots (actual bottom nav) ── */
+  /* ── Swipe dots ── */
   .swipe-dots-bar { position: absolute; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: center; padding: 10px 0 20px; pointer-events: none; }
   .swipe-dots { display: flex; gap: 5px; align-items: center; }
   .swipe-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); opacity: 0.4; }
   .swipe-dot.active { width: 16px; border-radius: 3px; background: var(--text-1); opacity: 1; }
 
   /* ── Auth ── */
-  .auth-wrap { min-height: 780px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 30px; }
-  .auth-brand { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; text-align: center; }
+  .auth-wrap { min-height: 780px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 30px; text-align: center; }
+  .auth-brand { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
   .auth-title { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; color: var(--text-1); }
-  .auth-sub { font-size: 13px; color: var(--text-3); margin-bottom: 40px; text-align: center; }
+  .auth-sub { font-size: 13px; color: var(--text-3); margin-bottom: 40px; }
   .auth-form { width: 100%; max-width: 320px; text-align: left; }
   .auth-lbl { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; display: block; margin-bottom: 6px; }
-  .auth-inp { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-weight: 500; color: var(--text-1); background: var(--bg-card); font-family: 'DM Sans', sans-serif; margin-bottom: 16px; }
+  .auth-inp { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-weight: 500; color: var(--text-1); background: var(--bg-card); font-family: 'DM Sans', sans-serif; margin-bottom: 16px; outline: none; }
   .auth-btn { width: 100%; padding: 14px; border-radius: 12px; background: var(--text-1); color: var(--bg); border: none; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; margin-bottom: 12px; }
   .auth-btn-outline { width: 100%; padding: 14px; border-radius: 12px; background: transparent; color: var(--text-2); border: 1px solid var(--border); font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
@@ -144,104 +134,109 @@
   .pin-dot.filled { background: var(--text-1); border-color: var(--text-1); }
   .pin-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
   .pin-key { width: 72px; height: 72px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); font-size: 24px; font-weight: 500; color: var(--text-1); display: flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; }
-  .pin-fn { width: 72px; height: 72px; border-radius: 50%; background: transparent; border: none; font-size: 11px; font-weight: 600; color: var(--text-3); display: flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; }
+  .pin-fn { width: 72px; height: 72px; border-radius: 50%; background: transparent; border: none; font-size: 11px; font-weight: 600; color: var(--text-3); display: flex; align-items: center; justify-content: center; }
   .bio-btn { margin-top: 20px; padding: 10px 24px; border-radius: 12px; border: 1px solid var(--border); background: transparent; font-size: 13px; color: var(--text-2); font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 8px; }
 
-  /* ── Stats screen ── */
-  .stats-title { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); margin-bottom: 16px; padding: 52px 20px 0; }
-  .period-tabs { display: flex; gap: 6px; padding: 0 20px 12px; }
-  .period-btn { flex: 1; padding: 7px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 11px; font-weight: 600; color: var(--text-3); font-family: 'DM Sans', sans-serif; }
+  /* ── Analytics ── */
+  .stats-title { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); margin-bottom: 16px; }
+  .period-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .period-btn { flex: 1; padding: 9px 4px; border-radius: 10px; border: 1px solid var(--border); background: transparent; font-size: 11px; font-weight: 600; color: var(--text-3); font-family: 'DM Sans', sans-serif; }
   .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
-  .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin: 0 20px 16px; padding: 14px 16px; }
-  .chart-badge-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
   .chart-toggle { display: flex; gap: 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .chart-toggle-btn { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--text-3); }
   .chart-toggle-btn.active { background: var(--text-1); color: #fff; }
-  /* ── Financial Summary ── */
-  .fin-tile { background: #F5F3EE; border-radius: 12px; padding: 10px 6px; text-align: center; min-width: 0; }
+  .fin-tile { background: var(--bg-2); border-radius: 12px; padding: 10px 6px; text-align: center; min-width: 0; }
   .fin-tile-lbl { font-size: 9px; font-weight: 600; letter-spacing: .04em; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
   .fin-tile-val { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; line-height: 1.3; }
 
-  /* ── Uncat screen ── */
-  .uncat-head { display: flex; align-items: center; gap: 12px; padding: 52px 20px 0; }
-  .back-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
-  .uncat-title { font-size: 20px; font-weight: 600; color: var(--text-1); flex: 1; }
-  .uncat-pill { background: #FF3B3015; color: var(--red); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
-  .uncat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin: 0 20px 12px; padding: 14px 16px; }
-  .ucard-name { font-size: 15px; font-weight: 700; color: var(--text-1); }
-  .ucard-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-  .ucard-amt { font-size: 16px; font-weight: 700; }
-  .type-toggle { display: flex; gap: 6px; margin: 10px 0; }
-  .type-btn { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 12px; font-weight: 600; color: var(--text-3); font-family: 'DM Sans', sans-serif; }
-  .type-btn.on { background: var(--text-1); color: #fff; border-color: var(--text-1); }
-  /* Category grid — 4-col square tiles with SVG icons */
-  .cat-grid-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 12px; }
-  .cat-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 4px 8px; border: 1px solid var(--border); border-radius: 12px; background: #FAFAF8; position: relative; }
+  /* ── Uncategorized ── */
+  .uncat-page { padding: 0 20px; }
+  .uncat-page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .back-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; color: var(--text-1); flex-shrink: 0; }
+  .uncat-page-title { font-size: 18px; font-weight: 600; flex: 1; }
+  .uncat-count-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; font-family: 'Space Mono', monospace; background: var(--orange); color: #fff; }
+  .uncat-hint { font-size: 12px; color: var(--text-3); margin-bottom: 16px; line-height: 1.5; }
+  .uncat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; margin-bottom: 12px; }
+  .uncat-header { padding: 16px 18px 12px; border-bottom: 1px solid var(--border-light); }
+  .uncat-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .uncat-name { font-size: 15px; font-weight: 500; }
+  .uncat-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+  .uncat-amt { font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace; }
+  .uncat-type-label { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 2px; }
+  /* Segmented type toggle (no gaps, shared border) */
+  .type-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 14px 18px 0; }
+  .type-btn { flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600; background: transparent; color: var(--text-3); border: none; font-family: 'DM Sans', sans-serif; }
+  .type-btn.active { background: var(--text-1); color: #fff; }
+  /* 4-col icon tile grid */
+  .cat-grid { padding: 14px 18px 0; }
+  .cat-grid-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .cat-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 4px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #FAFAF8; position: relative; }
   .cat-btn.sel { border-width: 2px; }
-  .cat-btn .sel-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; }
+  .sel-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; }
   .cat-label { font-size: 9px; font-weight: 600; color: var(--text-2); text-align: center; letter-spacing: 0.03em; line-height: 1.2; }
-  .rule-pill { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-3); background: var(--bg); font-family: 'DM Sans', sans-serif; }
+  /* Action pills */
+  .rule-pill { font-size: 11px; font-weight: 500; letter-spacing: 0.03em; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg); color: var(--text-3); font-family: 'DM Sans', sans-serif; }
   .confirm-btn { padding: 9px 16px; background: var(--text-1); color: #fff; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; margin-left: auto; }
 
+  /* ── Add/Edit Modal ── */
+  .modal { background: var(--bg-card); border-radius: 20px 20px 0 0; width: 100%; padding: 24px 20px 40px; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-head h2 { font-size: 18px; font-weight: 600; color: var(--text-1); }
+  .modal-close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--text-2); }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 10px; font-weight: 500; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Space Mono', monospace; }
+  .form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--text-1); background: var(--bg-card); font-family: 'DM Sans', sans-serif; min-height: 44px; outline: none; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .type-row { display: flex; gap: 6px; }
+  .type-box { flex: 1; padding: 9px 4px; border-radius: 10px; border: 1px solid var(--border); background: transparent; font-size: 11px; font-weight: 600; color: var(--text-3); font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+  .type-box.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+  .bank-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bank-chip { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 12px; font-weight: 500; color: var(--text-2); font-family: 'DM Sans', sans-serif; }
+  .bank-chip.active { border-width: 2px; }
+  .bank-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .btn { display: flex; align-items: center; justify-content: center; padding: 13px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; border: none; width: 100%; font-family: 'DM Sans', sans-serif; min-height: 44px; }
+  .btn-primary { background: var(--text-1); color: var(--bg); }
+
   /* ── Settings sheet ── */
-  .settings-sheet { background: var(--bg-card); border-radius: 24px 24px 0 0; min-height: 640px; }
-  .settings-head { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-  .settings-body { padding: 0 20px 40px; overflow-y: auto; }
-  .setting-group-lbl { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; display: block; margin: 16px 0 8px; }
-  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid var(--border-light); }
+  .sheet-panel { background: var(--bg-card); border-radius: 24px 24px 0 0; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; padding: 12px 20px 0; }
+  .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 16px; }
+  .settings-section { padding-top: 4px; padding-bottom: 40px; }
+  .setting-group-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; margin: 16px 0 8px; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
   .setting-row:last-child { border-bottom: none; }
-  .setting-lbl { font-size: 14px; font-weight: 500; color: var(--text-1); }
-  .setting-desc { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .setting-label { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .setting-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .slider-badge { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text-1); }
   .toggle { width: 44px; height: 26px; border-radius: 13px; background: #D8D5CF; position: relative; flex-shrink: 0; }
   .toggle.on { background: var(--text-1); }
-  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
   .toggle.on::after { left: 21px; }
+  .cat-edit-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; margin-bottom: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-weight: 500; color: var(--text-1); font-family: 'DM Sans', sans-serif; }
 
   /* ── Rules & Contacts ── */
   .rule-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--border-light); }
   .rule-row:last-child { border-bottom: none; }
-  .rule-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
-  .rule-name { font-size: 13px; font-weight: 600; color: var(--text-1); }
+  .rule-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .rule-name { font-size: 13px; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rule-sub { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
   .type-badge { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 20px; }
   .del-btn { font-size: 11px; padding: 5px 10px; border-radius: 8px; border: none; background: #FF3B3012; color: var(--red); font-weight: 600; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
   .contact-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 
-  /* ── Category Manager ── */
+  /* ── Category Editor ── */
   .cat-mgr-row { display: flex; align-items: center; padding: 13px 14px; gap: 10px; }
   .cat-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .cat-expanded { border-top: 1px solid var(--border); padding: 12px 14px; }
   .color-swatch { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
   .color-swatch.sel { border: 2px solid var(--text-1); transform: scale(1.15); }
-
-  /* ── Add modal ── */
-  .modal-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 18px; }
-  .modal-title { font-size: 16px; font-weight: 700; color: var(--text-1); margin-bottom: 16px; }
-  .modal-inp { width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-weight: 500; color: var(--text-1); background: var(--bg); font-family: 'DM Sans', sans-serif; margin-bottom: 10px; }
-
-  /* ── Linked account cards ── */
-  .acct-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 8px; overflow: hidden; }
-  .acct-card-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
-  .acct-bank-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
-  .acct-name { font-size: 14px; font-weight: 500; color: var(--text-1); }
-  .acct-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-  .acct-live { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); font-weight: 500; }
-  .acct-chevron { width: 16px; height: 16px; color: var(--text-3); }
-
-  /* ── Account expand (balance) ── */
-  .acct-expand { border-top: 1px solid var(--border-light); padding: 14px 16px 16px; }
-  .acct-bal-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); font-family: 'Space Mono', monospace; margin-bottom: 8px; }
-  .acct-bal-display { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; color: var(--text-1); letter-spacing: -0.5px; }
-  .acct-edit-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--text-2); }
-  .acct-updated { font-size: 10px; color: var(--text-3); margin-top: 6px; font-family: 'Space Mono', monospace; }
 </style>
 </head>
 <body>
 
-<div class="page-title">My Finance · Design Reference · v5.1 · Light Mode</div>
+<div class="page-title">My Finance · Design Reference · v5.1 · Light</div>
 
-<!-- ═══════════ AUTH ═══════════ -->
-<div class="section-label">Auth Screens</div>
+<!-- ═══ AUTH ═══ -->
+<div class="section-label">Auth</div>
 <div class="screens-row">
 
   <!-- Login -->
@@ -274,47 +269,18 @@
     <div class="phone-label">Login</div>
   </div>
 
-  <!-- Sign up -->
-  <div>
-    <div class="phone"><div class="phone-inner">
-      <div class="auth-wrap">
-        <div class="auth-brand">Create your account</div>
-        <div class="auth-title">My Finance</div>
-        <div class="auth-sub">Your money, all in one place.</div>
-        <div class="auth-form">
-          <label class="auth-lbl">Name</label>
-          <input class="auth-inp" placeholder="Viyas" readonly>
-          <label class="auth-lbl">Username</label>
-          <input class="auth-inp" placeholder="viyas" readonly>
-          <label class="auth-lbl">Email</label>
-          <input class="auth-inp" placeholder="your@email.com" readonly>
-          <label class="auth-lbl">Password</label>
-          <input class="auth-inp" placeholder="At least 6 characters" readonly>
-          <button class="auth-btn">Create Account</button>
-          <div style="font-size:13px;color:var(--text-3);margin-top:16px;text-align:center;">Already have an account? <strong style="color:var(--text-1);">Log in</strong></div>
-        </div>
-      </div>
-    </div></div>
-    <div class="phone-label">Sign Up</div>
-  </div>
-
   <!-- PIN Lock -->
   <div>
     <div class="phone"><div class="phone-inner">
       <div class="pin-wrap">
         <div style="font-size:18px;font-weight:600;color:var(--text-1);">Welcome back, Viyas</div>
         <div style="font-size:13px;color:var(--text-3);margin-top:4px;margin-bottom:24px;">Enter your PIN to continue</div>
-        <div class="pin-dots">
-          <div class="pin-dot filled"></div><div class="pin-dot filled"></div>
-          <div class="pin-dot"></div><div class="pin-dot"></div>
-        </div>
+        <div class="pin-dots"><div class="pin-dot filled"></div><div class="pin-dot filled"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
         <div class="pin-pad">
           <div class="pin-key">1</div><div class="pin-key">2</div><div class="pin-key">3</div>
           <div class="pin-key">4</div><div class="pin-key">5</div><div class="pin-key">6</div>
           <div class="pin-key">7</div><div class="pin-key">8</div><div class="pin-key">9</div>
-          <div class="pin-fn"></div>
-          <div class="pin-key">0</div>
-          <div class="pin-fn" style="font-size:20px;">⌫</div>
+          <div class="pin-fn"></div><div class="pin-key">0</div><div class="pin-fn" style="font-size:20px;">⌫</div>
         </div>
         <button class="bio-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 11c0-1.1.9-2 2-2s2 .9 2 2v1"/><path d="M8 11V9a4 4 0 018 0v2"/><path d="M5 11V8a7 7 0 0114 0v3"/></svg>
@@ -324,542 +290,319 @@
     </div></div>
     <div class="phone-label">PIN Lock</div>
   </div>
-
 </div>
 
-<!-- ═══════════ HOME ═══════════ -->
-<div class="section-label">Home Screen</div>
+<!-- ═══ HOME ═══ -->
+<div class="section-label">Home</div>
 <div class="screens-row">
-
   <div>
     <div class="phone"><div class="phone-inner" style="padding-bottom:56px;">
-
-      <!-- Top bar -->
       <div class="top-bar">
-        <div>
-          <div class="greeting">good morning,</div>
-          <div class="app-name">Viyas</div>
-        </div>
+        <div><div class="greeting">good morning,</div><div class="app-name">Viyas</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-top:4px;">
           <div class="month-pill">
             <div class="month-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></div>
             <div class="month-label">MAY 2026</div>
             <div class="month-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></div>
           </div>
-          <div class="gear-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          </div>
+          <div class="gear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
         </div>
       </div>
-
-      <!-- Hero + Donut -->
       <div class="hero">
         <div class="hero-label">Spent this month</div>
         <div class="hero-amount">₹18,450</div>
         <div class="hero-sub">of ₹25,000 · <span class="g">₹6,550 left</span></div>
         <div class="donut-wrap">
-          <svg viewBox="0 0 160 160">
-            <circle class="donut-track" cx="80" cy="80" r="66" fill="none" stroke="#E8E6E1" stroke-width="12"/>
-            <circle cx="80" cy="80" r="66" fill="none" stroke="#0D0D0D" stroke-width="12" stroke-linecap="round"
-              stroke-dasharray="414.7" stroke-dashoffset="108"/>
-          </svg>
-          <div class="donut-center">
-            <div class="donut-pct">74%</div>
-            <div class="donut-lbl">of budget</div>
-          </div>
+          <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="66" fill="none" stroke="#E8E6E1" stroke-width="12"/><circle cx="80" cy="80" r="66" fill="none" stroke="#0D0D0D" stroke-width="12" stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="108"/></svg>
+          <div class="donut-center"><div class="donut-pct">74%</div><div class="donut-lbl">of budget</div></div>
         </div>
       </div>
-
-      <!-- 2×2 Stat row -->
       <div class="stat-row">
-        <div class="card stat-card">
-          <div class="lbl">Income</div>
-          <div class="stat-val inc">₹72,000</div>
+        <div class="card stat-card"><div class="lbl">Income</div><div class="stat-val inc">₹72,000</div></div>
+        <div class="card stat-card"><div class="lbl">Invested</div><div class="stat-val inv">₹7,000</div><div class="stat-progress"><div style="width:58%;height:100%;border-radius:2px;background:var(--blue);"></div></div><div class="stat-meta">7k of 12k goal</div></div>
+        <div class="card stat-card"><div class="lbl">Spent</div><div class="stat-val">₹18,450</div></div>
+        <div class="card stat-card"><div class="lbl">Net saved</div><div class="stat-val sav">₹46,550</div></div>
+      </div>
+      <div class="notif-strip"><div class="notif-dot"></div><div class="notif-txt">3 uncategorized</div><div class="notif-count">3</div></div>
+      <div class="badge-section"><div class="lbl">Spending</div><div class="badge-row"><div class="tag-pill"><div class="tag-dot" style="background:#E53935;"></div>Food ₹8,340</div><div class="tag-pill"><div class="tag-dot" style="background:#1565C0;"></div>Transport ₹3,800</div><div class="tag-pill"><div class="tag-dot" style="background:#F57C00;"></div>Bill ₹3,200</div></div></div>
+      <div class="insights-ticker"><div class="insights-ticker-dot"></div><div class="insights-ticker-text">"Food spending up 34% vs last month"</div></div>
+      <div class="sec-head"><div class="sec-title">Recent</div><div class="sec-link">12 transactions</div></div>
+      <div class="acct-filter" style="margin-bottom:10px;"><div class="acct-chip active">All</div><div class="acct-chip" style="display:flex;align-items:center;gap:5px;"><div class="tag-dot" style="background:#FF6B00;"></div>ICICI</div><div class="acct-chip" style="display:flex;align-items:center;gap:5px;"><div class="tag-dot" style="background:#004C8F;"></div>HDFC</div><div class="acct-chip" style="display:flex;align-items:center;gap:5px;"><div class="tag-dot" style="background:#7B3F9E;"></div>CUB</div></div>
+      <div class="txn-section"><div class="card txn-card">
+        <div class="date-row"><div class="date-txt">2 May, Fri</div><div style="font-size:11px;font-weight:500;"><span style="color:var(--red);">-₹342</span></div></div>
+        <div class="txn-row">
+          <div class="txn-icon" style="background:#FDECEA;color:#E53935;"><svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg></div>
+          <div class="txn-mid"><div class="txn-name">Swiggy</div><div class="txn-cat"><div class="cat-dot" style="background:#E53935;"></div>Food</div></div>
+          <div class="txn-right"><div class="txn-amt">-₹342</div><div class="txn-date">ICICI</div></div>
         </div>
-        <div class="card stat-card">
-          <div class="lbl">Invested</div>
-          <div class="stat-val inv">₹7,000</div>
-          <div class="stat-progress"><div style="width:58%;height:100%;border-radius:2px;background:var(--blue);"></div></div>
-          <div class="stat-meta">7k of 12k goal</div>
+        <div class="date-row" style="border-top:1px solid var(--border-light);margin-top:4px;"><div class="date-txt">1 May, Thu</div><div style="font-size:11px;font-weight:500;"><span style="color:var(--red);">-₹189</span><span style="color:var(--text-3);margin:0 4px;">·</span><span style="color:var(--green);">+₹72,000</span></div></div>
+        <div class="txn-row">
+          <div class="txn-icon" style="background:#E8F5E9;color:#22C55E;"><svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="15" x2="10" y2="5"/><polyline points="6,9 10,5 14,9"/><line x1="5" y1="15" x2="15" y2="15"/></svg></div>
+          <div class="txn-mid"><div class="txn-name">Salary</div><div class="txn-cat"><div class="cat-dot" style="background:#22C55E;"></div>Income</div></div>
+          <div class="txn-right"><div class="txn-amt cr">+₹72,000</div><div class="txn-date">ICICI</div></div>
         </div>
-        <div class="card stat-card">
-          <div class="lbl">Spent</div>
-          <div class="stat-val">₹18,450</div>
+        <div class="txn-row">
+          <div class="txn-icon" style="background:#E3F2FD;color:#1565C0;"><svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg></div>
+          <div class="txn-mid"><div class="txn-name">Ola</div><div class="txn-cat"><div class="cat-dot" style="background:#1565C0;"></div>Transport</div></div>
+          <div class="txn-right"><div class="txn-amt">-₹189</div><div class="txn-date">HDFC</div></div>
         </div>
-        <div class="card stat-card">
-          <div class="lbl">Net saved</div>
-          <div class="stat-val sav">₹46,550</div>
-        </div>
-      </div>
-
-      <!-- Uncat banner -->
-      <div class="notif-strip">
-        <div class="notif-dot"></div>
-        <div class="notif-txt">3 uncategorized</div>
-        <div class="notif-count">3</div>
-      </div>
-
-      <!-- Spending badges -->
-      <div class="badge-section">
-        <div class="lbl">Spending</div>
-        <div class="badge-row">
-          <div class="tag-pill"><div class="dot6" style="background:#E53935;"></div>Food ₹8,340</div>
-          <div class="tag-pill"><div class="dot6" style="background:#1565C0;"></div>Transport ₹3,800</div>
-          <div class="tag-pill"><div class="dot6" style="background:#F57C00;"></div>Bill ₹3,200</div>
-        </div>
-      </div>
-
-      <!-- Insights ticker -->
-      <div class="insights-ticker">
-        <div class="insights-ticker-dot"></div>
-        <div class="insights-ticker-text">"Food spending up 34% vs last month 🍕"</div>
-      </div>
-
-      <!-- Transactions -->
-      <div class="sec-head">
-        <div class="sec-title">Recent</div>
-        <div class="sec-link">12 transactions</div>
-      </div>
-      <div class="acct-filter">
-        <div class="chip active">All</div>
-        <div class="chip"><div class="dot6" style="background:#FF6B00;"></div>ICICI</div>
-        <div class="chip"><div class="dot6" style="background:#004C8F;"></div>HDFC</div>
-        <div class="chip"><div class="dot6" style="background:#7B3F9E;"></div>CUB</div>
-      </div>
-      <div class="txn-section" style="margin-top:10px;">
-        <div class="card txn-card">
-          <!-- Date group 1 -->
-          <div class="date-row">
-            <div class="date-txt">2 May, Fri</div>
-            <div class="date-totals"><span style="color:var(--red);">-₹342</span></div>
-          </div>
-          <div class="txn-row">
-            <div class="txn-icon" style="background:#FDECEA;"><span>🍕</span></div>
-            <div class="txn-mid"><div class="txn-name">Swiggy</div><div class="txn-cat"><div class="cat-dot" style="background:#E53935;"></div>Food</div></div>
-            <div class="txn-right"><div class="txn-amt">-₹342</div><div class="txn-date">ICICI</div></div>
-          </div>
-          <!-- Date group 2 -->
-          <div class="date-row" style="border-top:1px solid var(--border-light);margin-top:4px;">
-            <div class="date-txt">1 May, Thu</div>
-            <div class="date-totals"><span style="color:var(--red);">-₹189</span><span style="color:var(--text-3);margin:0 4px;">·</span><span style="color:var(--green);">+₹72,000</span></div>
-          </div>
-          <div class="txn-row">
-            <div class="txn-icon" style="background:#E8F5E9;"><span>💰</span></div>
-            <div class="txn-mid"><div class="txn-name">Salary</div><div class="txn-cat"><div class="cat-dot" style="background:#22C55E;"></div>Income</div></div>
-            <div class="txn-right"><div class="txn-amt cr">+₹72,000</div><div class="txn-date">ICICI</div></div>
-          </div>
-          <div class="txn-row">
-            <div class="txn-icon" style="background:#E3F2FD;"><span>🚗</span></div>
-            <div class="txn-mid"><div class="txn-name">Ola</div><div class="txn-cat"><div class="cat-dot" style="background:#1565C0;"></div>Transport</div></div>
-            <div class="txn-right"><div class="txn-amt">-₹189</div><div class="txn-date">HDFC</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FAB -->
-      <div class="fab">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-
-      <!-- Swipe dots -->
-      <div class="swipe-dots-bar">
-        <div class="swipe-dots">
-          <div class="swipe-dot active"></div>
-          <div class="swipe-dot"></div>
-        </div>
-      </div>
-
+      </div></div>
+      <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+      <div class="swipe-dots-bar"><div class="swipe-dots"><div class="swipe-dot active"></div><div class="swipe-dot"></div></div></div>
     </div></div>
     <div class="phone-label">Home</div>
   </div>
-
 </div>
 
-<!-- ═══════════ STATS / ANALYTICS ═══════════ -->
-<div class="section-label">Analytics Screen (swipe → from Home)</div>
+<!-- ═══ ANALYTICS ═══ -->
+<div class="section-label">Analytics (swipe →)</div>
 <div class="screens-row">
-
   <div>
     <div class="phone"><div class="phone-inner" style="padding-bottom:56px;">
-
-      <div class="stats-title">Analytics</div>
-
-      <!-- Period tabs: 4 tabs -->
-      <div class="period-tabs">
-        <button class="period-btn active">Daily</button>
-        <button class="period-btn">Weekly</button>
-        <button class="period-btn">Monthly</button>
-        <button class="period-btn">Annual</button>
-      </div>
-
-      <!-- Line chart card -->
-      <div class="chart-card">
-        <div class="chart-badge-row">
-          <div style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text-1);">₹1,840</div>
-          <div class="lbl">Last 7 Days</div>
+      <div style="padding:52px 20px 0;">
+        <div class="stats-title">Analytics</div>
+        <div class="period-tabs"><button class="period-btn active">Daily</button><button class="period-btn">Weekly</button><button class="period-btn">Monthly</button><button class="period-btn">Annual</button></div>
+        <!-- Line chart card -->
+        <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><div style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text-1);">₹1,840</div><div class="lbl">Last 7 Days</div></div>
+          <svg viewBox="0 0 288 80" style="width:100%;height:80px;overflow:visible;"><defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0D0D0D" stop-opacity="0.15"/><stop offset="100%" stop-color="#0D0D0D" stop-opacity="0"/></linearGradient></defs><path d="M16 60C42 55 42 40 68 40C94 40 94 22 120 22C146 22 146 50 172 50C198 50 198 30 224 30C250 30 250 12 272 12L272 80L16 80Z" fill="url(#g1)"/><path d="M16 60C42 55 42 40 68 40C94 40 94 22 120 22C146 22 146 50 172 50C198 50 198 30 224 30C250 30 250 12 272 12" fill="none" stroke="#0D0D0D" stroke-width="2" stroke-linecap="round"/><line x1="272" y1="12" x2="272" y2="80" stroke="#0D0D0D" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/><circle cx="16" cy="60" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/><circle cx="68" cy="40" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/><circle cx="120" cy="22" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/><circle cx="172" cy="50" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/><circle cx="224" cy="30" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/><circle cx="272" cy="12" r="5" fill="#0D0D0D" stroke="white" stroke-width="2"/></svg>
+          <div style="display:flex;justify-content:space-between;padding:6px 0 0;"><span class="mono" style="font-size:9px;color:var(--text-3);">5</span><span class="mono" style="font-size:9px;color:var(--text-3);">6</span><span class="mono" style="font-size:9px;color:var(--text-3);">7</span><span class="mono" style="font-size:9px;color:var(--text-3);">8</span><span class="mono" style="font-size:9px;color:var(--text-3);">9</span><span class="mono" style="font-size:9px;color:var(--text-1);font-weight:700;">11 May</span></div>
         </div>
-        <svg viewBox="0 0 288 80" style="width:100%;height:80px;overflow:visible;">
-          <defs>
-            <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#0D0D0D" stop-opacity="0.15"/>
-              <stop offset="100%" stop-color="#0D0D0D" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <path d="M 16 60 C 42 55 42 40 68 40 C 94 40 94 22 120 22 C 146 22 146 50 172 50 C 198 50 198 30 224 30 C 250 30 250 12 272 12 L 272 80 L 16 80 Z" fill="url(#g1)"/>
-          <path d="M 16 60 C 42 55 42 40 68 40 C 94 40 94 22 120 22 C 146 22 146 50 172 50 C 198 50 198 30 224 30 C 250 30 250 12 272 12" fill="none" stroke="#0D0D0D" stroke-width="2" stroke-linecap="round"/>
-          <line x1="272" y1="12" x2="272" y2="80" stroke="#0D0D0D" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
-          <circle cx="16" cy="60" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
-          <circle cx="68" cy="40" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
-          <circle cx="120" cy="22" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
-          <circle cx="172" cy="50" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
-          <circle cx="224" cy="30" r="3" fill="#0D0D0D" stroke="white" stroke-width="1.5"/>
-          <circle cx="272" cy="12" r="5" fill="#0D0D0D" stroke="white" stroke-width="2"/>
-        </svg>
-        <div style="display:flex;justify-content:space-between;padding:6px 0 2px;">
-          <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">5</span>
-          <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">6</span>
-          <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">7</span>
-          <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">8</span>
-          <span style="font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">9</span>
-          <span style="font-size:9px;color:var(--text-1);font-family:'Space Mono',monospace;font-weight:700;">11 May</span>
-        </div>
-      </div>
-
-      <!-- Category breakdown with bar/pie toggle -->
-      <div class="chart-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div class="lbl">By Category</div>
-          <div class="chart-toggle">
-            <div class="chart-toggle-btn active">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="14" height="14"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
-            </div>
-            <div class="chart-toggle-btn">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="14" height="14"><circle cx="8" cy="8" r="6"/><path d="M8 8V2"/><path d="M8 8l5.2 3"/></svg>
-            </div>
+        <!-- Category breakdown with bar/pie toggle -->
+        <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="lbl">By Category</div>
+            <div class="chart-toggle"><div class="chart-toggle-btn active"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="14" height="14"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg></div><div class="chart-toggle-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="14" height="14"><circle cx="8" cy="8" r="6"/><path d="M8 8V2"/><path d="M8 8l5.2 3"/></svg></div></div>
           </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="display:flex;align-items:center;gap:8px;"><div class="tag-dot" style="background:#E53935;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Food</span></div><div style="display:flex;align-items:center;gap:10px;"><div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:45%;height:100%;background:#E53935;border-radius:2px;"></div></div><span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹8,340</span></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="display:flex;align-items:center;gap:8px;"><div class="tag-dot" style="background:#1565C0;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Transport</span></div><div style="display:flex;align-items:center;gap:10px;"><div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:22%;height:100%;background:#1565C0;border-radius:2px;"></div></div><span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹3,800</span></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:8px;"><div class="tag-dot" style="background:#F57C00;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Bill</span></div><div style="display:flex;align-items:center;gap:10px;"><div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:18%;height:100%;background:#F57C00;border-radius:2px;"></div></div><span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹3,200</span></div></div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div style="display:flex;align-items:center;gap:8px;"><div class="dot6" style="background:#E53935;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Food</span></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:45%;height:100%;background:#E53935;border-radius:2px;"></div></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹8,340</span>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div style="display:flex;align-items:center;gap:8px;"><div class="dot6" style="background:#1565C0;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Transport</span></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:22%;height:100%;background:#1565C0;border-radius:2px;"></div></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹3,800</span>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:8px;"><div class="dot6" style="background:#F57C00;"></div><span style="font-size:13px;color:var(--text-1);font-weight:500;">Bill</span></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:70px;height:4px;border-radius:2px;background:var(--border);"><div style="width:18%;height:100%;background:#F57C00;border-radius:2px;"></div></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text-1);min-width:50px;text-align:right;">₹3,200</span>
+        <!-- Financial Summary (expanded) -->
+        <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div class="lbl">Financial Summary</div><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="transform:rotate(180deg);"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <div style="margin-top:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;"><div class="fin-tile"><div class="fin-tile-lbl">Income</div><div class="fin-tile-val" style="color:#2E7D32;">₹72,000</div></div><div class="fin-tile"><div class="fin-tile-lbl">Expense</div><div class="fin-tile-val" style="color:#E53935;">₹18,450</div></div><div class="fin-tile"><div class="fin-tile-lbl">Invested</div><div class="fin-tile-val" style="color:#1565C0;">₹7,000</div></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border-light);"><span style="font-size:12px;color:var(--text-3);font-weight:500;">Net Saved</span><span class="mono" style="font-size:13px;font-weight:700;">₹46,550</span></div>
+            <div style="height:6px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin-top:4px;"><div style="width:64%;height:100%;background:#E53935;border-radius:99px;"></div><div style="width:10%;height:100%;background:#1565C0;border-radius:99px;"></div><div style="flex:1;height:100%;background:#5856D6;border-radius:99px;"></div></div>
+            <div style="display:flex;gap:12px;margin-top:8px;"><span style="font-size:10px;color:#E53935;font-weight:500;">■ Spent</span><span style="font-size:10px;color:#1565C0;font-weight:500;">■ Invested</span><span style="font-size:10px;color:#5856D6;font-weight:500;">■ Saved</span></div>
           </div>
         </div>
       </div>
-
-      <!-- Financial Summary (collapsible, shown expanded) -->
-      <div class="chart-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <div class="lbl">Financial Summary</div>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="transform:rotate(180deg);flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
-        </div>
-        <!-- 3-column tiles -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
-          <div class="fin-tile"><div class="fin-tile-lbl">Income</div><div class="fin-tile-val" style="color:#2E7D32;">₹72,000</div></div>
-          <div class="fin-tile"><div class="fin-tile-lbl">Expense</div><div class="fin-tile-val" style="color:#E53935;">₹18,450</div></div>
-          <div class="fin-tile"><div class="fin-tile-lbl">Invested</div><div class="fin-tile-val" style="color:#1565C0;">₹7,000</div></div>
-        </div>
-        <!-- Net saved row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--border-light);">
-          <span style="font-size:12px;color:var(--text-3);font-weight:500;">Net Saved</span>
-          <span style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--text-1);">₹46,550</span>
-        </div>
-        <!-- Flow bar -->
-        <div style="height:6px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin-top:4px;">
-          <div style="width:64%;height:100%;background:#E53935;border-radius:99px;"></div>
-          <div style="width:10%;height:100%;background:#1565C0;border-radius:99px;"></div>
-          <div style="flex:1;height:100%;background:#5856D6;border-radius:99px;"></div>
-        </div>
-        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-          <span style="font-size:10px;color:#E53935;font-weight:500;">■ Spent</span>
-          <span style="font-size:10px;color:#1565C0;font-weight:500;">■ Invested</span>
-          <span style="font-size:10px;color:#5856D6;font-weight:500;">■ Saved</span>
-        </div>
-      </div>
-
-      <!-- Swipe dots (stats active = 2nd dot) -->
-      <div class="swipe-dots-bar">
-        <div class="swipe-dots">
-          <div class="swipe-dot"></div>
-          <div class="swipe-dot active"></div>
-        </div>
-      </div>
-
+      <div class="swipe-dots-bar"><div class="swipe-dots"><div class="swipe-dot"></div><div class="swipe-dot active"></div></div></div>
     </div></div>
-    <div class="phone-label">Analytics (2nd swipe)</div>
+    <div class="phone-label">Analytics</div>
   </div>
-
 </div>
 
-<!-- ═══════════ UNCATEGORIZED ═══════════ -->
-<div class="section-label">Uncategorized Screen (from banner tap)</div>
+<!-- ═══ UNCATEGORIZED ═══ -->
+<div class="section-label">Uncategorized</div>
 <div class="screens-row">
-
   <div>
     <div class="phone"><div class="phone-inner" style="padding-bottom:56px;">
+      <div class="uncat-page" style="padding-top:52px;">
+        <div class="uncat-page-head">
+          <div class="back-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
+          <div class="uncat-page-title">Uncategorized</div>
+          <div class="uncat-count-pill">3</div>
+        </div>
+        <div class="uncat-hint">Tap a category to sort each transaction.</div>
 
-      <!-- Header with back button -->
-      <div class="uncat-head">
-        <div class="back-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <!-- Card 1 -->
+        <div class="uncat-card">
+          <div class="uncat-header">
+            <div class="uncat-top">
+              <div><div class="uncat-name">Zomato</div><div class="uncat-meta">2 May · UPI:612345678</div></div>
+              <div><div class="uncat-amt" style="color:var(--text-1);">-₹485</div><div class="uncat-type-label">Debit</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px;">
+              <input style="flex:1;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-1);font-family:'DM Sans',sans-serif;outline:none;" value="Zomato" readonly>
+            </div>
+          </div>
+          <div class="type-toggle">
+            <div class="type-btn active">Spending</div><div class="type-btn">Investment</div><div class="type-btn">Income</div>
+          </div>
+          <div class="cat-grid"><div class="cat-grid-inner">
+            <div class="cat-btn sel" style="border-color:#E53935;background:#FDECEA;"><div class="sel-dot" style="background:#E53935;"></div><div class="ico" style="color:#E53935;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg></div><div class="cat-label" style="color:#E53935;">Food</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2" width="14" height="16" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="6" y1="13" x2="10" y2="13"/></svg></div><div class="cat-label">Bill</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg></div><div class="cat-label">Transport</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="17"/><line x1="3" y1="10" x2="17" y2="10"/></svg></div><div class="cat-label">Health</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7 6,4 10,6 14,4 17,7 14,9 14,17 6,17 6,9"/></svg></div><div class="cat-label">Apparel</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3c-2 0-4 1.5-4 4 0 2 1.5 3.5 4 4 2.5-.5 4-2 4-4 0-2.5-2-4-4-4z"/><path d="M7 11c-1 1.5-1.5 3-1 5"/><path d="M13 11c1 1.5 1.5 3 1 5"/><line x1="10" y1="15" x2="10" y2="18"/></svg></div><div class="cat-label">Beauty</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><polygon points="8,9 8,14 14,11.5" fill="currentColor" stroke="none"/></svg></div><div class="cat-label">Culture</div></div>
+            <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg></div><div class="cat-label">Misc</div></div>
+          </div></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 18px 14px;">
+            <div class="rule-pill">Save rule</div>
+            <div class="rule-pill">👤 Person</div>
+            <div class="confirm-btn">Confirm</div>
+          </div>
         </div>
-        <div class="uncat-title">Uncategorized</div>
-        <div class="uncat-pill">3</div>
-      </div>
-      <div style="font-size:12px;color:var(--text-3);padding:0 20px 16px;">Tap a category to sort each transaction.</div>
 
-      <!-- Uncat card 1 (expanded/active) -->
-      <div class="uncat-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <div class="ucard-name">Zomato</div>
-            <div class="ucard-meta">2 May · UPI:612345678</div>
+        <!-- Card 2 (collapsed) -->
+        <div class="uncat-card" style="opacity:0.55;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;">
+            <div><div class="uncat-name">PhonePe</div><div class="uncat-meta">1 May · UPI:987654321</div></div>
+            <div class="uncat-amt" style="color:var(--text-1);">-₹120</div>
           </div>
-          <div style="text-align:right;">
-            <div class="ucard-amt" style="color:var(--red);">-₹485</div>
-            <div style="font-size:11px;color:var(--text-3);">Debit</div>
-          </div>
-        </div>
-        <!-- Note input -->
-        <div style="margin-top:10px;">
-          <input style="width:100%;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-1);font-family:'DM Sans',sans-serif;" value="Zomato" readonly>
-        </div>
-        <!-- Type toggle -->
-        <div class="type-toggle">
-          <button class="type-btn on">Spending</button>
-          <button class="type-btn">Investment</button>
-          <button class="type-btn">Income</button>
-        </div>
-        <!-- Category grid — 4-col square tiles with SVG icons -->
-        <div class="cat-grid-inner">
-          <!-- Food (selected) -->
-          <div class="cat-btn sel" style="border-color:#E53935;background:#FDECEA;">
-            <div class="sel-dot" style="background:#E53935;"></div>
-            <div style="width:20px;height:20px;color:#E53935;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg>
-            </div>
-            <div class="cat-label" style="color:#E53935;">Food</div>
-          </div>
-          <!-- Transport -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg>
-            </div>
-            <div class="cat-label">Transport</div>
-          </div>
-          <!-- Bill -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2" width="14" height="16" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="6" y1="13" x2="10" y2="13"/></svg>
-            </div>
-            <div class="cat-label">Bill</div>
-          </div>
-          <!-- Health -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="17"/><line x1="3" y1="10" x2="17" y2="10"/></svg>
-            </div>
-            <div class="cat-label">Health</div>
-          </div>
-          <!-- Apparel -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7 6,4 10,6 14,4 17,7 14,9 14,17 6,17 6,9"/></svg>
-            </div>
-            <div class="cat-label">Apparel</div>
-          </div>
-          <!-- Gift -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="16" height="10" rx="1"/><rect x="2" y="5" width="16" height="3" rx="1"/><line x1="10" y1="5" x2="10" y2="18"/><path d="M10 5C10 5 7 5 7 3s3-2 3 2"/><path d="M10 5C10 5 13 5 13 3s-3-2-3 2"/></svg>
-            </div>
-            <div class="cat-label">Gift</div>
-          </div>
-          <!-- Miscellaneous -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>
-            </div>
-            <div class="cat-label">Misc</div>
-          </div>
-          <!-- Household -->
-          <div class="cat-btn">
-            <div style="width:20px;height:20px;color:#888;">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9.5L10 3l8 6.5"/><path d="M4 8.5V17h5v-4h2v4h5V8.5"/></svg>
-            </div>
-            <div class="cat-label">Household</div>
-          </div>
-        </div>
-        <!-- Actions row -->
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-          <button class="rule-pill">Save rule</button>
-          <button class="rule-pill">👤 Person</button>
-          <button class="confirm-btn">Confirm</button>
         </div>
       </div>
-
-      <!-- Uncat card 2 (collapsed) -->
-      <div class="uncat-card" style="opacity:0.55;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div class="ucard-name">PhonePe</div><div class="ucard-meta">1 May · UPI:987654321</div></div>
-          <div class="ucard-amt" style="color:var(--red);">-₹120</div>
-        </div>
-      </div>
-
-      <!-- Swipe dots -->
-      <div class="swipe-dots-bar">
-        <div class="swipe-dots">
-          <div class="swipe-dot active"></div>
-          <div class="swipe-dot"></div>
-        </div>
-      </div>
-
+      <div class="swipe-dots-bar"><div class="swipe-dots"><div class="swipe-dot active"></div><div class="swipe-dot"></div></div></div>
     </div></div>
     <div class="phone-label">Uncategorized</div>
   </div>
-
 </div>
 
-<!-- ═══════════ ADD TRANSACTION MODAL ═══════════ -->
-<div class="section-label">Add Transaction (bottom sheet)</div>
+<!-- ═══ ADD TRANSACTION ═══ -->
+<div class="section-label">Add Transaction (Modal)</div>
 <div class="screens-row">
-
   <div>
     <div class="phone"><div class="phone-inner" style="overflow:hidden;">
-      <!-- Dim overlay -->
-      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(3px);z-index:1;"></div>
-      <!-- Sheet -->
-      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;background:var(--bg-card);border-radius:24px 24px 0 0;padding:16px 20px 32px;">
-        <div class="modal-handle"></div>
-        <div class="modal-title">Add Transaction</div>
-        <input class="modal-inp" value="485" readonly>
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <input class="modal-inp" style="flex:1;margin-bottom:0;" value="Zomato order" readonly>
-          <input class="modal-inp" style="width:100px;flex:none;margin-bottom:0;" value="2026-05-02" readonly>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:1;"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;">
+        <div class="modal">
+          <div class="modal-head">
+            <h2>Add transaction</h2>
+            <div class="modal-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Date</label><input class="form-input" value="2026-05-02" readonly></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Amount</label><input class="form-input" value="485" readonly></div>
+          </div>
+          <div class="form-group"><label>Type</label>
+            <div class="type-row"><div class="type-box active">Expense</div><div class="type-box">Income</div><div class="type-box">Invest</div><div class="type-box">Transfer</div></div>
+          </div>
+          <div class="form-group"><label>Category <span style="color:var(--text-1);text-transform:none;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;">· Food</span></label>
+            <div class="cat-grid-inner">
+              <div class="cat-btn sel" style="border-color:#E53935;background:#FDECEA;"><div class="sel-dot" style="background:#E53935;"></div><div class="ico" style="color:#E53935;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg></div><div class="cat-label" style="color:#E53935;">Food</div></div>
+              <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2" width="14" height="16" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="6" y1="13" x2="10" y2="13"/></svg></div><div class="cat-label">Bill</div></div>
+              <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg></div><div class="cat-label">Transport</div></div>
+              <div class="cat-btn"><div class="ico" style="color:#888;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="10" y1="3" x2="10" y2="17"/><line x1="3" y1="10" x2="17" y2="10"/></svg></div><div class="cat-label">Health</div></div>
+            </div>
+          </div>
+          <div class="form-group"><label>Note</label><input class="form-input" value="Swiggy order" readonly></div>
+          <div class="form-group"><label>Account</label>
+            <div class="bank-chips">
+              <div class="bank-chip active" style="border-color:#FF6B00;color:#FF6B00;"><div class="bank-dot" style="background:#FF6B00;"></div>ICICI</div>
+              <div class="bank-chip"><div class="bank-dot" style="background:#004C8F;"></div>HDFC</div>
+              <div class="bank-chip"><div class="bank-dot" style="background:#7B3F9E;"></div>CUB</div>
+            </div>
+          </div>
+          <div class="btn btn-primary">Add transaction</div>
         </div>
-        <div class="type-toggle" style="margin-bottom:10px;">
-          <button class="type-btn on">Expense</button>
-          <button class="type-btn">Income</button>
-          <button class="type-btn">Invest</button>
-          <button class="type-btn">Transfer</button>
-        </div>
-        <!-- Bank selector -->
-        <div style="display:flex;gap:6px;margin-bottom:10px;">
-          <div class="chip active" style="font-size:11px;padding:5px 12px;"><div class="dot6" style="background:#FF6B00;"></div>ICICI</div>
-          <div class="chip" style="font-size:11px;padding:5px 12px;"><div class="dot6" style="background:#004C8F;"></div>HDFC</div>
-          <div class="chip" style="font-size:11px;padding:5px 12px;"><div class="dot6" style="background:#7B3F9E;"></div>CUB</div>
-        </div>
-        <div class="cat-grid" style="max-height:80px;overflow:hidden;margin-bottom:12px;">
-          <div class="cat-chip on" style="border-color:#E53935;color:#E53935;background:#FDECEA;border-width:2px;"><span style="font-size:14px;">🍕</span>Food</div>
-          <div class="cat-chip"><span style="font-size:14px;">🚗</span>Transport</div>
-          <div class="cat-chip"><span style="font-size:14px;">🧾</span>Bill</div>
-          <div class="cat-chip"><span style="font-size:14px;">💊</span>Health</div>
-          <div class="cat-chip"><span style="font-size:14px;">🛒</span>Shopping</div>
-          <div class="cat-chip"><span style="font-size:14px;">🎁</span>Gift</div>
-        </div>
-        <button class="confirm-btn">Save Transaction</button>
       </div>
     </div></div>
     <div class="phone-label">Add Transaction</div>
   </div>
-
 </div>
 
-<!-- ═══════════ SETTINGS ═══════════ -->
-<div class="section-label">Settings Sheet</div>
+<!-- ═══ SETTINGS ═══ -->
+<div class="section-label">Settings</div>
 <div class="screens-row">
-
-  <!-- Settings main -->
   <div>
     <div class="phone"><div class="phone-inner" style="overflow:hidden;">
-      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(3px);z-index:1;"></div>
-      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;max-height:92%;overflow:hidden;">
-        <div class="settings-sheet">
-          <div class="settings-head">
-            <div style="font-size:17px;font-weight:700;color:var(--text-1);">Settings</div>
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1;"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;max-height:92%;overflow-y:auto;">
+        <div class="sheet-panel">
+          <div class="sheet-handle"></div>
+          <div class="settings-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div class="stats-title" style="margin:0;">Settings</div>
+              <div style="background:var(--border);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text-2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
             </div>
-          </div>
-          <div class="settings-body">
-            <!-- Account card -->
-            <div class="setting-group-lbl">Account</div>
-            <div class="card" style="margin-bottom:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
-              <div style="width:44px;height:44px;border-radius:12px;background:var(--text-1);display:flex;align-items:center;justify-content:center;color:var(--bg-card);font-size:18px;font-weight:700;flex-shrink:0;">V</div>
-              <div>
-                <div style="font-size:16px;font-weight:600;color:var(--text-1);">Viyas</div>
-                <div style="font-size:12px;color:var(--text-3);margin-top:2px;">@viyas</div>
-              </div>
+            <!-- Account -->
+            <div class="setting-group-label">Account</div>
+            <div class="card" style="margin-bottom:12px;padding:14px 16px;">
+              <div class="setting-row" style="border-bottom:none;padding:0;"><div><div class="setting-label">Viyas</div><div class="setting-desc">@viyas</div></div></div>
             </div>
-
-            <!-- Linked accounts -->
-            <div class="setting-group-lbl">Linked Accounts</div>
-            <div class="acct-card">
-              <div class="acct-card-row">
-                <div class="acct-bank-icon" style="background:#FF6B00;">ICICI</div>
-                <div style="flex:1;">
-                  <div class="acct-name">ICICI Bank ••2472</div>
-                  <div class="acct-desc">SMS auto-sync</div>
-                </div>
-                <div class="acct-live"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>Live</div>
-                <div class="acct-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-              </div>
-              <!-- Expanded balance -->
-              <div class="acct-expand">
-                <div class="acct-bal-label">Current Balance</div>
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <div class="acct-bal-display">₹24,380</div>
-                  <div class="acct-edit-btn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </div>
-                </div>
-                <div class="acct-updated">Updated 2 May, 11:34 AM</div>
-              </div>
-            </div>
-            <div class="acct-card">
-              <div class="acct-card-row">
-                <div class="acct-bank-icon" style="background:#004C8F;">HDFC</div>
-                <div style="flex:1;"><div class="acct-name">HDFC Bank ••2065</div><div class="acct-desc">SMS auto-sync</div></div>
-                <div class="acct-live"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>Live</div>
-                <div class="acct-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-              </div>
-            </div>
-
-            <!-- Security -->
-            <div class="setting-group-lbl">Security</div>
-            <div class="card" style="margin-bottom:12px;padding:0;">
-              <div class="setting-row"><div><div class="setting-lbl">Change PIN</div><div class="setting-desc">4-digit app lock</div></div><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-              <div class="setting-row"><div><div class="setting-lbl">Fingerprint Unlock</div><div class="setting-desc">Use biometric instead of PIN</div></div><div class="toggle on"></div></div>
-              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-lbl" style="color:var(--red);">Log Out</div></div><button style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--red);background:transparent;color:var(--red);font-weight:500;">Log Out</button></div>
-            </div>
-
             <!-- Preferences -->
-            <div class="setting-group-lbl">Preferences</div>
-            <div class="card" style="margin-bottom:12px;padding:0;">
-              <div class="setting-row"><div><div class="setting-lbl">Monthly Budget</div><div class="setting-desc">Spending ring target</div></div><span style="font-size:12px;font-weight:600;color:var(--text-1);background:var(--border);padding:3px 8px;border-radius:6px;">₹25,000</span></div>
-              <div class="setting-row"><div><div class="setting-lbl">Investment Target</div><div class="setting-desc">Monthly SIP goal</div></div><span style="font-size:12px;font-weight:600;color:var(--text-1);background:var(--border);padding:3px 8px;border-radius:6px;">₹12,000</span></div>
-              <div class="setting-row" style="border-bottom:none;"><div class="setting-lbl">Dark Mode</div><div class="toggle"></div></div>
+            <div class="setting-group-label">Preferences</div>
+            <div class="card" style="margin-bottom:12px;padding:0 16px;">
+              <div class="setting-row"><div><div class="setting-label">Monthly Budget</div><div class="setting-desc">Used for spending ring</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="slider-badge">₹25,000</div><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>
+              <div class="setting-row"><div><div class="setting-label">Investment Target</div><div class="setting-desc">Monthly SIP goal</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="slider-badge">₹22,000</div><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>
+              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-label">Dark Mode</div></div><div class="toggle"></div></div>
             </div>
-
-            <!-- Rules & Contacts (nav row) -->
-            <div class="setting-group-lbl">Categorization</div>
-            <div class="card" style="margin-bottom:12px;padding:0;">
-              <div class="setting-row"><div><div class="setting-lbl">Auto-categorize Rules</div><div class="setting-desc">Merchant → category mapping</div></div><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-lbl">Categories</div><div class="setting-desc">Manage, recolor, delete</div></div><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+            <!-- Security -->
+            <div class="setting-group-label">Security</div>
+            <div class="card" style="margin-bottom:12px;padding:0 16px;">
+              <div class="setting-row"><div><div class="setting-label">Set PIN</div><div class="setting-desc">4-digit lock on app open</div></div><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+              <div class="setting-row"><div><div class="setting-label">Fingerprint Unlock</div><div class="setting-desc">Use biometric instead of PIN</div></div><div class="toggle on"></div></div>
+              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-label" style="color:var(--red);">Log Out</div><div class="setting-desc">viyas.ventures@gmail.com</div></div><button style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--red);background:transparent;color:var(--red);font-family:'DM Sans',sans-serif;font-weight:500;">Log Out</button></div>
+            </div>
+            <!-- Linked Accounts -->
+            <div class="setting-group-label">Linked Accounts</div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#FF6B00;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:#fff;">ICICI</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:500;color:var(--text-1);">ICICI Bank ••2472</div><div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS auto-sync</div></div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:500;"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>Live</div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+            </div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#004C8F;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:#fff;">HDFC</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:500;">HDFC Bank ••2065</div><div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS auto-sync</div></div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:500;"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>Live</div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+            </div>
+            <!-- Categories -->
+            <div class="setting-group-label">Categories</div>
+            <div class="cat-edit-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--text-2);flex-shrink:0;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Categories &amp; Sub-categories
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-left:auto;color:var(--text-3);"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <!-- Rules -->
+            <div class="setting-group-label">Auto-categorize Rules</div>
+            <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden;">
+              <div class="rule-row">
+                <div class="rule-icon" style="background:#FDECEA;"><div class="ico-sm" style="color:#E53935;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v5c0 1.66-1.34 3-3 3s-3-1.34-3-3V2"/><line x1="5" y1="2" x2="5" y2="18"/><path d="M13 2c0 0 3 2 3 6s-3 5-3 5v5"/></svg></div></div>
+                <div style="flex:1;min-width:0;"><div class="rule-name">Swiggy</div><div class="rule-sub"><span style="font-size:11px;color:#E53935;font-weight:600;">Food</span><span style="font-size:10px;color:var(--text-3);">·</span><span class="type-badge" style="background:#FF3B3015;color:var(--red);">Spending</span></div></div>
+                <div class="del-btn">Delete</div>
+              </div>
+              <div class="rule-row">
+                <div class="rule-icon" style="background:#E3F2FD;"><div class="ico-sm" style="color:#1565C0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="9" rx="2"/><path d="M5 7V5a5 5 0 0110 0v2"/><circle cx="5.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="14.5" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg></div></div>
+                <div style="flex:1;min-width:0;"><div class="rule-name">Ola Cabs</div><div class="rule-sub"><span style="font-size:11px;color:#1565C0;font-weight:600;">Transport</span><span style="font-size:10px;color:var(--text-3);">·</span><span class="type-badge" style="background:#FF3B3015;color:var(--red);">Spending</span></div></div>
+                <div class="del-btn">Delete</div>
+              </div>
+              <div class="rule-row">
+                <div class="rule-icon" style="background:#EDE7F6;"><div class="ico-sm" style="color:#5856D6;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,14 7,9 10,12 14,6 17,8"/></svg></div></div>
+                <div style="flex:1;min-width:0;"><div class="rule-name">SBI Mutual Fund</div><div class="rule-sub"><span style="font-size:11px;color:#5856D6;font-weight:600;">Mutual Fund</span><span style="font-size:10px;color:var(--text-3);">·</span><span class="type-badge" style="background:#007AFF15;color:var(--blue);">Investment</span></div></div>
+                <div class="del-btn">Delete</div>
+              </div>
+            </div>
+            <!-- Contacts (collapsible) -->
+            <div class="setting-group-label">Contacts</div>
+            <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border-light);">
+                <span style="font-size:16px;">👤</span>
+                <span style="flex:1;font-size:13px;font-weight:500;color:var(--text-1);">Saved Contacts</span>
+                <span class="mono" style="font-size:11px;color:var(--text-3);">2 saved</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3);transform:rotate(180deg);"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="rule-row"><div class="contact-avatar" style="background:hsl(200,40%,88%);color:hsl(200,40%,35%);">RK</div><div style="flex:1;"><div class="rule-name">Ramesh Kumar</div><div style="font-size:11px;color:var(--text-3);margin-top:2px;">Always ask to categorize</div></div><div class="del-btn">Remove</div></div>
+                <div class="rule-row"><div class="contact-avatar" style="background:hsl(320,40%,88%);color:hsl(320,40%,35%);">SB</div><div style="flex:1;"><div class="rule-name">Satchet B</div><div style="font-size:11px;color:var(--text-3);margin-top:2px;">Always ask to categorize</div></div><div class="del-btn">Remove</div></div>
+              </div>
+            </div>
+            <!-- Data -->
+            <div class="setting-group-label">Data</div>
+            <div class="card" style="margin-bottom:12px;padding:0 16px;">
+              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-label">Export Transactions</div><div class="setting-desc">Download as CSV file</div></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--text-3);"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+            </div>
+            <!-- Integrations -->
+            <div class="setting-group-label">Integrations</div>
+            <div class="card" style="margin-bottom:12px;padding:0 16px;">
+              <div class="setting-row"><div><div class="setting-label">SMS Auto-import</div><div class="setting-desc">MacroDroid → Cloud Function</div></div><div style="display:flex;align-items:center;gap:6px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div><span style="font-size:11px;color:var(--green);font-weight:500;">Active</span></div></div>
+              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-label">Cloud Function</div><div class="setting-desc">asia-south1 · parseSms</div></div><span class="mono" style="font-size:10px;color:var(--text-3);">v3.2</span></div>
+            </div>
+            <!-- About -->
+            <div class="setting-group-label">About</div>
+            <div class="card" style="margin-bottom:24px;padding:0 16px;">
+              <div class="setting-row"><div><div class="setting-label">Version</div></div><span class="mono" style="font-size:12px;color:var(--text-3);">4.0.0</span></div>
+              <div class="setting-row" style="border-bottom:none;"><div><div class="setting-label">My Finance</div><div class="setting-desc">Multi-user PWA</div></div><span class="mono" style="font-size:12px;color:var(--text-3);">PWA</span></div>
             </div>
           </div>
         </div>
@@ -867,205 +610,68 @@
     </div></div>
     <div class="phone-label">Settings</div>
   </div>
+</div>
 
-  <!-- Rules & Contacts -->
+<!-- ═══ CATEGORY EDITOR ═══ -->
+<div class="section-label">Edit Categories</div>
+<div class="screens-row">
   <div>
     <div class="phone"><div class="phone-inner" style="overflow:hidden;">
-      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(3px);z-index:1;"></div>
-      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;max-height:92%;overflow:hidden;">
-        <div class="settings-sheet">
-          <div class="settings-head">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:28px;height:28px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-              </div>
-              <div style="font-size:17px;font-weight:700;color:var(--text-1);">Rules & Contacts</div>
-            </div>
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </div>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1;"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;max-height:96%;overflow-y:auto;">
+        <div class="sheet-panel" style="display:flex;flex-direction:column;">
+          <div class="sheet-handle"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 20px 12px;">
+            <div class="stats-title" style="margin:0;">Edit Categories</div>
+            <div style="background:var(--border);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text-2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
           </div>
-          <div class="settings-body">
-            <div class="setting-group-lbl">Auto-categorize Rules · 8 rules</div>
-            <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden;">
-              <div class="rule-row">
-                <div class="rule-icon" style="background:#FDECEA;">🍕</div>
-                <div style="flex:1;min-width:0;">
-                  <div class="rule-name">Swiggy</div>
-                  <div class="rule-sub">
-                    <span style="font-size:11px;color:#E53935;font-weight:600;">Food</span>
-                    <span style="font-size:10px;color:var(--text-3);">·</span>
-                    <span class="type-badge" style="background:#FF3B3015;color:var(--red);">Spending</span>
-                  </div>
-                </div>
-                <button class="del-btn">Delete</button>
-              </div>
-              <div class="rule-row">
-                <div class="rule-icon" style="background:#E3F2FD;">🚗</div>
-                <div style="flex:1;min-width:0;">
-                  <div class="rule-name">Ola Cabs</div>
-                  <div class="rule-sub">
-                    <span style="font-size:11px;color:#1565C0;font-weight:600;">Transport</span>
-                    <span style="font-size:10px;color:var(--text-3);">·</span>
-                    <span class="type-badge" style="background:#FF3B3015;color:var(--red);">Spending</span>
-                  </div>
-                </div>
-                <button class="del-btn">Delete</button>
-              </div>
-              <div class="rule-row">
-                <div class="rule-icon" style="background:#EDE7F6;">📈</div>
-                <div style="flex:1;min-width:0;">
-                  <div class="rule-name">SBI Mutual Fund</div>
-                  <div class="rule-sub">
-                    <span style="font-size:11px;color:#5856D6;font-weight:600;">Mutual Fund</span>
-                    <span style="font-size:10px;color:var(--text-3);">·</span>
-                    <span class="type-badge" style="background:#007AFF15;color:var(--blue);">Investment</span>
-                  </div>
-                </div>
-                <button class="del-btn">Delete</button>
-              </div>
-            </div>
-
-            <div class="setting-group-lbl">Contacts · 2 saved</div>
-            <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden;">
-              <div class="rule-row">
-                <div class="contact-avatar" style="background:#E8EAF6;color:#3949AB;">RK</div>
-                <div style="flex:1;min-width:0;">
-                  <div class="rule-name">Ramesh Kumar</div>
-                  <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Always ask to categorize</div>
-                </div>
-                <button class="del-btn">Remove</button>
-              </div>
-              <div class="rule-row">
-                <div class="contact-avatar" style="background:#FCE4EC;color:#C2185B;">SB</div>
-                <div style="flex:1;min-width:0;">
-                  <div class="rule-name">Satchet B</div>
-                  <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Always ask to categorize</div>
-                </div>
-                <button class="del-btn">Remove</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div></div>
-    <div class="phone-label">Rules & Contacts</div>
-  </div>
-
-  <!-- Category Manager -->
-  <div>
-    <div class="phone"><div class="phone-inner" style="overflow:hidden;">
-      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(3px);z-index:1;"></div>
-      <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;max-height:92%;overflow:hidden;">
-        <div class="settings-sheet">
-          <div class="settings-head">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:28px;height:28px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-              </div>
-              <div style="font-size:17px;font-weight:700;color:var(--text-1);">Categories</div>
-            </div>
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </div>
-          </div>
-          <div class="settings-body" style="max-height:680px;overflow-y:auto;">
-            <p style="font-size:12px;color:var(--text-3);margin:8px 0 12px;">Tap to expand. Change color or delete.</p>
-
+          <div style="overflow-y:auto;flex:1;padding:0 20px 40px;">
+            <p style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Tap a category to expand. Add or remove sub-categories.</p>
             <!-- Food (expanded) -->
             <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;">
-              <div class="cat-mgr-row">
-                <div class="cat-color-dot" style="background:#E53935;"></div>
-                <div style="flex:1;font-size:14px;font-weight:500;color:var(--text-1);">Food</div>
-                <div style="font-size:11px;color:var(--text-3);">5 subs</div>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="transform:rotate(180deg);"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
-              </div>
+              <div class="cat-mgr-row"><div class="cat-color-dot" style="background:#E53935;"></div><div style="flex:1;font-size:14px;font-weight:500;">Food</div><div style="font-size:11px;color:var(--text-3);">5 subs</div><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="transform:rotate(180deg);"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg></div>
               <div class="cat-expanded">
-                <!-- Sub-cats -->
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
                   <div style="display:flex;align-items:center;gap:4px;padding:5px 10px 5px 12px;border-radius:20px;border:1px solid #E5393555;background:#FDECEA;font-size:12px;color:#E53935;font-weight:500;">Breakfast <span style="width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,0.12);display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-left:2px;">×</span></div>
                   <div style="display:flex;align-items:center;gap:4px;padding:5px 10px 5px 12px;border-radius:20px;border:1px solid #E5393555;background:#FDECEA;font-size:12px;color:#E53935;font-weight:500;">Lunch <span style="width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,0.12);display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-left:2px;">×</span></div>
                   <div style="display:flex;align-items:center;gap:4px;padding:5px 10px 5px 12px;border-radius:20px;border:1px solid #E5393555;background:#FDECEA;font-size:12px;color:#E53935;font-weight:500;">Dinner <span style="width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,0.12);display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-left:2px;">×</span></div>
                 </div>
                 <div style="display:flex;gap:6px;margin-bottom:14px;">
-                  <input style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg-card);color:var(--text-1);font-family:'DM Sans',sans-serif;" placeholder="Add sub-category…" readonly>
+                  <input style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg-card);color:var(--text-1);font-family:'DM Sans',sans-serif;outline:none;" placeholder="Add sub-category…" readonly>
                   <button style="padding:8px 14px;border-radius:10px;background:var(--text-1);color:#fff;border:none;font-size:12px;font-weight:600;">+ Add</button>
                 </div>
-                <!-- Color swatches -->
                 <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;font-weight:500;">Change color</div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                  <div class="color-swatch sel" style="background:#E53935;"></div>
-                  <div class="color-swatch" style="background:#F57C00;"></div>
-                  <div class="color-swatch" style="background:#FDD835;"></div>
-                  <div class="color-swatch" style="background:#43A047;"></div>
-                  <div class="color-swatch" style="background:#00897B;"></div>
-                  <div class="color-swatch" style="background:#1565C0;"></div>
-                  <div class="color-swatch" style="background:#5856D6;"></div>
-                  <div class="color-swatch" style="background:#C2185B;"></div>
-                  <div class="color-swatch" style="background:#6A1B9A;"></div>
-                  <div class="color-swatch" style="background:#007AFF;"></div>
-                  <div class="color-swatch" style="background:#FF6482;"></div>
-                  <div class="color-swatch" style="background:#22C55E;"></div>
+                  <div class="color-swatch sel" style="background:#E53935;"></div><div class="color-swatch" style="background:#F57C00;"></div><div class="color-swatch" style="background:#FDD835;"></div><div class="color-swatch" style="background:#43A047;"></div><div class="color-swatch" style="background:#00897B;"></div><div class="color-swatch" style="background:#1565C0;"></div><div class="color-swatch" style="background:#5856D6;"></div><div class="color-swatch" style="background:#C2185B;"></div><div class="color-swatch" style="background:#6A1B9A;"></div><div class="color-swatch" style="background:#007AFF;"></div><div class="color-swatch" style="background:#FF6482;"></div><div class="color-swatch" style="background:#22C55E;"></div>
                 </div>
                 <button style="padding:6px 12px;border-radius:8px;background:#FF3B3012;color:var(--red);border:none;font-size:12px;font-weight:600;">Delete category</button>
               </div>
             </div>
-
             <!-- Bill (collapsed) -->
-            <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;">
-              <div class="cat-mgr-row">
-                <div class="cat-color-dot" style="background:#F57C00;"></div>
-                <div style="flex:1;font-size:14px;font-weight:500;color:var(--text-1);">Bill</div>
-                <div style="font-size:11px;color:var(--text-3);">6 subs</div>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
-              </div>
-            </div>
-
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;"><div class="cat-mgr-row"><div class="cat-color-dot" style="background:#F57C00;"></div><div style="flex:1;font-size:14px;font-weight:500;">Bill</div><div style="font-size:11px;color:var(--text-3);">6 subs</div><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>
             <!-- Transport (collapsed) -->
-            <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;">
-              <div class="cat-mgr-row">
-                <div class="cat-color-dot" style="background:#1565C0;"></div>
-                <div style="flex:1;font-size:14px;font-weight:500;color:var(--text-1);">Transport</div>
-                <div style="font-size:11px;color:var(--text-3);">4 subs</div>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
-              </div>
-            </div>
-
-            <!-- Add new category -->
-            <div class="lbl" style="display:block;margin-bottom:8px;">Add New Category</div>
-            <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;">
-              <input style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg-card);color:var(--text-1);font-family:'DM Sans',sans-serif;margin-bottom:10px;" placeholder="Category name…" readonly>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;"><div class="cat-mgr-row"><div class="cat-color-dot" style="background:#1565C0;"></div><div style="flex:1;font-size:14px;font-weight:500;">Transport</div><div style="font-size:11px;color:var(--text-3);">5 subs</div><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>
+            <!-- Add new -->
+            <div class="setting-group-label" style="margin-top:8px;">Add New Category</div>
+            <div class="card" style="padding:14px 16px;margin-bottom:12px;">
+              <input style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg-card);color:var(--text-1);font-family:'DM Sans',sans-serif;margin-bottom:10px;outline:none;" placeholder="Category name…" readonly>
               <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;font-weight:500;">Pick a color</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                <div class="color-swatch" style="background:#E53935;"></div>
-                <div class="color-swatch" style="background:#F57C00;"></div>
-                <div class="color-swatch" style="background:#43A047;"></div>
-                <div class="color-swatch sel" style="background:#1565C0;"></div>
-                <div class="color-swatch" style="background:#5856D6;"></div>
-                <div class="color-swatch" style="background:#C2185B;"></div>
-                <div class="color-swatch" style="background:#007AFF;"></div>
-                <div class="color-swatch" style="background:#22C55E;"></div>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="color" value="#1565C0" style="width:40px;height:34px;padding:2px 3px;border:1px solid var(--border);border-radius:8px;" readonly>
-                <span style="font-size:11px;color:var(--text-3);">Custom</span>
-                <button style="margin-left:auto;padding:8px 14px;border-radius:10px;background:var(--text-1);color:#fff;border:none;font-size:12px;font-weight:600;">+ Add</button>
-              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"><div class="color-swatch" style="background:#E53935;"></div><div class="color-swatch" style="background:#F57C00;"></div><div class="color-swatch" style="background:#43A047;"></div><div class="color-swatch sel" style="background:#5856D6;"></div><div class="color-swatch" style="background:#C2185B;"></div><div class="color-swatch" style="background:#007AFF;"></div><div class="color-swatch" style="background:#22C55E;"></div></div>
+              <div style="display:flex;align-items:center;gap:8px;"><input type="color" value="#5856D6" style="width:40px;height:34px;padding:2px 3px;border:1px solid var(--border);border-radius:8px;" readonly><span style="font-size:11px;color:var(--text-3);">Custom</span><button style="margin-left:auto;padding:8px 14px;border-radius:10px;background:var(--text-1);color:#fff;border:none;font-size:12px;font-weight:600;">+ Add</button></div>
             </div>
           </div>
         </div>
       </div>
     </div></div>
-    <div class="phone-label">Category Manager</div>
+    <div class="phone-label">Edit Categories</div>
   </div>
-
 </div>
 
 <!-- Footer -->
 <div style="text-align:center;margin-top:72px;padding-bottom:40px;">
-  <div style="font-family:'Space Mono',monospace;font-size:10px;color:#444;letter-spacing:0.15em;text-transform:uppercase;">My Finance · Design Reference · v5.1 · Light Mode Only</div>
-  <div style="font-size:12px;color:#555;margin-top:8px;">Colors: #EDEBE6 bg · #ffffff card · #0D0D0D text · #22C55E green · #FF3B30 red · #007AFF blue · #5856D6 purple · #FF9500 orange</div>
-  <div style="font-size:12px;color:#555;margin-top:2px;">Fonts: DM Sans (UI) · Space Mono (labels/mono) · Navigation: swipe dots only (no tab bar)</div>
+  <div class="mono" style="font-size:10px;color:#444;letter-spacing:0.15em;text-transform:uppercase;">My Finance · v5.1 · Design Reference · Light Only</div>
+  <div style="font-size:12px;color:#555;margin-top:8px;">Tokens: #EDEBE6 bg · #fff card · #0D0D0D text · #22C55E green · #FF3B30 red · #007AFF blue · #5856D6 purple · #FF9500 orange</div>
+  <div style="font-size:12px;color:#555;margin-top:2px;">Fonts: DM Sans (UI) · Space Mono (labels) · Nav: swipe dots only · Icons: SVG stroke (not emoji)</div>
 </div>
 
 </body>
