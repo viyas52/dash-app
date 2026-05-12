@@ -60,7 +60,6 @@
             max-width: 480px;
             margin: 0 auto;
             -webkit-font-smoothing: antialiased;
-            padding-bottom: 82px;
         }
 
         .mono { font-family: 'Space Mono', monospace; }
@@ -767,15 +766,6 @@
         .stats-view-section { padding: 0 20px; }
         .stats-view-title { font-size: 24px; font-weight: 600; margin-bottom: 16px; letter-spacing: -0.02em; }
 
-        .period-toggle { display: flex; gap: 6px; margin-bottom: 16px; }
-        .period-btn {
-            padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border);
-            font-size: 12px; font-weight: 600; cursor: pointer;
-            background: transparent; color: var(--text-3);
-            font-family: 'DM Sans', sans-serif; transition: all 0.15s;
-        }
-        .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
-
         /* Period tabs */
         .period-tabs { display: flex; gap: 6px; padding: 0 0 12px; }
         .period-btn {
@@ -827,14 +817,6 @@
         }
         .chart-toggle-btn svg { width: 14px; height: 14px; }
         .chart-toggle-btn.active { background: var(--text-1); color: #fff; }
-        .spend-bar-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
-        .spend-bar-row:last-child { border-bottom: none; }
-        .spend-bar-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-        .spend-bar-info { flex: 1; }
-        .spend-bar-name { font-size: 13px; font-weight: 500; }
-        .spend-bar-track { height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 6px; overflow: hidden; }
-        .spend-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
-        .spend-bar-amt { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; }
 
         .portfolio-row {
             display: flex; align-items: center; gap: 12px; padding: 10px 0;
@@ -1647,14 +1629,19 @@ function loadLinkedAccounts() {
     el.innerHTML = LINKED_ACCOUNTS.map(a => renderAcctCard(a)).join('');
 }
 
+let _balanceCache = {};
+let _balanceCacheKey = '';
+function invalidateBalanceCache() { _balanceCacheKey = ''; _balanceCache = {}; }
 function computeLiveBalance(bankId) {
+    // Cache key based on currentEntries length + bank balances
+    const cacheKey = (currentEntries || []).length + '_' + (lsGet('bal_' + bankId) || '') + '_' + (lsGet('bal_upd_' + bankId) || '');
+    if (_balanceCache[bankId] !== undefined && _balanceCacheKey === cacheKey) return _balanceCache[bankId];
+
     const baseRaw = lsGet('bal_' + bankId);
     const since   = lsGet('bal_upd_' + bankId);
-    if (baseRaw === null || baseRaw === '') return null;
+    if (baseRaw === null || baseRaw === '') { _balanceCache[bankId] = null; return null; }
     const base = parseFloat(baseRaw);
-    if (isNaN(base) || !since) return base;
-    // Use currentEntries only — avoids double-counting with _allHistoryEntries
-    // (both arrays share current-month data; _allHistoryEntries lacks doc IDs)
+    if (isNaN(base) || !since) { _balanceCache[bankId] = base; return base; }
     const seen = new Set();
     let delta = 0;
     (currentEntries || []).forEach(e => {
@@ -1665,7 +1652,10 @@ function computeLiveBalance(bankId) {
         seen.add(key);
         delta += e.type === 'credit' ? (e.amount || 0) : -(e.amount || 0);
     });
-    return base + delta;
+    const result = base + delta;
+    _balanceCache[bankId] = result;
+    _balanceCacheKey = cacheKey;
+    return result;
 }
 
 function renderAcctCard(a) {
@@ -1731,6 +1721,7 @@ function saveAcctBal(id) {
     if (isNaN(val) || val < 0) { showToast('Enter a valid balance'); return; }
     lsSet('bal_' + id, val);
     lsSet('bal_upd_' + id, new Date().toISOString());
+    invalidateBalanceCache();
     _acctEditing = null;
     loadLinkedAccounts();
     showToast('Balance saved');
@@ -1924,6 +1915,7 @@ function catMgrAddSub(catName, idx) {
     if (!cat.subs) cat.subs = [];
     if (cat.subs.includes(val)) { showToast('Already exists'); return; }
     cat.subs.push(val);
+    saveCatsToStorage();
     loadCatManager();
     showToast('Sub-category added');
 }
@@ -1932,6 +1924,7 @@ function catMgrDelSub(catName, sub) {
     const cat = SPENDING_CATS.find(c => c.name === catName);
     if (!cat || !cat.subs) return;
     cat.subs = cat.subs.filter(s => s !== sub);
+    saveCatsToStorage();
     loadCatManager();
     showToast('Removed');
 }
@@ -1941,6 +1934,7 @@ function catMgrChangeColor(catName, color, idx) {
     if (!cat) return;
     cat.color = color;
     cat.bg = color + '22';
+    saveCatsToStorage();
     // Update the color picker input without full re-render (avoid losing focus)
     const inp = document.getElementById('cat-clr-' + idx);
     if (inp) inp.value = color;
@@ -1960,6 +1954,7 @@ function catMgrDeleteCat(catName) {
     if (idx === -1) return;
     SPENDING_CATS.splice(idx, 1);
     if (_catMgrExpanded === catName) _catMgrExpanded = null;
+    saveCatsToStorage();
     loadCatManager();
     showToast('Category deleted');
 }
@@ -1981,6 +1976,22 @@ function initNewCatSwatches() {
 }
 
 // INVEST_TARGET now loaded via loadUserPrefs()
+
+// ── Persist custom category edits ──
+function saveCatsToStorage() {
+    lsSet('custom_cats', JSON.stringify(SPENDING_CATS));
+}
+function loadCatsFromStorage() {
+    const raw = lsGet('custom_cats');
+    if (!raw) return;
+    try {
+        const saved = JSON.parse(raw);
+        if (Array.isArray(saved) && saved.length > 0) {
+            SPENDING_CATS.length = 0;
+            saved.forEach(c => SPENDING_CATS.push(c));
+        }
+    } catch(e) { /* ignore corrupt data */ }
+}
 
 const SPENDING_CATS = [
     { name: "Food", color: "#E53935", bg: "#FDECEA", subs: ["Breakfast","Lunch","Dinner","Snacks","Beverages"] },
@@ -2119,7 +2130,7 @@ document.addEventListener('touchend', e => {
     if (document.querySelector('.modal-overlay.active')) return;
     const dx = e.changedTouches[0].clientX - _txX;
     const dy = e.changedTouches[0].clientY - _txY;
-    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.75) return;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
     const active = document.querySelector('.view.active');
     if (!active) return;
     const id = active.id;
@@ -2184,6 +2195,7 @@ function addNewCat() {
     const color = _newCatColor || '#8E8E93';
     SPENDING_CATS.push({ name, color, bg: color + '22', subs: [] });
     nameEl.value = '';
+    saveCatsToStorage();
     loadCatManager();
     showToast('Category added');
 }
@@ -2337,7 +2349,8 @@ async function loadMonth() {
             const snap = await getDocs(q);
             const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
             updateDashboard(entries);
-        } catch {
+        } catch(indexErr) {
+            console.warn('Firestore composite index missing, using fallback query:', indexErr.message || indexErr);
             q = query(collection(db, txnCol()), where("date", ">=", start), where("date", "<", end));
             const snap = await getDocs(q);
             const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
@@ -2397,7 +2410,9 @@ function rollForwardBalances(entries) {
 /* ─── DASHBOARD UPDATE ─── */
 function updateDashboard(entries) {
     currentEntries = entries;
-    rollForwardBalances(entries);
+    invalidateBalanceCache();
+    // Only roll forward balances for the current month (not when browsing history)
+    if (monthOffset === 0) rollForwardBalances(entries);
     let totalIncome = 0, totalExpense = 0, totalInvest = 0;
     uncatEntries = [];
 
@@ -2498,7 +2513,7 @@ function updateDashboard(entries) {
 }
 
 /* ─── SPENDING INSIGHTS TICKER ─── */
-let _insightLines = [], _insightIdx = 0, _insightTimer = null;
+let _insightLines = [], _insightIdx = 0, _insightTimer = null, _insightFadeTimer = null;
 
 function computeInsights(curEntries) {
     const ticker = document.getElementById('insights-ticker');
@@ -2585,8 +2600,9 @@ function computeInsights(curEntries) {
     _insightLines = lines;
     _insightIdx   = 0;
 
-    // Clear any existing timer
+    // Clear any existing timers
     if (_insightTimer) { clearInterval(_insightTimer); _insightTimer = null; }
+    if (_insightFadeTimer) { clearTimeout(_insightFadeTimer); _insightFadeTimer = null; }
 
     textEl.classList.remove('fade');
     textEl.textContent = lines[0];
@@ -2594,7 +2610,7 @@ function computeInsights(curEntries) {
     if (lines.length > 1) {
         _insightTimer = setInterval(() => {
             textEl.classList.add('fade');
-            setTimeout(() => {
+            _insightFadeTimer = setTimeout(() => {
                 _insightIdx = (_insightIdx + 1) % _insightLines.length;
                 textEl.textContent = _insightLines[_insightIdx];
                 textEl.classList.remove('fade');
@@ -2886,6 +2902,7 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
 function reverseBalance(txn) {
     // Undo the balance effect of a transaction
     if (!txn || !txn.bank) return;
+    invalidateBalanceCache();
     const bank = txn.bank;
     const amount = txn.amount || 0;
     const cur = parseFloat(lsGet('bal_' + bank)) || 0;
@@ -3117,6 +3134,11 @@ async function addEntry() {
 
 async function saveEditedEntry() {
     if (!firebaseReady || !editingId) { showToast("Cannot update"); return; }
+    // Warn if editing a transfer — paired leg won't be auto-updated
+    const oldTxnCheck = [...(window._allCategorized || []), ...(uncatEntries || [])].find(x => x.id === editingId);
+    if (oldTxnCheck && oldTxnCheck.category_type === 'transfer') {
+        if (!confirm('This is a transfer entry. Editing it won\'t update the paired leg. Continue?')) return;
+    }
     const date = document.getElementById('add-date').value;
     const amount = parseFloat(document.getElementById('add-amount').value);
     const typeVal = document.getElementById('add-type').value;
@@ -3496,7 +3518,7 @@ function buildStats() {
             return '<div class="portfolio-row">' +
                 '<div style="width:10px;height:10px;border-radius:2px;background:' + info.color + ';flex-shrink:0"></div>' +
                 '<div style="flex:1"><div style="font-size:13px;font-weight:500">' + cat + '</div></div>' +
-                '<div style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:700">₹' + fmt(totalInv) + '</div></div>';
+                '<div style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:700">₹' + fmt(amt) + '</div></div>';
         }).join('');
         html += '<div style="padding-top:12px;display:flex;justify-content:space-between">' +
             '<span style="font-size:12px;color:var(--text-3)">Total invested</span>' +
@@ -3584,7 +3606,7 @@ function drawPieChart(totals) {
         angle += slice;
     });
     ctx.beginPath(); ctx.arc(W/2, H/2, R*0.52, 0, Math.PI*2);
-    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#fff'; ctx.fill();
     document.getElementById('cat-pie-legend').innerHTML = entries.map(([cat, amt]) => {
         const info = getCatInfo(cat);
         const pct = Math.round(amt / total * 100);
@@ -3718,8 +3740,18 @@ function buildLineChart(points, labels, activeIdx) {
 async function loadHistory() {
     if (!firebaseReady) return;
     try {
-        const { collection, getDocs } = window.fb;
-        const snap = await getDocs(collection(db, txnCol()));
+        const { collection, getDocs, query, where } = window.fb;
+        // Limit to last 18 months to avoid loading entire transaction history
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - 18);
+        const cutoffStr = cutoff.toISOString().split('T')[0];
+        let snap;
+        try {
+            snap = await getDocs(query(collection(db, txnCol()), where("date", ">=", cutoffStr)));
+        } catch(e) {
+            // Fallback if index missing — load all (legacy behavior)
+            snap = await getDocs(collection(db, txnCol()));
+        }
         const all = []; snap.forEach(d => all.push(d.data()));
         window._allHistoryEntries = all;
         buildChartForPeriod();
@@ -3790,7 +3822,8 @@ function updateInvestTarget() {
 }
 
 /* ─── UTILS ─── */
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+const _escDiv = document.createElement('div');
+function esc(s) { _escDiv.textContent = s; return _escDiv.innerHTML; }
 function fmt(n) { return n.toLocaleString('en-IN'); }
 function fmtDate(s) {
     if (!s) return '';
@@ -3944,7 +3977,12 @@ async function authGoogle() {
         const authSnap = await window.fb.getDoc(authDocRef);
         if (!authSnap.exists()) {
             const name = cred.user.displayName || 'User';
-            const username = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16) || uid.substring(0, 8);
+            let username = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16) || uid.substring(0, 8);
+            // Check for username collision and append suffix if taken
+            const existingSnap = await window.fb.getDoc(window.fb.doc(db, 'usernames', username));
+            if (existingSnap.exists()) {
+                username = username.substring(0, 12) + '_' + uid.substring(0, 4);
+            }
             await window.fb.setDoc(window.fb.doc(db, 'usernames', username), { uid });
             await window.fb.setDoc(authDocRef, {
                 username: username,
@@ -4026,6 +4064,7 @@ function enterApp() {
     showScreen('app');
     migrateLocalStorage();
     loadUserPrefs();
+    loadCatsFromStorage();
     setGreeting();
     initDots();
     initFirebase();
@@ -4250,6 +4289,12 @@ initTheme();
         });
     } catch (err) {
         console.error('Boot failed:', err);
+        // Show offline-friendly message if Firebase CDN is unreachable
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) {
+            const errEl = document.getElementById('auth-error');
+            if (errEl) { errEl.textContent = 'Unable to connect. Check your internet and refresh.'; errEl.style.display = 'block'; }
+        }
         showScreen('auth');
     }
 })();
