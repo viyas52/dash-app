@@ -2678,7 +2678,7 @@ function renderTxnList(entries, expanded) {
             const info = getCatInfo(e.category);
             const isCredit = e.type === 'credit';
             const catLabel = e.sub_category ? e.category + ' · ' + e.sub_category : e.category;
-            // For self-transfers: resolve note to "(me) → BANK" using paired leg in currentEntries
+            // For self-transfers: resolve note to "BANK → BANK" using paired leg in currentEntries
             let displayNote = e.note || e.category;
             // For contact/person transactions: show friendly name instead of raw UPI note
             if (e.recipient) {
@@ -2687,20 +2687,24 @@ function renderTxnList(entries, expanded) {
                     displayNote = window._contactNames[rkey];
                 }
             }
-            if (e.category_type === 'transfer' && e.upi_ref && currentEntries) {
-                const paired = currentEntries.find(x => x.upi_ref === e.upi_ref && x.id !== e.id && x.bank !== e.bank);
-                if (paired) {
-                    displayNote = isCredit
-                        ? '(me) ← ' + paired.bank.toUpperCase()
-                        : '(me) → ' + paired.bank.toUpperCase();
-                } else {
-                    // fallback: strip raw names, just show "(me)"
-                    displayNote = isCredit ? '(me) ← own account' : '(me) → own account';
+            if (e.category_type === 'transfer') {
+                // Find paired leg to determine from→to banks
+                let otherBank = null;
+                if (e.upi_ref && currentEntries) {
+                    const paired = currentEntries.find(x => x.upi_ref === e.upi_ref && x.id !== e.id && x.bank !== e.bank);
+                    if (paired) otherBank = paired.bank;
                 }
+                // For debit: this bank → other bank. For credit: other bank → this bank.
+                const fromBank = isCredit ? (otherBank || e.bank_from || '') : (e.bank || '');
+                const toBank = isCredit ? (e.bank || '') : (otherBank || e.bank_to || '');
+                const bankInfo = b => { const a = LINKED_ACCOUNTS.find(x => x.id === b); return a ? { name: a.name.split(' ')[0], color: a.color } : { name: (b || '?').toUpperCase(), color: '#8E8E93' }; };
+                const fb = bankInfo(fromBank), tb = bankInfo(toBank);
+                displayNote = '<span style="color:' + fb.color + ';font-weight:600">' + esc(fb.name) + '</span> → <span style="color:' + tb.color + ';font-weight:600">' + esc(tb.name) + '</span>';
             }
+            const isTransfer = e.category_type === 'transfer';
             return '<div class="txn-row" onclick="rowTap(\'' + e.id + '\')">' +
                 '<div class="txn-icon" style="background:' + (info.bg || info.color + '18') + ';color:' + info.color + '"><div style="width:18px;height:18px">' + getCatIcon(e.category) + '</div></div>' +
-                '<div class="txn-mid"><div class="txn-name">' + esc(displayNote) + '</div>' +
+                '<div class="txn-mid"><div class="txn-name">' + (isTransfer ? displayNote : esc(displayNote)) + '</div>' +
                 '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(catLabel) + '</div></div>' +
                 '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +

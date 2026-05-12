@@ -352,11 +352,13 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   if (isSelfTransfer(parsed, userConfig.selfNamesRx, userConfig.selfAccounts)) {
     parsed.category = "Self Transfer";
     parsed.category_type = "transfer";
-    parsed.note = parsed.type === "debit"
-      ? "(me) → " + (parsed.bank_to ? parsed.bank_to.toUpperCase() : "own account")
-      : "(me) ← " + (parsed.bank_from ? parsed.bank_from.toUpperCase() : "own account");
-    parsed.recipient = parsed.type === "debit" ? "(me)" : "";
-    parsed.source    = parsed.type === "credit" ? "(me)" : "";
+    {
+      const from = parsed.type === "debit" ? (parsed.bank || "").toUpperCase() : (parsed.bank_from || "").toUpperCase();
+      const to   = parsed.type === "debit" ? (parsed.bank_to || "").toUpperCase() : (parsed.bank || "").toUpperCase();
+      parsed.note = (from || "?") + " → " + (to || "?");
+    }
+    parsed.recipient = "";
+    parsed.source    = "";
   } else {
     // 2. User-defined rules (per-user subcollection)
     let autoTagged = false;
@@ -418,12 +420,11 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
           raw_sms: "", bank: otherBank, account: "",
           amount: parsed.amount, date: parsed.date,
           type: pairedType, category: "Self Transfer", category_type: "transfer",
-          recipient: pairedType === "debit" ? "(me)" : "",
-          source: pairedType === "credit" ? "(me)" : "",
+          recipient: "", source: "",
           source_account: "", balance_after: null,
           note: pairedType === "credit"
-            ? "(me) ← " + parsed.bank.toUpperCase()
-            : "(me) → " + parsed.bank.toUpperCase(),
+            ? (parsed.bank || "?").toUpperCase() + " → " + (otherBank || "?").toUpperCase()
+            : (otherBank || "?").toUpperCase() + " → " + (parsed.bank || "?").toUpperCase(),
           upi_ref: parsed.upi_ref || "",
           created_at: parsed.created_at,
           dedup_key: pairedKey,
