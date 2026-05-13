@@ -115,71 +115,57 @@ body {
 }
 .gear-btn svg { width: 16px; height: 16px; }
 
-/* ─── HERO (REDESIGNED) ─── */
-.hero-new {
-    margin: 16px 20px 0;
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 28px 24px;
-    position: relative; overflow: hidden;
+/* ─── HERO (kept as in live app — big centered donut) ─── */
+.hero {
+    text-align: center;
+    padding: 32px 20px 24px;
 }
-.hero-new .hero-row {
-    display: flex; align-items: center; gap: 20px;
-}
-.hero-new .hero-text { flex: 1; }
-.hero-new .hero-label {
+.hero-label {
     font-size: 10px; font-weight: 500; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--text-3);
-    font-family: 'Space Mono', monospace; margin-bottom: 8px;
+    font-family: 'Space Mono', monospace; margin-bottom: 12px;
 }
-.hero-new .hero-amount {
+.hero-amount {
     font-family: 'Space Mono', monospace;
     font-size: 38px; font-weight: 700; letter-spacing: -0.025em;
     line-height: 1; color: var(--text-1);
 }
-.hero-new .hero-sub {
-    font-size: 12px; color: var(--text-3); margin-top: 8px;
+.hero-sub {
+    font-size: 13px; color: var(--text-3); margin-top: 10px;
 }
-.hero-new .hero-sub .g { color: var(--green); font-weight: 600; }
-.hero-new .hero-sub .r { color: var(--red); font-weight: 600; }
+.hero-sub .g { color: var(--green); font-weight: 600; }
+.hero-sub .r { color: var(--red); font-weight: 600; }
 
-.donut-mini {
-    width: 78px; height: 78px; position: relative; flex-shrink: 0;
+.donut-wrap {
+    width: 180px; height: 180px; margin: 28px auto 0;
+    position: relative;
 }
-.donut-mini svg { transform: rotate(-90deg); width: 100%; height: 100%; }
-.donut-mini .track { fill: none; stroke: var(--border-light); stroke-width: 8; }
-.donut-mini .fill  { fill: none; stroke: var(--text-1); stroke-width: 8; stroke-linecap: round; }
-.donut-mini .ctr {
-    position: absolute; inset: 0; display: flex;
+.donut-wrap svg {
+    width: 100%; height: 100%;
+    transform: rotate(-90deg);
+}
+.donut-track {
+    fill: none; stroke: var(--border-light); stroke-width: 10;
+}
+.donut-fill {
+    fill: none; stroke: var(--text-1); stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s ease, stroke 0.3s;
+}
+.donut-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    flex-direction: column;
 }
-.donut-mini .pct {
+.donut-pct {
     font-family: 'Space Mono', monospace;
-    font-size: 16px; font-weight: 700;
+    font-size: 30px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--text-1);
 }
-.donut-mini .lbl {
-    font-size: 8px; color: var(--text-3);
-    text-transform: uppercase; letter-spacing: 0.1em;
-    font-family: 'Space Mono', monospace;
-}
-
-/* Budget progress bar inside hero */
-.hero-progress-wrap {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-light);
-}
-.hero-progress-bar {
-    height: 6px; background: var(--bg-tinted); border-radius: 3px;
-    overflow: hidden; margin-top: 6px;
-}
-.hero-progress-fill {
-    height: 100%; background: var(--text-1); border-radius: 3px;
-    transition: width 0.6s ease;
-}
-.hero-progress-meta {
-    display: flex; justify-content: space-between;
-    font-size: 11px; color: var(--text-3);
+.donut-lbl {
+    font-size: 10px; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.14em;
+    font-family: 'Space Mono', monospace; margin-top: 4px;
 }
 
 /* ─── STATS BENTO (CRISS-CROSS) ─── */
@@ -405,32 +391,19 @@ body {
     </div>
 </div>
 
-<!-- ═══ HERO (REDESIGNED) ═══ -->
-<div class="hero-new">
-    <div class="hero-row">
-        <div class="hero-text">
-            <div class="hero-label">Spent this month</div>
-            <div class="hero-amount">₹17,840</div>
-            <div class="hero-sub">of ₹25,000 · <span class="g">₹7,160 left</span></div>
-        </div>
-        <div class="donut-mini">
-            <svg viewBox="0 0 100 100">
-                <circle class="track" cx="50" cy="50" r="42"/>
-                <circle class="fill"  cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="75"/>
-            </svg>
-            <div class="ctr">
-                <div class="pct">71%</div>
-                <div class="lbl">budget</div>
-            </div>
-        </div>
-    </div>
-    <div class="hero-progress-wrap">
-        <div class="hero-progress-meta">
-            <span>14 of 31 days elapsed</span>
-            <span>On track</span>
-        </div>
-        <div class="hero-progress-bar">
-            <div class="hero-progress-fill" style="width:71%;"></div>
+<!-- ═══ HERO (kept as in live app) ═══ -->
+<div class="hero">
+    <div class="hero-label">Spent this month</div>
+    <div class="hero-amount">₹17,840</div>
+    <div class="hero-sub">of ₹25,000 · <span class="g">₹7,160 left</span></div>
+    <div class="donut-wrap">
+        <svg viewBox="0 0 160 160">
+            <circle class="donut-track" cx="80" cy="80" r="66"/>
+            <circle class="donut-fill"  cx="80" cy="80" r="66" stroke-dasharray="414.7" stroke-dashoffset="120"/>
+        </svg>
+        <div class="donut-center">
+            <div class="donut-pct">71%</div>
+            <div class="donut-lbl">of budget</div>
         </div>
     </div>
 </div>
