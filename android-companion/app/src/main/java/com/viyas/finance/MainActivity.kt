@@ -1,5 +1,6 @@
 package com.viyas.finance
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -10,6 +11,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,7 +32,7 @@ class MainActivity : AppCompatActivity() {
         b.btnSave.setOnClickListener {
             prefs.user = b.editUser.text.toString().trim()
             prefs.apiKey = b.editApikey.text.toString().trim()
-            log("Saved.")
+            toast("Saved")
         }
 
         b.btnOpenSettings.setOnClickListener {
@@ -36,16 +41,24 @@ class MainActivity : AppCompatActivity() {
 
         b.btnTest.setOnClickListener {
             // Real HDFC debit UPI format. Creates a ₹1 "COMPANION_TEST" txn in Firestore.
-            // Safe to run repeatedly — deduped by UPI ref. Delete the test txn from PWA after.
             val testSms = "Sent Rs.1.00\nFrom HDFC Bank A/C *1234\n" +
                 "To COMPANION_TEST\nOn 13/05/26\nRef 888888888888"
             CoroutineScope(Dispatchers.Main).launch {
-                log("Sending test...")
+                toast("Sending test...")
                 val res = withContext(Dispatchers.IO) {
                     SmsForwarder.post(this@MainActivity, testSms)
                 }
-                log("Response: $res")
+                toast("Response: $res")
+                refreshLogs()
             }
+        }
+
+        b.btnRefreshLogs.setOnClickListener { refreshLogs() }
+        b.btnClearLogs.setOnClickListener {
+            getSharedPreferences(SmsNotificationListener.LOG_PREFS, Context.MODE_PRIVATE)
+                .edit().remove(SmsNotificationListener.LOG_KEY).apply()
+            refreshLogs()
+            toast("Logs cleared")
         }
     }
 
@@ -53,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         b.textListenerStatus.text = if (isListenerEnabled())
             "Status: enabled ✓" else "Status: NOT enabled — tap below to grant access."
+        refreshLogs()
     }
 
     private fun isListenerEnabled(): Boolean {
@@ -61,7 +75,43 @@ class MainActivity : AppCompatActivity() {
         return flat.split(":").any { it.contains(packageName) }
     }
 
-    private fun log(msg: String) {
-        b.textLog.text = (msg + "\n" + b.textLog.text).take(2000)
+    private fun refreshLogs() {
+        val prefs = getSharedPreferences(SmsNotificationListener.LOG_PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString(SmsNotificationListener.LOG_KEY, "[]") ?: "[]"
+        val arr = try { JSONArray(raw) } catch (e: Exception) { JSONArray() }
+        if (arr.length() == 0) {
+            b.textLog.text = "No events yet.\n\nIf you just made a transaction:\n" +
+                "1. Make sure notification access is enabled above\n" +
+                "2. Wait for the bank SMS / app notification\n" +
+                "3. Tap 'Refresh logs'"
+            return
+        }
+        val fmt = SimpleDateFormat("HH:mm:ss", Locale.US)
+        val sb = StringBuilder()
+        for (i in 0 until arr.length()) {
+            val ev = arr.optJSONObject(i) ?: continue
+            val ts = ev.optLong("ts")
+            val pkg = ev.optString("pkg")
+            val body = ev.optString("body")
+            val status = ev.optString("status")
+            val emoji = when {
+                status.startsWith("forwarded: 200: {\"status\":\"created\"") -> "✅"
+                status.startsWith("forwarded: 200: {\"status\":\"skipped\"") -> "⚠️"
+                status.startsWith("forwarded") -> "📤"
+                status.startsWith("filtered") -> "🔇"
+                status.startsWith("dropped") -> "🔁"
+                status.startsWith("error") -> "❌"
+                else -> "ℹ️"
+            }
+            sb.append("$emoji [${fmt.format(Date(ts))}] $pkg\n")
+            sb.append("   $status\n")
+            if (body.isNotEmpty()) sb.append("   \"${body.take(120)}${if (body.length > 120) "…" else ""}\"\n")
+            sb.append("\n")
+        }
+        b.textLog.text = sb.toString()
+    }
+
+    private fun toast(msg: String) {
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 }

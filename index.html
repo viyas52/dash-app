@@ -1184,6 +1184,11 @@
         <div class="notif-count" id="companion-banner-count" style="background:#22C55E;">→</div>
     </div>
 
+    <!-- Companion Diagnostics link -->
+    <div id="companion-diag" style="display:none; padding:8px 20px; margin: 0 -20px 12px; font-size:12px; color:var(--text-3); text-align:right;">
+        <a onclick="openCompanionDiag()" style="cursor:pointer; text-decoration:underline;">🔧 Companion diagnostics</a>
+    </div>
+
     <!-- Spending Breakdown -->
     <div id="spending-badges-section" style="display:none;" class="badge-section">
         <div class="label">Spending</div>
@@ -4104,6 +4109,9 @@ function maybeSyncCompanion() {
     if (banner && lsGet('companion_listener_done') !== '1') {
         banner.style.display = 'flex';
     }
+    // Diagnostics link is always visible in companion mode
+    const diag = document.getElementById('companion-diag');
+    if (diag) diag.style.display = 'block';
 
     // One-time auto-sync per session. User can re-sync via the resync button.
     if (sessionStorage.getItem('companion_synced') === '1') return;
@@ -4121,6 +4129,10 @@ function enableCompanionListener() {
     lsSet('companion_listener_done', '1');
     const banner = document.getElementById('companion-banner');
     if (banner) banner.style.display = 'none';
+}
+
+function openCompanionDiag() {
+    fireCompanionDeepLink('financecompanion://settings');
 }
 
 function resyncCompanion() {

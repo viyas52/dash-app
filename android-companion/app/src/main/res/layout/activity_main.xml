@@ -98,13 +98,55 @@
             android:layout_height="wrap_content"
             android:text="Send test transaction" />
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Recent notification activity"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Shows the last 40 notifications the listener saw, with what happened to each."
+            android:textSize="12sp"
+            android:paddingBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_refresh_logs"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Refresh logs" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_clear_logs"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Clear logs" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/text_log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="11sp"
             android:fontFamily="monospace"
-            android:paddingTop="16dp"
+            android:paddingTop="8dp"
             android:textIsSelectable="true" />
 
     </LinearLayout>
