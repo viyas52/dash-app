@@ -4347,6 +4347,17 @@ function enterApp() {
     initDots();
     initFirebase();
     maybeSyncCompanion();
+    // Deep-link: if launched via "Categorize this txn" notification, jump
+    // straight to the Uncategorized screen instead of the home dashboard.
+    if (new URLSearchParams(location.search).get('openuncat') === '1') {
+        setTimeout(() => { try { showUncategorized(); } catch(e) {} }, 200);
+        // Clean the URL so a manual refresh doesn't stay stuck on uncat.
+        try {
+            const url = new URL(location.href);
+            url.searchParams.delete('openuncat');
+            history.replaceState(null, '', url.toString());
+        } catch(e) {}
+    }
 }
 
 /* ─── COMPANION APP (Android wrapper) ─── */

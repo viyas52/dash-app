@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -34,9 +35,14 @@ object UncatNotifier {
         val title = "Categorize this ${if (type == "debit") "payment" else "credit"}"
         val text = "₹${fmt(amount)} $arrow ${if (party.isNotBlank()) party else "?"}  ·  $bank"
 
-        // Tapping opens the TWA, which loads the PWA. The home screen banner
-        // will already reflect the new uncategorized count via the live listener.
-        val openIntent = Intent(ctx, CompanionLauncherActivity::class.java).apply {
+        // Tapping launches the PWA URL with ?openuncat=1 — Chrome routes this
+        // to the user's installed PWA shortcut (added via "Add to Home Screen")
+        // so it opens standalone, not in a browser tab. PWA reads the param
+        // on load and jumps straight to the Uncategorized screen.
+        val openIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://viyas52.github.io/dash-app/?companion=1&openuncat=1")
+        ).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pi = PendingIntent.getActivity(
