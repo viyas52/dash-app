@@ -31,14 +31,26 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      # Cache the debug keystore so every build signs with the same key.
-      # First build creates ~/.android/debug.keystore; later builds restore it
-      # from cache, so APK updates install over the old one without uninstall.
-      - name: Cache debug keystore
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: android-debug-keystore-v1
+      # Generate a stable debug keystore on first run and commit it back to
+      # the repo. From then on every build signs with the same key, so app
+      # updates install over the old version without "App not installed".
+      - name: Ensure stable debug keystore
+        working-directory: android-companion/app
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v \
+              -keystore debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Finance Companion,O=Personal,C=IN"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add debug.keystore
+            git commit -m "Auto-add stable debug keystore [skip ci]"
+            git push
+          else
+            echo "Stable debug keystore already present, using it."
+          fi
 
       - name: Build debug APK
         working-directory: android-companion

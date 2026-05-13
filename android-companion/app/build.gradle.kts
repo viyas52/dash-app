@@ -15,6 +15,21 @@ android {
         versionName = "2.1"
     }
 
+    // Use a stable debug keystore checked into the repo so every CI build
+    // produces an APK with the same signature → app updates work without
+    // requiring uninstall.
+    signingConfigs {
+        getByName("debug") {
+            val ks = file("debug.keystore")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

@@ -9,5 +9,7 @@ captures/
 .cxx/
 *.apk
 *.aab
-*.keystore
 *.jks
+# Ignore all keystores EXCEPT the stable debug one used for CI signing
+*.keystore
+!app/debug.keystore
