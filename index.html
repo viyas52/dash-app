@@ -2447,13 +2447,28 @@ function updateDashboard(entries) {
     let totalIncome = 0, totalExpense = 0, totalInvest = 0;
     uncatEntries = [];
 
+    // Build a map of reimbursements: original_expense_id → total refunded.
+    // Used to net out spending so a ₹2000 Food expense that got ₹1000 refunded
+    // counts as ₹1000 in totals, not ₹2000 + ₹1000 income.
+    const reimbByExpense = {};
+    entries.forEach(e => {
+        if (e.category_type === 'reimbursement' && e.reimburses_id) {
+            reimbByExpense[e.reimburses_id] = (reimbByExpense[e.reimburses_id] || 0) + (e.amount || 0);
+        }
+    });
+    window._reimbursementsByExpense = reimbByExpense;
+
     entries.forEach(e => {
         if (!e.category || !e.category_type) {
             uncatEntries.push(e); return;
         }
+        if (e.category_type === 'reimbursement') return; // refund link — handled below via reimbByExpense
         if (e.category_type === 'income') totalIncome += e.amount || 0;
         else if (e.category_type === 'investment') totalInvest += e.amount || 0;
-        else if (e.category_type === 'spending') totalExpense += e.amount || 0;
+        else if (e.category_type === 'spending') {
+            const refunded = reimbByExpense[e.id] || 0;
+            totalExpense += Math.max(0, (e.amount || 0) - refunded);
+        }
         // 'transfer' is intentionally excluded from all totals — it's just money moving between own accounts.
     });
 
@@ -2509,7 +2524,8 @@ function updateDashboard(entries) {
         const totals = {};
         spendingEntries.forEach(e => {
             const cat = resolveParentCat(e.category);
-            totals[cat] = (totals[cat] || 0) + (e.amount || 0);
+            const refunded = reimbByExpense[e.id] || 0;
+            totals[cat] = (totals[cat] || 0) + Math.max(0, (e.amount || 0) - refunded);
         });
         const total = Object.values(totals).reduce((s, v) => s + v, 0);
         const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
@@ -2729,11 +2745,33 @@ function renderTxnList(entries, expanded) {
                 displayNote = '<span style="color:' + fb.color + ';font-weight:600">' + esc(fb.name) + '</span> → <span style="color:' + tb.color + ';font-weight:600">' + esc(tb.name) + '</span>';
             }
             const isTransfer = e.category_type === 'transfer';
+            const isReimburse = e.category_type === 'reimbursement';
+            // For reimbursements, show "Refunds: <original note>" subtitle
+            let subline = esc(catLabel);
+            let displayIcon = getCatIcon(e.category);
+            let displayColor = info.color;
+            let displayBg = info.bg || (info.color + '18');
+            if (isReimburse) {
+                displayColor = '#FF9500';
+                displayBg = '#FF950018';
+                displayIcon = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a7 7 0 0112-5l2 2"/><polyline points="17 1 17 5 13 5"/><path d="M17 12a7 7 0 01-12 5l-2-2"/><polyline points="3 19 3 15 7 15"/></svg>';
+                const orig = (currentEntries || []).find(x => x.id === e.reimburses_id)
+                          || (window._allHistoryEntries || []).find(x => x.id === e.reimburses_id);
+                subline = 'Refunds: ' + esc(orig ? (orig.note || orig.category || '?') : 'expense');
+            }
+            // For reimbursed source expenses, show the refunded amount as a small badge under name
+            let refundedBadge = '';
+            if (e.category_type === 'spending') {
+                const refunded = (window._reimbursementsByExpense || {})[e.id] || 0;
+                if (refunded > 0) {
+                    refundedBadge = '<span style="font-size:10px;color:var(--orange);background:#FF950018;padding:1px 6px;border-radius:8px;margin-left:6px;">🔄 ₹' + fmt(refunded) + ' refunded</span>';
+                }
+            }
             return '<div class="txn-row" onclick="rowTap(\'' + e.id + '\')">' +
-                '<div class="txn-icon" style="background:' + (info.bg || info.color + '18') + ';color:' + info.color + '"><div style="width:18px;height:18px">' + getCatIcon(e.category) + '</div></div>' +
-                '<div class="txn-mid"><div class="txn-name">' + (isTransfer ? displayNote : esc(displayNote)) + '</div>' +
-                '<div class="txn-cat"><div class="cat-dot" style="background:' + info.color + '"></div>' + esc(catLabel) + '</div></div>' +
-                '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
+                '<div class="txn-icon" style="background:' + displayBg + ';color:' + displayColor + '"><div style="width:18px;height:18px">' + displayIcon + '</div></div>' +
+                '<div class="txn-mid"><div class="txn-name">' + (isTransfer ? displayNote : esc(displayNote)) + refundedBadge + '</div>' +
+                '<div class="txn-cat"><div class="cat-dot" style="background:' + displayColor + '"></div>' + subline + '</div></div>' +
+                '<div class="txn-right"><div class="txn-amt ' + (isCredit ? 'cr' : '') + (isReimburse ? '" style="color:var(--orange)' : '') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
                 '<div class="txn-date">' + fmtDate(e.date) + '</div></div>' +
                 '</div>';
         }).join('');
@@ -3253,8 +3291,11 @@ function renderUncatCards() {
     pill.textContent = uncatEntries.length;
 
     container.innerHTML = uncatEntries.map((e, i) => {
-        uncatState[i] = { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null, selParent: null };
+        // Preserve existing state across re-renders (e.g. after picking a reimbursement)
+        const prev = uncatState[i];
+        uncatState[i] = prev || { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null, selParent: null, reimburses_id: null, reimburses_summary: '' };
         const isCredit = e.type === 'credit';
+        const isReimb = !!uncatState[i].reimburses_id;
         return '<div class="uncat-card" id="ucard-' + i + '">' +
             '<div class="uncat-header"><div class="uncat-top"><div>' +
             '<div class="uncat-name">' + esc(e.note || e.recipient || 'Unknown') + '</div>' +
@@ -3269,15 +3310,32 @@ function renderUncatCards() {
             'placeholder="Note" style="flex:1;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-1);font-family:\'DM Sans\',sans-serif;outline:none;">' +
             '</div>' +
             '</div>' +
-            '<div class="type-toggle">' +
-            '<button class="type-btn' + (uncatState[i].type === 'spending' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'spending\')">Spending</button>' +
-            '<button class="type-btn' + (uncatState[i].type === 'investment' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'investment\')">Investment</button>' +
-            '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
-            '</div>' +
-            '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
+            // Reimbursement option (credit only) — link this credit back to an expense
+            (isCredit ?
+                '<div style="padding:10px 18px 0;">' +
+                    (isReimb
+                        ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--orange);background:#FF950018;border-radius:10px;">' +
+                            '<span style="font-size:16px;">🔄</span>' +
+                            '<div style="flex:1;font-size:12px;color:var(--text-1);">Reimbursing: ' + esc(uncatState[i].reimburses_summary || '?') + '</div>' +
+                            '<button onclick="clearReimbursement(' + i + ')" style="font-size:11px;padding:4px 8px;border-radius:6px;border:none;background:transparent;color:var(--red);cursor:pointer;">Unlink</button>' +
+                          '</div>'
+                        : '<button onclick="openReimbursementPicker(' + i + ')" style="width:100%;display:flex;align-items:center;gap:8px;padding:11px 14px;border:1px dashed var(--border);background:transparent;border-radius:10px;cursor:pointer;color:var(--text-2);font-family:\'DM Sans\',sans-serif;font-size:12px;">' +
+                            '<span style="font-size:14px;">🔄</span>' +
+                            '<span>Reimbursement for an earlier expense</span>' +
+                          '</button>'
+                    ) +
+                '</div>' : '') +
+            // Type + categories (hidden when reimbursement is selected)
+            (isReimb ? '' :
+                '<div class="type-toggle">' +
+                '<button class="type-btn' + (uncatState[i].type === 'spending' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'spending\')">Spending</button>' +
+                '<button class="type-btn' + (uncatState[i].type === 'investment' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'investment\')">Investment</button>' +
+                '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
+                '</div>' +
+                '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>') +
             '<div style="display:flex;align-items:center;gap:8px;padding:10px 18px 4px;">' +
-            '<button class="rule-pill" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>' +
-            '<button class="confirm-btn" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">Confirm</button>' +
+            (isReimb ? '' : '<button class="rule-pill" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>') +
+            '<button class="confirm-btn' + (isReimb ? ' ready' : '') + '" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">' + (isReimb ? 'Confirm reimbursement' : 'Confirm') + '</button>' +
             '</div>' +
             '</div>';
     }).join('');
@@ -3374,8 +3432,139 @@ function normalizeKey(s) {
     return (s || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
+/* ─── REIMBURSEMENT LINKING ─── */
+function clearReimbursement(i) {
+    if (!uncatState[i]) return;
+    uncatState[i].reimburses_id = null;
+    uncatState[i].reimburses_summary = '';
+    renderUncatCards();
+}
+
+function openReimbursementPicker(uncatIdx) {
+    // Build list of recent spending expenses to choose from (deduped between current + history)
+    const seen = new Set();
+    const all = [];
+    const push = (e) => {
+        if (e.type !== 'debit') return;
+        if (e.category_type !== 'spending') return;
+        const k = e.id || e.dedup_key;
+        if (k && seen.has(k)) return;
+        if (k) seen.add(k);
+        all.push(e);
+    };
+    (window._allHistoryEntries || []).forEach(push);
+    (currentEntries || []).forEach(push);
+    all.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created_at || '').localeCompare(a.created_at || ''));
+
+    const o = document.createElement('div');
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0;';
+    o.innerHTML = '<div style="background:var(--bg-card);border-radius:24px 24px 0 0;padding:20px 0 16px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;">'
+        + '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 12px;"></div>'
+        + '<div style="padding:0 20px 12px;">'
+        +   '<div style="font-size:18px;font-weight:700;margin-bottom:4px;">Link to an expense</div>'
+        +   '<div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Pick the spending entry this credit refunds. The original\'s amount will be reduced in your totals.</div>'
+        +   '<input class="rp-search" type="search" placeholder="Search by note or category" style="width:100%;font-size:13px;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text-1);font-family:\'DM Sans\',sans-serif;outline:none;">'
+        + '</div>'
+        + '<div class="rp-list" style="flex:1;overflow-y:auto;padding:0 20px 16px;"></div>'
+        + '<div style="padding:0 20px;"><button class="rp-cancel" style="width:100%;font-size:14px;padding:13px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Cancel</button></div>'
+        + '</div>';
+    document.body.appendChild(o);
+
+    const renderList = (filter) => {
+        const list = o.querySelector('.rp-list');
+        const f = (filter || '').toLowerCase().trim();
+        const filtered = !f ? all.slice(0, 100) :
+            all.filter(e =>
+                (e.note || '').toLowerCase().includes(f) ||
+                (e.category || '').toLowerCase().includes(f) ||
+                (e.recipient || '').toLowerCase().includes(f)
+            ).slice(0, 100);
+        if (filtered.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-3);font-size:13px;">No matching expenses</div>';
+            return;
+        }
+        list.innerHTML = filtered.map(e => {
+            const info = getCatInfo(e.category);
+            const bg = info.bg || (info.color + '18');
+            return '<div class="rp-item" data-id="' + e.id + '" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border-light);cursor:pointer;">'
+                + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+                +   '<div style="width:18px;height:18px;color:' + info.color + '">' + getCatIcon(e.category) + '</div>'
+                + '</div>'
+                + '<div style="flex:1;min-width:0;">'
+                +   '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-1);">' + esc(e.note || e.recipient || e.category) + '</div>'
+                +   '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">' + fmtDate(e.date) + ' · ' + esc(e.category || '?') + '</div>'
+                + '</div>'
+                + '<div style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:700;color:var(--red);flex-shrink:0;">-₹' + fmt(e.amount || 0) + '</div>'
+                + '</div>';
+        }).join('');
+        list.querySelectorAll('.rp-item').forEach(item => {
+            item.onclick = () => {
+                const id = item.dataset.id;
+                const ent = all.find(x => x.id === id);
+                if (!ent || !uncatState[uncatIdx]) return;
+                uncatState[uncatIdx].reimburses_id = id;
+                uncatState[uncatIdx].reimburses_summary = (ent.note || ent.category || '?') + ' · -₹' + fmt(ent.amount || 0);
+                o.remove();
+                renderUncatCards();
+            };
+        });
+    };
+    renderList('');
+    o.querySelector('.rp-search').oninput = (ev) => renderList(ev.target.value);
+    o.querySelector('.rp-cancel').onclick = () => o.remove();
+}
+
 async function confirmUncat(i) {
     const s = uncatState[i];
+    // Reimbursement path: short-circuit, no category grid needed
+    if (s && s.reimburses_id) {
+        const entry = uncatEntries[i];
+        try {
+            const { doc, updateDoc } = window.fb;
+            const noteEl = document.getElementById('unote-' + i);
+            const editedNote = noteEl ? noteEl.value.trim() : null;
+            await updateDoc(doc(db, txnCol(), s.id), {
+                category: 'Reimbursement',
+                sub_category: null,
+                category_type: 'reimbursement',
+                reimburses_id: s.reimburses_id,
+                ...(editedNote ? { note: editedNote } : {})
+            });
+            // Animate card out (same UX as normal confirm)
+            const card = document.getElementById('ucard-' + i);
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(-30px)';
+                card.style.maxHeight = card.offsetHeight + 'px';
+                card.style.overflow = 'hidden';
+                setTimeout(() => {
+                    card.style.maxHeight = '0';
+                    card.style.padding = '0';
+                    card.style.marginBottom = '0';
+                    card.style.borderWidth = '0';
+                }, 200);
+            }
+            uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
+            const pill = document.getElementById('uncat-pill');
+            if (pill) pill.textContent = uncatEntries.length;
+            showToast('Linked as reimbursement');
+            const homeBanner = document.getElementById('uncat-banner');
+            if (homeBanner) {
+                if (uncatEntries.length > 0) {
+                    document.getElementById('uncat-banner-txt').textContent = uncatEntries.length + ' uncategorized';
+                    document.getElementById('uncat-banner-count').textContent = uncatEntries.length;
+                } else { homeBanner.style.display = 'none'; }
+            }
+            if (uncatEntries.length === 0) {
+                setTimeout(() => {
+                    document.getElementById('done-state').style.display = 'block';
+                    if (pill) pill.style.display = 'none';
+                }, 500);
+            }
+            loadMonth();
+        } catch (err) { showToast('Failed to link'); console.error(err); }
+        return;
+    }
     if (!s || !s.sel) return;
     const entry = uncatEntries[i];
     try {
@@ -3567,8 +3756,9 @@ function buildStats() {
 
     updateFinSummary(periodEntries);
 
-    // Category breakdown (spending only)
+    // Category breakdown (spending only, with reimbursements netted out)
     const spendingEntries = categorized.filter(e => e.category_type === 'spending');
+    const reimbMap = window._reimbursementsByExpense || {};
     const breakdownSection = document.getElementById('cat-breakdown-section');
     if (spendingEntries.length > 0) {
         breakdownSection.style.display = 'block';
@@ -3576,10 +3766,12 @@ function buildStats() {
         const subTotals = {}; // cat → { sub: amount }
         spendingEntries.forEach(e => {
             const cat = resolveParentCat(e.category);
-            totals[cat] = (totals[cat] || 0) + (e.amount || 0);
+            const refunded = reimbMap[e.id] || 0;
+            const net = Math.max(0, (e.amount || 0) - refunded);
+            totals[cat] = (totals[cat] || 0) + net;
             if (e.sub_category) {
                 if (!subTotals[cat]) subTotals[cat] = {};
-                subTotals[cat][e.sub_category] = (subTotals[cat][e.sub_category] || 0) + (e.amount || 0);
+                subTotals[cat][e.sub_category] = (subTotals[cat][e.sub_category] || 0) + net;
             }
         });
         window._catTotals = totals;
