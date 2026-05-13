@@ -3100,6 +3100,7 @@ function addNewCat() {
 
 /* ─── EXPORT DATA ─── */
 async function exportData() {
+    sndTap(); hapTap();
     showToast('Preparing export…');
     try {
         const { getDocs, collection } = window.fb;
@@ -3228,8 +3229,8 @@ function updateMonthLabel() {
     document.getElementById('month-label').textContent =
         d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
-function prevMonth() { monthOffset++; updateMonthLabel(); loadMonth(); }
-function nextMonth() { if (monthOffset <= 0) return; monthOffset--; updateMonthLabel(); loadMonth(); }
+function prevMonth() { sndPage(); hapTap(); monthOffset++; updateMonthLabel(); loadMonth(); }
+function nextMonth() { if (monthOffset <= 0) return; sndPage(); hapTap(); monthOffset--; updateMonthLabel(); loadMonth(); }
 function populateMonths() {
     monthOffset = 0;
     updateMonthLabel();
@@ -3596,6 +3597,7 @@ function renderAcctFilterChips() {
 }
 
 function setAcctFilter(bank, btn) {
+    sndTap(); hapTap();
     _acctFilter = bank;
     document.querySelectorAll('.acct-chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
@@ -3830,6 +3832,7 @@ function modalPickSub(sub) {
 }
 
 function setModalType(val, btn) {
+    sndTap(); hapTap();
     document.getElementById('add-type').value = val;
     document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b === btn));
     updateFormCats();
@@ -4889,6 +4892,7 @@ function buildStats() {
 }
 
 function switchChartView(mode) {
+    sndTap(); hapTap();
     _chartView = mode;
     document.getElementById('chart-bar-btn').classList.toggle('active', mode === 'bar');
     document.getElementById('chart-pie-btn').classList.toggle('active', mode === 'pie');
@@ -5193,6 +5197,7 @@ function initTheme() {
 }
 
 function toggleSlider(key) {
+    sndClick(); hapTick();
     const panel = document.getElementById(key + '-slider-panel');
     const chev  = document.getElementById(key + '-chev');
     const open  = panel.style.display === 'none';
