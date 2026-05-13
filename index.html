@@ -2850,13 +2850,6 @@ function sndNotif() {
     setTimeout(() => _tone(880, 50, 'square', 0.045), 60);
     setTimeout(() => _tone(1175, 90, 'square', 0.045), 120);
 }
-// Biometric unlock — distinct from PIN's two-note sndConfirm.
-// Three-note ascending arpeggio (C5-E5-A5) — feels like an "ID accepted" beep.
-function sndBio() {
-    _tone(523, 45, 'triangle', 0.045);
-    setTimeout(() => _tone(659, 45, 'triangle', 0.045), 50);
-    setTimeout(() => _tone(880, 90, 'triangle', 0.05), 100);
-}
 
 function setSoundsEnabled(on) {
     _soundsEnabled = !!on;
@@ -6036,13 +6029,8 @@ async function triggerBiometric() {
                 timeout: 60000,
             },
         });
-        // Biometric passed — distinct three-note unlock arpeggio.
-        // _tone() now self-queues on AudioContext.resume() so the chime
-        // fires as soon as audio is allowed, which Chrome grants on the
-        // next user gesture (typically the very next touch the user makes
-        // after unlocking — often within the first 10-100ms as they move
-        // their finger off the sensor).
-        sndBio();
+        // Biometric passed — same two-note confirm as PIN unlock.
+        sndConfirm();
         hapConfirm();
         _pinBuffer = '';
         if (window._pinSetupMode) { window._pinSetupMode = false; }
