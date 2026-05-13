@@ -368,11 +368,11 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
         const ruleSnap = await db.collection(`users/${effectiveUser}/rules`).doc(k).get();
         if (ruleSnap.exists) {
           const rule = ruleSnap.data();
-          if (!rule.contact) {
-            parsed.category = rule.category;
-            parsed.category_type = rule.category_type;
-            autoTagged = true;
-          }
+          // Apply the rule regardless of legacy `contact` flag — the "Person"
+          // feature was removed because contact-tagged txns vanished from the UI.
+          parsed.category = rule.category;
+          parsed.category_type = rule.category_type;
+          autoTagged = true;
         }
       }
     }

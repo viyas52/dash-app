@@ -2428,12 +2428,8 @@ function updateDashboard(entries) {
     let totalIncome = 0, totalExpense = 0, totalInvest = 0;
     uncatEntries = [];
 
-    const contactKeys = window._contactKeys || new Set();
     entries.forEach(e => {
         if (!e.category || !e.category_type) {
-            // Skip contacts — they appear in Recent but don't prompt for categorization
-            const recipKey = (e.recipient || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-            if (contactKeys.has(recipKey)) return;
             uncatEntries.push(e); return;
         }
         if (e.category_type === 'income') totalIncome += e.amount || 0;
@@ -3237,7 +3233,6 @@ function renderUncatCards() {
             '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>' +
             '<div style="display:flex;align-items:center;gap:8px;padding:10px 18px 4px;">' +
             '<button class="rule-pill" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>' +
-            '<button class="rule-pill person-pill" id="uperson-' + i + '" onclick="togglePersonMode(' + i + ',this)">👤 Person</button>' +
             '<button class="confirm-btn" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">Confirm</button>' +
             '</div>' +
             '</div>';
@@ -3355,9 +3350,7 @@ async function confirmUncat(i) {
 
         // Remember rule for future SMSes from this recipient (debits only, not for transfers).
         const rememberEl = document.getElementById('uremember-' + i);
-        const personEl   = document.getElementById('uperson-' + i);
         const shouldRemember = rememberEl ? rememberEl.classList.contains('active') : true;
-        const isPerson       = personEl   ? personEl.classList.contains('active')   : false;
         if (entry && entry.type === 'debit' && entry.recipient && s.type !== 'transfer' && shouldRemember) {
             const key = normalizeKey(entry.recipient);
             if (key) {
@@ -3366,7 +3359,6 @@ async function confirmUncat(i) {
                     recipient: entry.recipient,
                     category: parentCat,
                     category_type: s.type,
-                    contact: isPerson,   // contact:true = always ask, never auto-tag
                     last_used: new Date().toISOString()
                 });
             }
