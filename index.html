@@ -17,6 +17,9 @@
         :root {
             --bg: #EDEBE6;
             --bg-card: #ffffff;
+            --bg-tinted: #FAFAF8;     /* sub-pills / cat chips bg — subtle inset */
+            --bg-soft: #F5F2EC;       /* day-divider strip bg */
+            --danger-soft: #FFF0F0;   /* light red hover bg */
             --border: #E0DDD7;
             --border-light: #F0EDE8;
             --text-1: #0D0D0D;
@@ -35,6 +38,9 @@
         [data-theme="dark"] {
             --bg: #1A1A1A;
             --bg-card: #242424;
+            --bg-tinted: #2A2A2A;
+            --bg-soft: #1F1F1F;
+            --danger-soft: #3A1A1A;
             --border: #333;
             --border-light: #2A2A2A;
             --text-1: #F0EDE8;
@@ -45,9 +51,7 @@
         [data-theme="dark"] .bottom-nav { border-top-color: #333; }
         [data-theme="dark"] .donut-track { stroke: #333; }
         [data-theme="dark"] .toggle { background: #444; }
-        [data-theme="dark"] .cat-btn { background: #2A2A2A; }
-        [data-theme="dark"] .sub-pill { background: #2A2A2A; }
-        [data-theme="dark"] .btn-danger:hover { background: #3A1A1A; }
+        /* (cat-btn / sub-pill / btn-danger:hover now use var(--bg-tinted) and var(--danger-soft) which auto-switch) */
         [data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.6); }
         [data-theme="dark"] .done-ico { background: #1A2E1F; }
         [data-theme="dark"] .skel { background: #333; }
@@ -751,7 +755,7 @@
             background: transparent; color: var(--red);
             border: 1px solid var(--border); margin-top: 10px;
         }
-        .btn-danger:hover { background: #FFF0F0; border-color: var(--red); }
+        .btn-danger:hover { background: var(--danger-soft); border-color: var(--red); }
 
         /* ─── UNCATEGORIZED VIEW ─── */
         .uncat-page { padding: 0 20px; }
@@ -828,7 +832,7 @@
             transition: all 0.15s; -webkit-tap-highlight-color: transparent;
             white-space: nowrap;
         }
-        .type-box.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+        .type-box.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
         .type-box:active { transform: scale(0.95); }
 
         .type-toggle {
@@ -840,7 +844,7 @@
             cursor: pointer; transition: all 0.15s; background: transparent; color: var(--text-3);
             border: none; font-family: 'DM Sans', sans-serif;
         }
-        .type-btn.active { background: var(--text-1); color: #fff; }
+        .type-btn.active { background: var(--text-1); color: var(--bg); }
 
         .cat-grid { padding: 14px 18px 0; }
         .cat-grid-inner {
@@ -851,7 +855,7 @@
             display: flex; flex-direction: column; align-items: center; gap: 5px;
             padding: 10px 4px 8px;
             border: 1px solid var(--border); border-radius: var(--radius-sm);
-            background: #FAFAF8; cursor: pointer;
+            background: var(--bg-tinted); cursor: pointer;
             transition: all 0.15s;
         }
         .cat-btn:active { transform: scale(0.95); }
@@ -881,7 +885,7 @@
             cursor: pointer; color: var(--text-3); background: transparent;
             transition: all 0.1s; -webkit-tap-highlight-color: transparent;
         }
-        .sub-style-tab.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+        .sub-style-tab.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
 
         /* Option A — Full-width rows */
         .sub-rows { padding: 0 0 6px; }
@@ -904,7 +908,7 @@
             padding: 9px 8px; border-radius: 10px; border: 1px solid;
             font-size: 12px; font-weight: 500; text-align: center; cursor: pointer;
             transition: all 0.12s; -webkit-tap-highlight-color: transparent;
-            background: #fff;
+            background: var(--bg-tinted);
         }
 
         /* Option C — Horizontal scroll */
@@ -916,7 +920,7 @@
         .sub-chip {
             flex-shrink: 0; padding: 7px 14px; border-radius: 20px; border: 1px solid;
             font-size: 12px; font-weight: 500; cursor: pointer;
-            transition: all 0.12s; -webkit-tap-highlight-color: transparent; background: #fff;
+            transition: all 0.12s; -webkit-tap-highlight-color: transparent; background: var(--bg-tinted);
             white-space: nowrap;
         }
 
@@ -926,14 +930,14 @@
             flex: 1 1 calc(50% - 4px); min-width: 80px; max-width: 100%;
             padding: 8px 10px; border-radius: 10px; border: 1px solid;
             font-size: 12px; font-weight: 500; text-align: center; cursor: pointer;
-            transition: all 0.12s; -webkit-tap-highlight-color: transparent; background: #fff;
+            transition: all 0.12s; -webkit-tap-highlight-color: transparent; background: var(--bg-tinted);
         }
 
         /* legacy kept for uncat cards */
         .sub-pills { padding: 10px 12px; margin: 2px 18px 0; border-radius: var(--radius-sm); }
         .sub-pills-label { font-size: 9px; font-family: 'Space Mono', monospace; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 8px; }
         .sub-pills-row { display: flex; flex-wrap: wrap; gap: 6px; }
-        .sub-pill { padding: 5px 12px; border-radius: 20px; border: 1px solid; font-size: 11px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s; background: #fff; -webkit-tap-highlight-color: transparent; }
+        .sub-pill { padding: 5px 12px; border-radius: 20px; border: 1px solid; font-size: 11px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s; background: var(--bg-tinted); -webkit-tap-highlight-color: transparent; }
         .sub-pill:active { transform: scale(0.95); }
 
         .confirm-btn {
@@ -969,7 +973,7 @@
             color: var(--text-3); cursor: pointer; font-family: 'DM Sans', sans-serif;
             transition: all 0.15s; -webkit-tap-highlight-color: transparent;
         }
-        .period-btn.active { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+        .period-btn.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
 
         /* Line chart */
         .line-chart-svg { width: 100%; overflow: visible; display: block; }
@@ -1006,7 +1010,7 @@
             flex-shrink: 0;
         }
         .line-dot-tip {
-            position: absolute; background: var(--text-1); color: #fff;
+            position: absolute; background: var(--text-1); color: var(--bg);
             font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700;
             padding: 3px 6px; border-radius: 6px; pointer-events: none;
             transform: translate(-50%, -130%); white-space: nowrap;
@@ -1040,7 +1044,7 @@
             transition: all 0.15s; -webkit-tap-highlight-color: transparent;
         }
         .chart-toggle-btn svg { width: 14px; height: 14px; }
-        .chart-toggle-btn.active { background: var(--text-1); color: #fff; }
+        .chart-toggle-btn.active { background: var(--text-1); color: var(--bg); }
 
         .portfolio-row {
             display: flex; align-items: center; gap: 12px; padding: 10px 0;
@@ -3185,7 +3189,7 @@ function renderModalCatGrid(cats) {
         const isSel = st.cat === c.name;
         const isExp = st.expanded === c.name;
         const borderCol = (isSel || isExp) ? c.color : 'var(--border)';
-        const bgCol = (isSel || isExp) && c.bg ? c.bg : '#FAFAF8';
+        const bgCol = (isSel || isExp) && c.bg ? c.bg : 'var(--bg-tinted)';
         const txtCol = (isSel || isExp) ? c.color : 'var(--text-2)';
         const icon = getCatIcon(c.name);
         return '<div class="cat-btn" style="border-color:' + borderCol + ';background:' + bgCol + '" ' +
@@ -3688,7 +3692,7 @@ function renderCatChips(i) {
     html += list.map(c => {
         const isSel = st.sel === c.name || (st.expanded === c.name);
         const borderCol = isSel ? c.color : 'var(--border)';
-        const bgCol = isSel && c.bg ? c.bg : '#FAFAF8';
+        const bgCol = isSel && c.bg ? c.bg : 'var(--bg-tinted)';
         const txtCol = isSel ? c.color : 'var(--text-2)';
         const icon = getCatIcon(c.name);
         const borderW = isSel ? '2px' : '1px';
