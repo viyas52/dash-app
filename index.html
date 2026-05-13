@@ -1607,8 +1607,8 @@
 
         <!-- Period tabs -->
         <div class="period-tabs" id="period-tabs">
-            <button class="period-btn active" data-period="daily" onclick="setStatsPeriod('daily',this)">Daily</button>
-            <button class="period-btn" data-period="weekly" onclick="setStatsPeriod('weekly',this)">Weekly</button>
+            <button class="period-btn" data-period="daily" onclick="setStatsPeriod('daily',this)">Daily</button>
+            <button class="period-btn active" data-period="weekly" onclick="setStatsPeriod('weekly',this)">Weekly</button>
             <button class="period-btn" data-period="monthly" onclick="setStatsPeriod('monthly',this)">Monthly</button>
             <button class="period-btn" data-period="annual" onclick="setStatsPeriod('annual',this)">Annual</button>
         </div>
@@ -1627,16 +1627,16 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <div class="label" id="breakdown-label">By Category</div>
                 <div class="chart-toggle">
-                    <button class="chart-toggle-btn active" id="chart-bar-btn" onclick="switchChartView('bar')">
+                    <button class="chart-toggle-btn" id="chart-bar-btn" onclick="switchChartView('bar')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
                     </button>
-                    <button class="chart-toggle-btn" id="chart-pie-btn" onclick="switchChartView('pie')">
+                    <button class="chart-toggle-btn active" id="chart-pie-btn" onclick="switchChartView('pie')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 8V2"/><path d="M8 8l5.2 3"/></svg>
                     </button>
                 </div>
             </div>
-            <div id="cat-breakdown-list"></div>
-            <div id="cat-pie-wrap" style="display:none;">
+            <div id="cat-breakdown-list" style="display:none;"></div>
+            <div id="cat-pie-wrap">
                 <canvas id="cat-pie-canvas" width="220" height="220" style="display:block;margin:0 auto 16px;"></canvas>
                 <div id="cat-pie-legend"></div>
             </div>
@@ -1648,13 +1648,13 @@
             <div id="portfolio-list"></div>
         </div>
 
-        <!-- Income / Expense / Investment Summary -->
+        <!-- Income / Expense / Investment Summary (always open) -->
         <div class="card" id="fin-summary-section" style="margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleFinSummary()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
                 <div class="label">Financial Summary</div>
-                <svg id="fin-summary-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" style="transition:transform .25s;flex-shrink:0"><path d="M4 6l4 4 4-4" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div style="font-size:10px;color:var(--text-3);font-family:'Space Mono',monospace;">this month</div>
             </div>
-            <div id="fin-summary-body" style="display:none;margin-top:14px;">
+            <div id="fin-summary-body">
                 <!-- 3 big number tiles -->
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
                     <div style="background:var(--bg-2);border-radius:12px;padding:10px 6px;text-align:center;min-width:0;">
@@ -4464,9 +4464,9 @@ async function confirmUncat(i) {
 }
 
 /* ─── STATS VIEW ─── */
-let _statsPeriod = 'daily';
+let _statsPeriod = 'weekly';
 let _catDrillOpen = null;
-let _chartView = 'bar';
+let _chartView = 'pie';
 
 // Merge currentEntries + history without duplicates. Used for time windows that
 // can span month boundaries (daily, weekly). Prevents the "near month start"
@@ -4717,18 +4717,22 @@ function buildChartForPeriod() {
 }
 
 function buildStats() {
-    const periodEntries = getEntriesForPeriod();
-    const categorized = periodEntries.filter(e => e.category && e.category_type);
+    // The line chart at the top uses the active period (daily/weekly/monthly/annual).
+    // Everything else (breakdown, portfolio, financial summary) is anchored to
+    // the *current month* — that's the most useful "what did I spend this month"
+    // reading, regardless of which chart period is selected.
+    const periodEntries = getEntriesForPeriod();          // for the chart
+    const monthEntries = currentEntries || [];            // for breakdown/summary
+    const categorized = monthEntries.filter(e => e.category && e.category_type);
 
     // Update chart label
     const labelEl = document.getElementById('chart-period-label');
     const breakdownLabel = document.getElementById('breakdown-label');
     const periodLabel = { daily:'Last 7 Days', weekly:'Last 4 Weeks', monthly:'Monthly Spending', annual:'Annual Spending' }[_statsPeriod] || 'Spending';
-    const bLabel = { daily:'Last 7 Days by Category', weekly:'Last 4 Weeks by Category', monthly:'By Category', annual:'Annual by Category' }[_statsPeriod] || 'By Category';
     if (labelEl) labelEl.textContent = periodLabel;
-    if (breakdownLabel) breakdownLabel.textContent = bLabel;
+    if (breakdownLabel) breakdownLabel.textContent = 'By Category · This month';
 
-    updateFinSummary(periodEntries);
+    updateFinSummary(monthEntries);
 
     // Category breakdown (spending only, with reimbursements netted out)
     const spendingEntries = categorized.filter(e => e.category_type === 'spending');
@@ -4845,18 +4849,40 @@ function drawPieChart(totals) {
     ctx.clearRect(0, 0, W, H);
     const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
     const total = entries.reduce((s, [, v]) => s + v, 0);
+    // Pass 1 — fill every wedge with NO stroke (so adjacent fills meet cleanly)
     let angle = -Math.PI / 2;
-    // Filled pie — slice borders match the page background so wedges read distinct
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#fff';
+    const slices = [];
     entries.forEach(([cat, amt]) => {
         const info = getCatInfo(cat);
         const slice = (amt / total) * Math.PI * 2;
+        slices.push({ start: angle, end: angle + slice, color: info.color });
         ctx.beginPath(); ctx.moveTo(W/2, H/2);
         ctx.arc(W/2, H/2, R, angle, angle + slice);
-        ctx.closePath(); ctx.fillStyle = info.color; ctx.fill();
-        ctx.strokeStyle = borderColor; ctx.lineWidth = 2; ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = info.color; ctx.fill();
         angle += slice;
     });
+    // Pass 2 — draw crisp radial separators between wedges as straight lines
+    // (replaces the muddy per-wedge stroke that overlapped neighbours)
+    const sepColor = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#fff';
+    if (slices.length > 1) {
+        ctx.strokeStyle = sepColor;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'butt';
+        slices.forEach(s => {
+            const x = W/2 + Math.cos(s.start) * R;
+            const y = H/2 + Math.sin(s.start) * R;
+            ctx.beginPath();
+            ctx.moveTo(W/2, H/2);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        });
+    }
+    // Pass 3 — clean outer rim
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, R, 0, Math.PI * 2);
+    ctx.strokeStyle = sepColor; ctx.lineWidth = 1.5;
+    ctx.stroke();
     document.getElementById('cat-pie-legend').innerHTML = entries.map(([cat, amt]) => {
         const info = getCatInfo(cat);
         const pct = Math.round(amt / total * 100);
@@ -4868,7 +4894,7 @@ function drawPieChart(totals) {
     }).join('');
 }
 
-let _finSummaryOpen = false;
+let _finSummaryOpen = true;
 function toggleFinSummary() {
     _finSummaryOpen = !_finSummaryOpen;
     document.getElementById('fin-summary-body').style.display = _finSummaryOpen ? 'block' : 'none';
