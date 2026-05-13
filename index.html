@@ -14,6 +14,33 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+        /* Kill the long-press blue/grey highlight + select bubble on
+           tappable surfaces. Inputs/textareas keep normal selection
+           behaviour (overridden below).                                 */
+        html, body {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        button, a, .txn-row, .uncat-card, .stat-card, .settings-page-row,
+        .tag-pill, .period-btn, .type-btn, .type-box, .sub-style-tab,
+        .ob-cta, .ob-cta-secondary, .ob-skip, .ob-dot, .cat-btn,
+        .month-arrow, .gear-btn, .fab, .pin-btn, .nav-item, .acct-chip,
+        .chart-toggle-btn, .heat-cell, .bank-chip, .rule-pill,
+        .confirm-btn, .cat-mgr-row, .cat-mgr-sub-chip, .cat-mgr-sub-del,
+        .cat-mgr-add-btn, .cat-mgr-del-btn, .sub-pill, .sub-chip,
+        .sub-grid-item, .sub-tag, .toggle, .line-chart-label,
+        .modal-close, .modal-btn, .modal-delete-btn, .cat-edit-btn {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        input, textarea, [contenteditable="true"] {
+            -webkit-touch-callout: default;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
         :root {
             --bg: #EDEBE6;
             --bg-card: #ffffff;
@@ -1913,9 +1940,13 @@
                         <div><div class="setting-label">Dark Mode</div><div class="setting-desc">Match the time of day</div></div>
                         <div class="toggle" id="dark-toggle" onclick="toggleDark()"><div class="toggle-thumb"></div></div>
                     </div>
-                    <div class="setting-row" style="border-bottom:none;">
+                    <div class="setting-row">
                         <div><div class="setting-label">Sound Effects</div><div class="setting-desc">Subtle Game Boy clicks on taps</div></div>
                         <div class="toggle" id="snd-toggle" onclick="toggleSounds()"><div class="toggle-thumb"></div></div>
+                    </div>
+                    <div class="setting-row" style="border-bottom:none;">
+                        <div><div class="setting-label">Haptic Feedback</div><div class="setting-desc">Tiny vibrations on tap (Android only)</div></div>
+                        <div class="toggle" id="hap-toggle" onclick="toggleHaptics()"><div class="toggle-thumb"></div></div>
                     </div>
                 </div>
             </div>
@@ -2708,6 +2739,31 @@ function toggleSounds() {
     if (t) t.classList.toggle('on', _soundsEnabled);
 }
 
+/* ─── HAPTICS — paired with sounds for important actions ─── */
+let _hapticsEnabled = (localStorage.getItem('pft_haptics_enabled') !== '0');
+function _haptic(pattern) {
+    if (!_hapticsEnabled) return;
+    if (!navigator.vibrate) return;
+    try { navigator.vibrate(pattern); } catch (e) {}
+}
+function hapTap()     { _haptic(8); }
+function hapTick()    { _haptic(4); }
+function hapConfirm() { _haptic([8, 30, 8]); }
+function hapCancel()  { _haptic(25); }
+function hapError()   { _haptic([30, 60, 30]); }
+function hapCoin()    { _haptic([6, 20, 6, 20, 12]); }
+
+function setHapticsEnabled(on) {
+    _hapticsEnabled = !!on;
+    localStorage.setItem('pft_haptics_enabled', on ? '1' : '0');
+    if (on) hapTap();
+}
+function toggleHaptics() {
+    setHapticsEnabled(!_hapticsEnabled);
+    const t = document.getElementById('hap-toggle');
+    if (t) t.classList.toggle('on', _hapticsEnabled);
+}
+
 /* ─── DOT MATRIX ─── */
 function initDots() {
     ['dot-matrix'].forEach(id => {
@@ -2726,7 +2782,7 @@ function setGreeting() {
 
 /* ─── VIEW SWITCHING ─── */
 function switchView(name) {
-    sndPage();
+    sndPage(); hapTap();
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const el = document.getElementById('view-' + name);
     if (!el) return;
@@ -2805,7 +2861,7 @@ const _settingsPageTitles = {
 };
 
 function settingsNav(page) {
-    sndPage();
+    sndPage(); hapTap();
     document.querySelectorAll('#settings-sheet .settings-page').forEach(p => p.style.display = 'none');
     const target = document.getElementById('sp-' + page);
     if (target) target.style.display = 'block';
@@ -2860,6 +2916,8 @@ function initSettingsSliders() {
     if (tog) tog.classList.toggle('on', isDark);
     const sndTog = document.getElementById('snd-toggle');
     if (sndTog) sndTog.classList.toggle('on', _soundsEnabled);
+    const hapTog = document.getElementById('hap-toggle');
+    if (hapTog) hapTog.classList.toggle('on', _hapticsEnabled);
 }
 
 /* ─── CAT EDITOR SHEET ─── */
@@ -2918,7 +2976,7 @@ async function exportData() {
 
 /* ─── DARK MODE (sheet toggle) ─── */
 function toggleDark() {
-    sndToggle(document.documentElement.getAttribute('data-theme') !== 'dark');
+    sndToggle(document.documentElement.getAttribute('data-theme') !== 'dark'); hapTap();
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const newTheme = isDark ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
@@ -3349,7 +3407,7 @@ let _acctFilter = 'all';
 let _catFilter = 'all';
 
 function setCatFilter(cat) {
-    sndTap();
+    sndTap(); hapTap();
     _catFilter = _catFilter === cat ? 'all' : cat;
     // Re-render spending badges to reflect active state
     document.querySelectorAll('#spending-badges .tag-pill').forEach(p => {
@@ -3745,7 +3803,7 @@ async function deleteFromModal() {
         }
 
         const deletedCount = pairedSnapshot ? 2 : 1;
-        sndCancel(); showToast(deletedCount === 2 ? "Both transfer entries deleted" : "Deleted", {
+        sndCancel(); hapCancel(); showToast(deletedCount === 2 ? "Both transfer entries deleted" : "Deleted", {
             label: "Undo",
             fn: async () => {
                 try {
@@ -3772,7 +3830,7 @@ async function deleteFromModal() {
                         }
                     }
                     loadLinkedAccounts();
-                    sndCoin(); showToast("Restored");
+                    sndCoin(); hapCoin(); showToast("Restored");
                     loadMonth();
                 } catch (e) { showToast("Restore failed"); console.error(e); }
             }
@@ -3911,7 +3969,7 @@ async function addEntry() {
             });
         }
 
-        sndCoin(); showToast("Added");
+        sndCoin(); hapCoin(); showToast("Added");
         closeAddModal();
         loadLinkedAccounts(); // refresh balances in settings
         loadMonth();
@@ -3971,7 +4029,7 @@ async function saveEditedEntry() {
             bank: bank || null,
             note: note || (sub_category ? category + ' · ' + sub_category : category)
         });
-        sndConfirm(); showToast("Updated");
+        sndConfirm(); hapConfirm(); showToast("Updated");
         closeAddModal();
         loadLinkedAccounts();
         loadMonth();
@@ -4252,7 +4310,7 @@ async function confirmUncat(i) {
             uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
             const pill = document.getElementById('uncat-pill');
             if (pill) pill.textContent = uncatEntries.length;
-            sndCoin(); showToast('Linked as reimbursement');
+            sndCoin(); hapCoin(); showToast('Linked as reimbursement');
             const homeBanner = document.getElementById('uncat-banner');
             if (homeBanner) {
                 if (uncatEntries.length > 0) {
@@ -4317,7 +4375,7 @@ async function confirmUncat(i) {
         uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
         const pill = document.getElementById('uncat-pill');
         pill.textContent = uncatEntries.length;
-        sndCoin(); showToast('Saved as ' + s.sel);
+        sndCoin(); hapCoin(); showToast('Saved as ' + s.sel);
 
         // Optimistically update the home-screen banner so it doesn't lag
         // behind while loadMonth re-fetches from Firestore.
@@ -4520,7 +4578,7 @@ function heatmapTap(el) {
 }
 
 function setStatsPeriod(period, btn) {
-    sndTap();
+    sndTap(); hapTap();
     _statsPeriod = period;
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -4786,7 +4844,7 @@ function updateFinSummary(entries) {
 let _chartPoints = [], _chartLabels = [], _chartActiveIdx = 0;
 
 function selectChartPoint(i) {
-    sndClick();
+    sndClick(); hapTick();
     _chartActiveIdx = i;
     const badge = document.getElementById('chart-total-badge');
     if (badge && _chartPoints[i] !== undefined) {
@@ -5557,7 +5615,7 @@ function showAddAccountModal() {
             if (document.getElementById('onboarding-overlay').style.display === 'block') {
                 obRefreshLinkedList();
             }
-            sndConfirm(); showToast('Account linked');
+            sndConfirm(); hapConfirm(); showToast('Account linked');
             o.remove();
         } catch (err) {
             console.error('Failed to save account:', err);
@@ -5608,11 +5666,11 @@ async function verifyPin() {
     const stored = lsGet('pin_hash');
     const hash = await hashPin(_pinBuffer);
     if (hash === stored) {
-        sndConfirm();
+        sndConfirm(); hapConfirm();
         _pinBuffer = ''; _pinFails = 0;
         enterApp();
     } else {
-        sndError();
+        sndError(); hapError();
         _pinFails++;
         if (_pinFails >= 5) {
             _pinLockUntil = now + 30000; // 30s lockout after 5 wrong tries
