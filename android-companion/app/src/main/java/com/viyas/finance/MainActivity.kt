@@ -45,10 +45,11 @@ class MainActivity : AppCompatActivity() {
                 "To COMPANION_TEST\nOn 13/05/26\nRef 888888888888"
             CoroutineScope(Dispatchers.Main).launch {
                 toast("Sending test...")
-                val res = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
                     SmsForwarder.post(this@MainActivity, testSms)
                 }
-                toast("Response: $res")
+                toast("Response: ${result.status}")
+                result.txn?.let { UncatNotifier.maybeShow(this@MainActivity, it) }
                 refreshLogs()
             }
         }

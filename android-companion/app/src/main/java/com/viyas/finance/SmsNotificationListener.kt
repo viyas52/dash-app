@@ -82,9 +82,11 @@ class SmsNotificationListener : NotificationListenerService() {
             }
 
             scope.launch {
-                val res = SmsForwarder.post(applicationContext, composed)
-                Log.i(TAG, "forwarded [$pkg] -> $res")
-                recordEvent(pkg, composed, "forwarded: $res")
+                val result = SmsForwarder.post(applicationContext, composed)
+                Log.i(TAG, "forwarded [$pkg] -> ${result.status}")
+                recordEvent(pkg, composed, "forwarded: ${result.status}")
+                // If the cloud function saved an uncategorized txn, ping the user.
+                result.txn?.let { UncatNotifier.maybeShow(applicationContext, it) }
             }
         } catch (e: Exception) {
             Log.e(TAG, "onNotificationPosted error", e)
