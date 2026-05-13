@@ -417,6 +417,38 @@
         .empty-state h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
         .empty-state p { font-size: 12px; color: var(--text-3); }
 
+        /* ─── ONBOARDING WIZARD ─── */
+        .ob-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--border); transition: all 0.2s;
+        }
+        .ob-dot.active { background: var(--text-1); width: 22px; border-radius: 4px; }
+        .ob-cta {
+            width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--text-1); color: var(--bg);
+            border: none; border-radius: 14px; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.12s;
+        }
+        .ob-cta:active { transform: scale(0.98); }
+        .ob-cta-secondary {
+            width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            background: transparent; color: var(--text-1);
+            border: 1px solid var(--border); border-radius: 14px; cursor: pointer;
+            margin-top: 8px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ob-cta-secondary:active { transform: scale(0.98); }
+        .ob-skip {
+            width: 100%; padding: 12px; font-size: 12px;
+            font-family: 'DM Sans', sans-serif;
+            background: transparent; color: var(--text-3);
+            border: none; cursor: pointer; margin-top: 12px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         /* ─── FAB ─── */
         .fab {
             position: fixed; bottom: 96px; right: max(20px, calc(50% - 220px));
@@ -1541,6 +1573,10 @@
                     <div><div class="setting-label">Companion diagnostics</div><div class="setting-desc">View recent SMS forwarding log</div></div>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </div>
+                <div class="setting-row" id="ob-replay-row" style="cursor:pointer;" onclick="obShow()">
+                    <div><div class="setting-label">Re-run setup walkthrough</div><div class="setting-desc">Show the welcome wizard again</div></div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
                 <div class="setting-row" style="border-bottom:none;">
                     <div><div class="setting-label">Cloud Function</div><div class="setting-desc">asia-south1 · parseSms</div></div>
                     <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);">v3.2</span>
@@ -1585,6 +1621,57 @@
                     <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">PWA</span>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ ONBOARDING WIZARD ═══ -->
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;overflow-y:auto;">
+    <div style="max-width:480px;margin:0 auto;padding:48px 24px 32px;min-height:100vh;display:flex;flex-direction:column;">
+        <!-- Progress dots -->
+        <div id="ob-dots" style="display:flex;gap:6px;justify-content:center;margin-bottom:24px;">
+            <div class="ob-dot active"></div>
+            <div class="ob-dot"></div>
+            <div class="ob-dot"></div>
+            <div class="ob-dot"></div>
+        </div>
+
+        <!-- Step 1: Welcome -->
+        <div class="ob-step" id="ob-step-1" style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+            <div style="font-size:48px;text-align:center;margin-bottom:24px;">👋</div>
+            <div style="font-size:28px;font-weight:700;text-align:center;letter-spacing:-0.02em;margin-bottom:12px;">Welcome, <span id="ob-name">there</span></div>
+            <div style="font-size:14px;color:var(--text-3);text-align:center;line-height:1.6;margin-bottom:40px;">My Finance auto-tracks your money by reading bank SMS — no manual entry. Let's get you set up in 3 quick steps.</div>
+            <button class="ob-cta" onclick="obNext()">Let's go →</button>
+            <button class="ob-skip" onclick="obSkip()">Skip — I'll set up later</button>
+        </div>
+
+        <!-- Step 2: Link your bank -->
+        <div class="ob-step" id="ob-step-2" style="display:none;flex:1;flex-direction:column;justify-content:center;">
+            <div style="font-size:48px;text-align:center;margin-bottom:24px;">🏦</div>
+            <div style="font-size:24px;font-weight:700;text-align:center;letter-spacing:-0.02em;margin-bottom:12px;">Link your bank account</div>
+            <div style="font-size:13px;color:var(--text-3);text-align:center;line-height:1.6;margin-bottom:24px;">So we know which account to track and can show your live balance. Only linked accounts get tracked — everything else is ignored.</div>
+            <div id="ob-linked-list" style="margin-bottom:16px;"></div>
+            <button class="ob-cta" onclick="showAddAccountModal()" style="margin-bottom:8px;">+ Add bank account</button>
+            <button class="ob-cta-secondary" onclick="obNext()" id="ob-step2-next">Done — Next →</button>
+        </div>
+
+        <!-- Step 3: Companion app -->
+        <div class="ob-step" id="ob-step-3" style="display:none;flex:1;flex-direction:column;justify-content:center;">
+            <div style="font-size:48px;text-align:center;margin-bottom:24px;">📱</div>
+            <div style="font-size:24px;font-weight:700;text-align:center;letter-spacing:-0.02em;margin-bottom:12px;">Install Finance Companion</div>
+            <div style="font-size:13px;color:var(--text-3);text-align:center;line-height:1.6;margin-bottom:24px;">A tiny Android app that forwards bank SMS to your account. <strong>This is what makes auto-tracking work.</strong> Open-source, no analytics.</div>
+            <a class="ob-cta" href="https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk" target="_blank" style="text-decoration:none;display:block;text-align:center;">⬇ Download APK</a>
+            <div style="font-size:12px;color:var(--text-3);text-align:center;margin:14px 0;line-height:1.6;">After install: open Finance Companion → it auto-syncs your account → tap the green banner that appears to enable SMS forwarding.</div>
+            <button class="ob-cta-secondary" onclick="obNext()">I've installed it →</button>
+            <button class="ob-skip" onclick="obNext()">Skip — do it later</button>
+        </div>
+
+        <!-- Step 4: Done -->
+        <div class="ob-step" id="ob-step-4" style="display:none;flex:1;flex-direction:column;justify-content:center;">
+            <div style="font-size:48px;text-align:center;margin-bottom:24px;">🎉</div>
+            <div style="font-size:24px;font-weight:700;text-align:center;letter-spacing:-0.02em;margin-bottom:12px;">You're all set</div>
+            <div style="font-size:13px;color:var(--text-3);text-align:center;line-height:1.7;margin-bottom:24px;">Try it out:<br/><strong>1.</strong> Make a small UPI payment (₹1 to yourself)<br/><strong>2.</strong> Wait for the bank SMS (~10 sec)<br/><strong>3.</strong> Tap the notification to categorize<br/><br/>That's it — every future transaction works the same way.</div>
+            <button class="ob-cta" onclick="obFinish()">Open my dashboard →</button>
         </div>
     </div>
 </div>
@@ -4411,6 +4498,10 @@ function enterApp() {
     initDots();
     initFirebase();
     maybeSyncCompanion();
+    // First-time onboarding wizard — runs only for users with no linked
+    // accounts who haven't dismissed it. initFirebase loads LINKED_ACCOUNTS
+    // async, so wait a beat before checking.
+    setTimeout(() => maybeShowOnboarding(), 800);
     // Deep-link: if launched via "Categorize this txn" notification, jump
     // straight to the Uncategorized screen instead of the home dashboard.
     if (new URLSearchParams(location.search).get('openuncat') === '1') {
@@ -4473,6 +4564,86 @@ function resyncCompanion() {
     sessionStorage.removeItem('companion_synced');
     localStorage.removeItem(lsKey('companion_listener_done'));
     maybeSyncCompanion();
+}
+
+/* ─── ONBOARDING WIZARD ─── */
+let _obStep = 1;
+const OB_TOTAL_STEPS = 4;
+
+function obShow() {
+    const overlay = document.getElementById('onboarding-overlay');
+    if (!overlay) return;
+    _obStep = 1;
+    const nameEl = document.getElementById('ob-name');
+    if (nameEl) nameEl.textContent = (USER_NAME && USER_NAME.split(' ')[0]) || 'there';
+    obRenderStep();
+    overlay.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function obRenderStep() {
+    // Show only the active step
+    for (let s = 1; s <= OB_TOTAL_STEPS; s++) {
+        const el = document.getElementById('ob-step-' + s);
+        if (!el) continue;
+        el.style.display = (s === _obStep) ? 'flex' : 'none';
+    }
+    // Update progress dots
+    document.querySelectorAll('#ob-dots .ob-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === _obStep - 1);
+    });
+    // On step 2 (link bank), refresh the linked accounts mini-list
+    if (_obStep === 2) obRefreshLinkedList();
+}
+
+function obRefreshLinkedList() {
+    const list = document.getElementById('ob-linked-list');
+    const nextBtn = document.getElementById('ob-step2-next');
+    if (!list) return;
+    if (!LINKED_ACCOUNTS || LINKED_ACCOUNTS.length === 0) {
+        list.innerHTML = '<div style="text-align:center;font-size:12px;color:var(--text-3);padding:14px;border:1px dashed var(--border);border-radius:12px;">No accounts linked yet</div>';
+        if (nextBtn) nextBtn.textContent = 'Skip — do this later →';
+    } else {
+        list.innerHTML = LINKED_ACCOUNTS.map(a =>
+            '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;">' +
+              '<div style="width:30px;height:30px;border-radius:50%;background:' + a.color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">' + esc(a.initials || '?') + '</div>' +
+              '<div style="flex:1;font-size:13px;font-weight:500;">' + esc(a.name) + ' ••' + esc(a.last4 || '????') + '</div>' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+            '</div>'
+        ).join('');
+        if (nextBtn) nextBtn.textContent = 'Continue →';
+    }
+}
+
+function obNext() {
+    if (_obStep < OB_TOTAL_STEPS) {
+        _obStep++;
+        obRenderStep();
+    } else {
+        obFinish();
+    }
+}
+
+function obSkip() {
+    lsSet('onboarding_done', '1');
+    document.getElementById('onboarding-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function obFinish() {
+    lsSet('onboarding_done', '1');
+    document.getElementById('onboarding-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function maybeShowOnboarding() {
+    // Show wizard only for genuinely new users:
+    //   - they haven't completed/skipped it before
+    //   - they have no linked accounts (= fresh install)
+    if (lsGet('onboarding_done') === '1') return;
+    if (LINKED_ACCOUNTS && LINKED_ACCOUNTS.length > 0) return;
+    // Tiny delay so the dashboard has a chance to render under it
+    setTimeout(obShow, 400);
 }
 
 /* ─── MISSED SMS (unrecognized bank messages) ─── */
@@ -4661,6 +4832,10 @@ function showAddAccountModal() {
             await setDoc(doc(db, 'users', USER_ID, 'config', 'accounts'), { linked_accounts: LINKED_ACCOUNTS });
             loadLinkedAccounts();
             renderAcctFilterChips();
+            // If the onboarding wizard is currently visible, refresh its list
+            if (document.getElementById('onboarding-overlay').style.display === 'block') {
+                obRefreshLinkedList();
+            }
             showToast('Account linked');
             o.remove();
         } catch (err) {
