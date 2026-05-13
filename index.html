@@ -163,7 +163,13 @@
             display: inline-flex; align-items: center; gap: 5px;
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
             padding: 5px 12px; font-size: 11px; color: var(--text-2); font-weight: 500;
+            cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
         }
+        .tag-pill:active { transform: scale(0.95); }
+        .tag-pill.active {
+            background: var(--text-1); color: var(--bg); border-color: var(--text-1);
+        }
+        .tag-pill.active .tag-dot { box-shadow: 0 0 0 2px var(--bg); }
 
         /* ─── SPENDING INSIGHTS TICKER ─── */
         .insights-ticker {
@@ -2532,7 +2538,10 @@ function updateDashboard(entries) {
         document.getElementById('spending-badges').innerHTML = sorted.map(([cat, amt]) => {
             const info = getCatInfo(cat);
             const p = Math.round(amt / total * 100);
-            return '<div class="tag-pill"><div class="tag-dot" style="background:' + info.color + '"></div>' + cat + ' ' + p + '%</div>';
+            const active = _catFilter === cat;
+            const safeCat = cat.replace(/'/g, "\\'");
+            return '<div class="tag-pill' + (active ? ' active' : '') + '" onclick="setCatFilter(\'' + safeCat + '\')">' +
+                '<div class="tag-dot" style="background:' + info.color + '"></div>' + esc(cat) + ' ' + p + '%</div>';
         }).join('');
     } else { badgeSection.style.display = 'none'; }
 
@@ -2663,6 +2672,20 @@ function computeInsights(curEntries) {
 }
 
 let _acctFilter = 'all';
+let _catFilter = 'all';
+
+function setCatFilter(cat) {
+    _catFilter = _catFilter === cat ? 'all' : cat;
+    // Re-render spending badges to reflect active state
+    document.querySelectorAll('#spending-badges .tag-pill').forEach(p => {
+        const pillCat = (p.textContent || '').replace(/\s+\d+%$/, '').trim();
+        p.classList.toggle('active', _catFilter !== 'all' && pillCat === _catFilter);
+    });
+    applyAcctFilter();
+    // Smooth-scroll the transactions list into view for context
+    const list = document.getElementById('txn-list');
+    if (list) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
 function renderAcctFilterChips() {
     const el = document.getElementById('acct-filter');
@@ -2682,11 +2705,18 @@ function setAcctFilter(bank, btn) {
 }
 function applyAcctFilter() {
     const all = window._allCategorized || [];
-    const filtered = _acctFilter === 'all' ? all : all.filter(e => e.bank === _acctFilter);
+    let filtered = _acctFilter === 'all' ? all : all.filter(e => e.bank === _acctFilter);
+    // Apply category filter from the spending-badges row
+    if (_catFilter !== 'all') {
+        filtered = filtered.filter(e => resolveParentCat(e.category) === _catFilter);
+    }
     const container = document.getElementById('txn-list');
     const noMsg = document.getElementById('no-entries');
     const label = document.getElementById('txn-count-label');
-    if (label) label.textContent = filtered.length + ' transactions';
+    if (label) {
+        const suffix = _catFilter !== 'all' ? ' · ' + _catFilter : '';
+        label.textContent = filtered.length + ' transactions' + suffix;
+    }
     if (filtered.length === 0) { container.style.display = 'none'; noMsg.style.display = 'block'; }
     else { noMsg.style.display = 'none'; container.style.display = 'block'; renderTxnList(filtered, window._txnExpanded || false); }
 }
