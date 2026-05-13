@@ -1177,6 +1177,13 @@
         <div class="notif-count" id="uncat-banner-count">0</div>
     </div>
 
+    <!-- Companion App Banner -->
+    <div id="companion-banner" style="display:none;" class="notif-strip" onclick="enableCompanionListener()">
+        <div class="notif-dot" style="background:#22C55E;"></div>
+        <div class="notif-txt" id="companion-banner-txt">📱 Enable SMS forwarding</div>
+        <div class="notif-count" id="companion-banner-count" style="background:#22C55E;">→</div>
+    </div>
+
     <!-- Spending Breakdown -->
     <div id="spending-badges-section" style="display:none;" class="badge-section">
         <div class="label">Spending</div>
@@ -4072,6 +4079,45 @@ function enterApp() {
     setGreeting();
     initDots();
     initFirebase();
+    maybeSyncCompanion();
+}
+
+/* ─── COMPANION APP (Android wrapper) ─── */
+// When running inside the Finance Companion Android app, the URL has ?companion=1.
+// We auto-sync credentials to the native side via a custom URL scheme.
+window.isCompanion = new URLSearchParams(location.search).get('companion') === '1';
+
+function fireCompanionDeepLink(url) {
+    // Hidden iframe is the reliable way to trigger custom URL schemes without
+    // navigating away from the page (avoids any "Open in app?" prompt).
+    const f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = url;
+    document.body.appendChild(f);
+    setTimeout(() => { try { document.body.removeChild(f); } catch(e){} }, 1500);
+}
+
+function maybeSyncCompanion() {
+    if (!window.isCompanion) return;
+    const banner = document.getElementById('companion-banner');
+    if (banner) banner.style.display = 'flex';
+
+    // One-time auto-sync per session. User can re-sync via the resync button.
+    if (sessionStorage.getItem('companion_synced') === '1') return;
+    if (!USER_ID) return;
+    const key = 'myfinance_' + USER_ID + '_2026';
+    fireCompanionDeepLink('financecompanion://save?user=' +
+        encodeURIComponent(USER_ID) + '&key=' + encodeURIComponent(key));
+    sessionStorage.setItem('companion_synced', '1');
+}
+
+function enableCompanionListener() {
+    fireCompanionDeepLink('financecompanion://enable_notifications');
+}
+
+function resyncCompanion() {
+    sessionStorage.removeItem('companion_synced');
+    maybeSyncCompanion();
 }
 
 /* ─── PIN SYSTEM ─── */
