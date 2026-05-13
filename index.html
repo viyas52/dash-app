@@ -1909,9 +1909,13 @@
                         <input type="range" class="slider-range" id="settings-invest" min="1000" max="50000" step="500" value="22000" oninput="onInvestSlide(this.value)" onchange="updateInvestTarget()">
                         <div class="slider-bounds"><span>₹1K</span><span>₹50K</span></div>
                     </div>
-                    <div class="setting-row" style="border-bottom:none;">
+                    <div class="setting-row">
                         <div><div class="setting-label">Dark Mode</div><div class="setting-desc">Match the time of day</div></div>
                         <div class="toggle" id="dark-toggle" onclick="toggleDark()"><div class="toggle-thumb"></div></div>
+                    </div>
+                    <div class="setting-row" style="border-bottom:none;">
+                        <div><div class="setting-label">Sound Effects</div><div class="setting-desc">Subtle Game Boy clicks on taps</div></div>
+                        <div class="toggle" id="snd-toggle" onclick="toggleSounds()"><div class="toggle-thumb"></div></div>
                     </div>
                 </div>
             </div>
@@ -2639,6 +2643,71 @@ const firebaseConfig = {
 let db = null, firebaseReady = false, editingId = null;
 let currentEntries = [], uncatEntries = [], uncatState = {};
 
+/* ─── SOUND DESIGN (Game Boy / chiptune palette via Web Audio) ─── */
+let _audioCtx = null;
+let _soundsEnabled = (localStorage.getItem('pft_sounds_enabled') !== '0');
+
+function _ensureAudio() {
+    if (!_soundsEnabled) return null;
+    try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        return _audioCtx;
+    } catch (e) { return null; }
+}
+
+/** Play a single short tone. freq in Hz, dur in ms, type = 'square'|'triangle'|'sawtooth'|'sine'. */
+function _tone(freq, dur = 50, type = 'square', gain = 0.05) {
+    const ctx = _ensureAudio();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    env.gain.setValueAtTime(0, t0);
+    env.gain.linearRampToValueAtTime(gain, t0 + 0.005);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur / 1000);
+    osc.connect(env); env.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur / 1000 + 0.02);
+}
+
+// Specific game sounds — each crafted to feel low and pleasant
+function sndClick()   { _tone(1100, 22, 'square',   0.035); }   // soft tap
+function sndTap()     { _tone(880,  30, 'square',   0.04);  }   // pill / chip
+function sndPage()    { _tone(660,  35, 'triangle', 0.04);  }   // page change
+function sndToggle(on){ _tone(on ? 880 : 520, 35, 'square', 0.04); }
+function sndConfirm() {
+    _tone(660, 55, 'square', 0.045);
+    setTimeout(() => _tone(990, 80, 'square', 0.045), 60);
+}
+function sndCancel()  { _tone(330, 70, 'square', 0.045); }
+function sndError()   {
+    _tone(220, 50, 'sawtooth', 0.05);
+    setTimeout(() => _tone(180, 80, 'sawtooth', 0.05), 55);
+}
+function sndCoin()    {  // for big wins — categorize confirm, add success
+    _tone(988, 50, 'square', 0.04);
+    setTimeout(() => _tone(1319, 110, 'square', 0.04), 50);
+}
+function sndNotif() {
+    _tone(660, 50, 'square', 0.045);
+    setTimeout(() => _tone(880, 50, 'square', 0.045), 60);
+    setTimeout(() => _tone(1175, 90, 'square', 0.045), 120);
+}
+
+function setSoundsEnabled(on) {
+    _soundsEnabled = !!on;
+    localStorage.setItem('pft_sounds_enabled', on ? '1' : '0');
+    if (on) { _ensureAudio(); sndClick(); }  // tiny confirmation tone
+}
+function toggleSounds() {
+    setSoundsEnabled(!_soundsEnabled);
+    const t = document.getElementById('snd-toggle');
+    if (t) t.classList.toggle('on', _soundsEnabled);
+}
+
 /* ─── DOT MATRIX ─── */
 function initDots() {
     ['dot-matrix'].forEach(id => {
@@ -2657,6 +2726,7 @@ function setGreeting() {
 
 /* ─── VIEW SWITCHING ─── */
 function switchView(name) {
+    sndPage();
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const el = document.getElementById('view-' + name);
     if (!el) return;
@@ -2735,6 +2805,7 @@ const _settingsPageTitles = {
 };
 
 function settingsNav(page) {
+    sndPage();
     document.querySelectorAll('#settings-sheet .settings-page').forEach(p => p.style.display = 'none');
     const target = document.getElementById('sp-' + page);
     if (target) target.style.display = 'block';
@@ -2787,6 +2858,8 @@ function initSettingsSliders() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const tog = document.getElementById('dark-toggle');
     if (tog) tog.classList.toggle('on', isDark);
+    const sndTog = document.getElementById('snd-toggle');
+    if (sndTog) sndTog.classList.toggle('on', _soundsEnabled);
 }
 
 /* ─── CAT EDITOR SHEET ─── */
@@ -2845,6 +2918,7 @@ async function exportData() {
 
 /* ─── DARK MODE (sheet toggle) ─── */
 function toggleDark() {
+    sndToggle(document.documentElement.getAttribute('data-theme') !== 'dark');
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const newTheme = isDark ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
@@ -3275,6 +3349,7 @@ let _acctFilter = 'all';
 let _catFilter = 'all';
 
 function setCatFilter(cat) {
+    sndTap();
     _catFilter = _catFilter === cat ? 'all' : cat;
     // Re-render spending badges to reflect active state
     document.querySelectorAll('#spending-badges .tag-pill').forEach(p => {
@@ -3670,7 +3745,7 @@ async function deleteFromModal() {
         }
 
         const deletedCount = pairedSnapshot ? 2 : 1;
-        showToast(deletedCount === 2 ? "Both transfer entries deleted" : "Deleted", {
+        sndCancel(); showToast(deletedCount === 2 ? "Both transfer entries deleted" : "Deleted", {
             label: "Undo",
             fn: async () => {
                 try {
@@ -3697,7 +3772,7 @@ async function deleteFromModal() {
                         }
                     }
                     loadLinkedAccounts();
-                    showToast("Restored");
+                    sndCoin(); showToast("Restored");
                     loadMonth();
                 } catch (e) { showToast("Restore failed"); console.error(e); }
             }
@@ -3836,7 +3911,7 @@ async function addEntry() {
             });
         }
 
-        showToast("Added");
+        sndCoin(); showToast("Added");
         closeAddModal();
         loadLinkedAccounts(); // refresh balances in settings
         loadMonth();
@@ -3896,7 +3971,7 @@ async function saveEditedEntry() {
             bank: bank || null,
             note: note || (sub_category ? category + ' · ' + sub_category : category)
         });
-        showToast("Updated");
+        sndConfirm(); showToast("Updated");
         closeAddModal();
         loadLinkedAccounts();
         loadMonth();
@@ -4177,7 +4252,7 @@ async function confirmUncat(i) {
             uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
             const pill = document.getElementById('uncat-pill');
             if (pill) pill.textContent = uncatEntries.length;
-            showToast('Linked as reimbursement');
+            sndCoin(); showToast('Linked as reimbursement');
             const homeBanner = document.getElementById('uncat-banner');
             if (homeBanner) {
                 if (uncatEntries.length > 0) {
@@ -4242,7 +4317,7 @@ async function confirmUncat(i) {
         uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
         const pill = document.getElementById('uncat-pill');
         pill.textContent = uncatEntries.length;
-        showToast('Saved as ' + s.sel);
+        sndCoin(); showToast('Saved as ' + s.sel);
 
         // Optimistically update the home-screen banner so it doesn't lag
         // behind while loadMonth re-fetches from Firestore.
@@ -4445,6 +4520,7 @@ function heatmapTap(el) {
 }
 
 function setStatsPeriod(period, btn) {
+    sndTap();
     _statsPeriod = period;
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -4710,6 +4786,7 @@ function updateFinSummary(entries) {
 let _chartPoints = [], _chartLabels = [], _chartActiveIdx = 0;
 
 function selectChartPoint(i) {
+    sndClick();
     _chartActiveIdx = i;
     const badge = document.getElementById('chart-total-badge');
     if (badge && _chartPoints[i] !== undefined) {
@@ -5480,7 +5557,7 @@ function showAddAccountModal() {
             if (document.getElementById('onboarding-overlay').style.display === 'block') {
                 obRefreshLinkedList();
             }
-            showToast('Account linked');
+            sndConfirm(); showToast('Account linked');
             o.remove();
         } catch (err) {
             console.error('Failed to save account:', err);
@@ -5531,9 +5608,11 @@ async function verifyPin() {
     const stored = lsGet('pin_hash');
     const hash = await hashPin(_pinBuffer);
     if (hash === stored) {
+        sndConfirm();
         _pinBuffer = ''; _pinFails = 0;
         enterApp();
     } else {
+        sndError();
         _pinFails++;
         if (_pinFails >= 5) {
             _pinLockUntil = now + 30000; // 30s lockout after 5 wrong tries
