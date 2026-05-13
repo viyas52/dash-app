@@ -163,28 +163,22 @@
         .hero-sub .g { color: var(--green); font-weight: 500; }
         .hero-sub .r { color: var(--red); font-weight: 500; }
 
-        /* Filled pie (no inner hole) — radius 40, stroke 80 fills the whole disc */
         .donut-wrap { position: relative; width: 160px; height: 160px; margin: 16px auto 0; overflow: visible; }
         .donut-wrap svg { width: 160px; height: 160px; transform: rotate(-90deg); overflow: visible; }
-        .donut-track { fill: none; stroke: var(--border-light); stroke-width: 80; }
+        .donut-track { fill: none; stroke: #E8E6E1; stroke-width: 12; }
+        [data-theme="dark"] .donut-track { stroke: var(--border-light); }
         .donut-fill {
-            fill: none; stroke: var(--text-1); stroke-width: 80; stroke-linecap: butt;
+            fill: none; stroke: var(--text-1); stroke-width: 12; stroke-linecap: round;
             transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);
             filter: drop-shadow(0 0 4px color-mix(in srgb, var(--text-1) 18%, transparent));
         }
         [data-theme="dark"] .donut-fill {
             filter: drop-shadow(0 0 6px color-mix(in srgb, var(--text-1) 38%, transparent));
         }
-        /* Small backplate disc behind the % text so it stays readable on the pie */
         .donut-center {
-            position: absolute; top: 50%; left: 50%;
-            width: 60px; height: 60px;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            background: var(--bg-card);
+            position: absolute; inset: 0;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            box-shadow: 0 0 0 1px var(--border);
         }
         .donut-pct {
             font-size: 24px; font-weight: 700; font-family: 'Space Mono', monospace;
@@ -1465,9 +1459,9 @@
         <div class="hero-sub" id="hero-sub"></div>
         <div class="donut-wrap">
             <svg viewBox="0 0 160 160">
-                <circle class="donut-track" cx="80" cy="80" r="40"/>
-                <circle class="donut-fill" id="donut-ring" cx="80" cy="80" r="40"
-                    stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+                <circle class="donut-track" cx="80" cy="80" r="66"/>
+                <circle class="donut-fill" id="donut-ring" cx="80" cy="80" r="66"
+                    stroke-dasharray="414.7" stroke-dashoffset="414.7"/>
             </svg>
             <div class="donut-center">
                 <div class="donut-pct" id="donut-pct">0%</div>
@@ -3102,10 +3096,9 @@ function updateDashboard(entries) {
     document.getElementById('invest-progress').style.background = investPct >= 100 ? 'var(--green)' : 'var(--blue)';
     document.getElementById('invest-meta').textContent = investPct + '% of ₹' + f(INVEST_TARGET);
 
-    // Pie fill — colour shifts green→amber→red as spend rises.
-    // Circle r=40, circumference = 2*π*40 ≈ 251.3
+    // Donut ring — colour shifts green→amber→red as spend rises
     const pct = Math.min(100, Math.round((totalExpense / BUDGET) * 100));
-    const ringOffset = 251.3 - (251.3 * pct / 100);
+    const ringOffset = 414.7 - (414.7 * pct / 100);
     const ring = document.getElementById('donut-ring');
     ring.style.strokeDashoffset = ringOffset;
     ring.style.stroke = pct >= 100 ? '#FF3B30'
@@ -4655,17 +4648,17 @@ function drawPieChart(totals) {
     const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
     const total = entries.reduce((s, [, v]) => s + v, 0);
     let angle = -Math.PI / 2;
+    // Filled pie — slice borders match the page background so wedges read distinct
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#fff';
     entries.forEach(([cat, amt]) => {
         const info = getCatInfo(cat);
         const slice = (amt / total) * Math.PI * 2;
         ctx.beginPath(); ctx.moveTo(W/2, H/2);
         ctx.arc(W/2, H/2, R, angle, angle + slice);
         ctx.closePath(); ctx.fillStyle = info.color; ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = borderColor; ctx.lineWidth = 2; ctx.stroke();
         angle += slice;
     });
-    ctx.beginPath(); ctx.arc(W/2, H/2, R*0.52, 0, Math.PI*2);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#fff'; ctx.fill();
     document.getElementById('cat-pie-legend').innerHTML = entries.map(([cat, amt]) => {
         const info = getCatInfo(cat);
         const pct = Math.round(amt / total * 100);
