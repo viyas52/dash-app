@@ -3381,6 +3381,18 @@ async function confirmUncat(i) {
         pill.textContent = uncatEntries.length;
         showToast('Saved as ' + s.sel);
 
+        // Optimistically update the home-screen banner so it doesn't lag
+        // behind while loadMonth re-fetches from Firestore.
+        const homeBanner = document.getElementById('uncat-banner');
+        if (homeBanner) {
+            if (uncatEntries.length > 0) {
+                document.getElementById('uncat-banner-txt').textContent = uncatEntries.length + ' uncategorized';
+                document.getElementById('uncat-banner-count').textContent = uncatEntries.length;
+            } else {
+                homeBanner.style.display = 'none';
+            }
+        }
+
         if (uncatEntries.length === 0) {
             setTimeout(() => {
                 document.getElementById('done-state').style.display = 'block';
