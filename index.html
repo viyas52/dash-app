@@ -3964,6 +3964,35 @@ function getEntriesForPeriod() {
     return currentEntries;
 }
 
+/* ─── CHART SWIPE NAVIGATION — slide left/right to change period ─── */
+const _STATS_PERIODS = ['daily', 'weekly', 'monthly', 'annual'];
+function _swipeToPeriod(dir) {
+    const i = _STATS_PERIODS.indexOf(_statsPeriod);
+    if (i < 0) return;
+    const next = dir > 0 ? i + 1 : i - 1;
+    if (next < 0 || next >= _STATS_PERIODS.length) return;
+    const period = _STATS_PERIODS[next];
+    const btn = document.querySelector('.period-btn[data-period="' + period + '"]');
+    if (btn) setStatsPeriod(period, btn);
+}
+function initChartSwipe() {
+    const wrap = document.getElementById('line-chart-wrap');
+    if (!wrap || wrap.dataset.swipeBound) return;
+    wrap.dataset.swipeBound = '1';
+    let sx = 0, sy = 0;
+    wrap.addEventListener('touchstart', e => {
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    }, { passive: true });
+    wrap.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - sx;
+        const dy = e.changedTouches[0].clientY - sy;
+        if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
+        // Eat the swipe so the body handler doesn't pop back to home view
+        e.stopPropagation();
+        _swipeToPeriod(dx < 0 ? +1 : -1);  // left = next period, right = previous
+    }, { passive: true });
+}
+
 function setStatsPeriod(period, btn) {
     _statsPeriod = period;
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
@@ -4636,6 +4665,7 @@ function enterApp() {
     setGreeting();
     initDots();
     initFirebase();
+    initChartSwipe();
     maybeSyncCompanion();
     // First-time onboarding wizard — runs only for users with no linked
     // accounts who haven't dismissed it. initFirebase loads LINKED_ACCOUNTS
