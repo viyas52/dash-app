@@ -2271,7 +2271,7 @@ let firebaseApp = null, firebaseAuth = null;
 async function initFirebaseCore() {
     if (firebaseApp) return;
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where }
+    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot }
         = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
             signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile }
@@ -2279,7 +2279,7 @@ async function initFirebaseCore() {
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
     firebaseAuth = getAuth(firebaseApp);
-    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where };
+    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot };
     window.fbAuth = { signInWithEmailAndPassword, createUserWithEmailAndPassword,
                       signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile };
 }
@@ -2343,6 +2343,10 @@ function populateMonths() {
 }
 
 /* ─── LOAD DATA ─── */
+// Holds the live unsubscribe function from the active onSnapshot listener,
+// so we can detach when the user changes month / signs out / app reloads.
+let _monthUnsub = null;
+
 async function loadMonth() {
     if (!firebaseReady) return;
     const mv = getMonthVal();
@@ -2353,21 +2357,33 @@ async function loadMonth() {
     const em = month === 12 ? 1 : month + 1;
     const end = ey + '-' + String(em).padStart(2, '0') + '-01';
 
+    // Tear down any previous month's listener so we don't accumulate them.
+    if (_monthUnsub) { try { _monthUnsub(); } catch(e) {} _monthUnsub = null; }
+
     try {
-        const { collection, getDocs, query, where, orderBy } = window.fb;
+        const { collection, query, where, orderBy, onSnapshot } = window.fb;
+        const handle = (snap, sortLocally) => {
+            const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+            if (sortLocally) entries.sort((a, b) => b.date.localeCompare(a.date));
+            updateDashboard(entries);
+        };
+        const onErr = (err) => console.error("Live month listener error:", err);
+
+        // Prefer the indexed query; fall back to unsorted+JS-sort if the
+        // composite index is missing. Either way we subscribe to live updates
+        // so SMS-parsed txns appear without a manual refresh.
         let q;
         try {
             q = query(collection(db, txnCol()), where("date", ">=", start), where("date", "<", end), orderBy("date", "desc"));
-            const snap = await getDocs(q);
-            const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
-            updateDashboard(entries);
-        } catch(indexErr) {
-            console.warn('Firestore composite index missing, using fallback query:', indexErr.message || indexErr);
+            _monthUnsub = onSnapshot(q, snap => handle(snap, false), (err) => {
+                console.warn('Composite index missing, falling back:', err.message || err);
+                const qFallback = query(collection(db, txnCol()), where("date", ">=", start), where("date", "<", end));
+                _monthUnsub = onSnapshot(qFallback, snap => handle(snap, true), onErr);
+            });
+        } catch (e) {
+            console.warn('Live query setup failed, falling back:', e);
             q = query(collection(db, txnCol()), where("date", ">=", start), where("date", "<", end));
-            const snap = await getDocs(q);
-            const entries = []; snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
-            entries.sort((a, b) => b.date.localeCompare(a.date));
-            updateDashboard(entries);
+            _monthUnsub = onSnapshot(q, snap => handle(snap, true), onErr);
         }
     } catch (err) { console.error("Load failed:", err); }
 }
@@ -4026,6 +4042,9 @@ async function authGoogle() {
 }
 
 async function authLogout() {
+    // Detach the live transaction listener before signing out so it doesn't
+    // keep firing against the (now wrong) user's collection.
+    if (_monthUnsub) { try { _monthUnsub(); } catch(e) {} _monthUnsub = null; }
     try {
         await initFirebaseCore();
         await window.fbAuth.signOut(firebaseAuth);
