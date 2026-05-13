@@ -234,6 +234,32 @@ function buildPatterns(acctToBank) {
         dedup_key: "hdfc_du_" + m[5],
       }),
     },
+    // ── HDFC debit (IMPS — to an account number, not UPI) ──
+    // Example:
+    //   IMPS INR 3,000.00
+    //   sent from HDFC Bank A/c XX6829 on 13-05-26
+    //   To A/c xxxxxxxxxx9367
+    //   Ref-613326278727
+    {
+      name: "hdfc_debit_imps",
+      rx: /IMPS\s*INR\s*([\d,]+\.?\d*)[\s\S]*?from\s*HDFC\s*Bank\s*A\/c\s*XX(\d+)\s*on\s*(\d{2}-\d{2}-\d{2})[\s\S]*?To\s*A\/c\s*[xX]+(\d+)[\s\S]*?Ref-?(\d+)/i,
+      parse: (m, sms) => {
+        const destAcct = m[4];
+        return {
+          raw_sms: sms, bank: "hdfc", account: m[2],
+          amount: parseFloat(m[1].replace(/,/g, "")),
+          date: parseDateNum(m[3]),
+          type: "debit", category: null, category_type: null,
+          recipient: "To XX" + destAcct.slice(-4),
+          source: "", source_account: destAcct,
+          bank_to: acctToBank(destAcct) || null,
+          note: "IMPS to XX" + destAcct.slice(-4),
+          upi_ref: m[5], balance_after: null,
+          created_at: new Date().toISOString(),
+          dedup_key: "hdfc_di_" + m[5],
+        };
+      },
+    },
   ];
 }
 
@@ -304,11 +330,12 @@ async function loadUserConfig(userId) {
   const profileData = profileSnap.exists ? profileSnap.data() : {};
 
   const acctBankMap = acctData.acct_bank || {};
+  const linkedAccounts = acctData.linked_accounts || [];
   const selfNamesRx = selfData.names_regex ? new RegExp(selfData.names_regex, "i") : null;
   const selfAccounts = selfData.accounts || [];
   const apiKey = profileData.api_key || DEFAULT_API_KEY;
 
-  return { acctBankMap, selfNamesRx, selfAccounts, apiKey };
+  return { acctBankMap, linkedAccounts, selfNamesRx, selfAccounts, apiKey };
 }
 
 // ── HTTPS Cloud Function ──
@@ -345,6 +372,25 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   if (!parsed) {
     console.warn("SMS not recognized:", sms.substring(0, 120));
     return res.status(200).json({ status: "skipped", reason: "SMS format not recognized" });
+  }
+
+  // ── Filter by linked accounts ──
+  // If the user has added any Linked Accounts in Settings, only process SMS
+  // that match one of those accounts. This way a user can opt in to tracking
+  // just specific accounts (e.g. only HDFC, ignore the other banks they get
+  // SMS from). If no accounts are linked yet, accept all parsed SMS.
+  if (userConfig.linkedAccounts && userConfig.linkedAccounts.length > 0 && parsed.account) {
+    const acctTail = String(parsed.account);
+    const matches = userConfig.linkedAccounts.some(
+      la => la && la.last4 && acctTail.endsWith(String(la.last4))
+    );
+    if (!matches) {
+      return res.status(200).json({
+        status: "skipped",
+        reason: "account_not_linked",
+        account: "XX" + acctTail.slice(-4),
+      });
+    }
   }
 
   // ── Auto-categorize pipeline ──
