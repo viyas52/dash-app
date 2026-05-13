@@ -1072,6 +1072,26 @@
         }
         .period-btn.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
 
+        /* Chart corner pill — shows period avg without overlapping the line */
+        .chart-avg-pill {
+            position: absolute;
+            top: -2px; right: 0;
+            font-size: 9px; font-weight: 600;
+            color: var(--text-3);
+            font-family: 'Space Mono', monospace;
+            background: var(--bg-card);
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 2px 8px;
+            display: flex; align-items: center; gap: 5px;
+            z-index: 3; pointer-events: none;
+        }
+        .chart-avg-pill::before {
+            content: '';
+            width: 8px; height: 1px;
+            border-top: 1px dashed var(--text-3);
+        }
+
         /* Spending heatmap (GitHub-style grid) */
         .heat-cell {
             display: inline-block;
@@ -4977,18 +4997,25 @@ function _buildLineChartSvg(points, labels, activeIdx) {
         : 0;
     const avgY = avg > 0 ? yScale(avg) : null;
 
+    // The avg label used to be SVG <text> next to the dashed line — when the
+    // curve passed close to the line it became unreadable. Now it's a clean
+    // HTML pill in the top-right corner of the chart card, above all paths.
+    const avgPillText = (avgY !== null)
+        ? 'avg ' + (avg >= 1000 ? '₹' + Math.round(avg/1000) + 'k' : '₹' + Math.round(avg))
+        : '';
+
     wrap.innerHTML =
         '<div style="position:relative;">' +
+        (avgPillText ? '<div class="chart-avg-pill">' + avgPillText + '</div>' : '') +
         '<svg class="line-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px;overflow:visible;">' +
         '<defs><linearGradient id="lgfill" x1="0" y1="0" x2="0" y2="1">' +
         '<stop offset="0%" stop-color="var(--text-1)" stop-opacity="0.18"/>' +
         '<stop offset="100%" stop-color="var(--text-1)" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
         '<path d="' + fillD + '" fill="url(#lgfill)"/>' +
-        // Average line + label
+        // Average line (label is now a pill in the corner — see above)
         (avgY !== null ?
-            '<line x1="' + PAD + '" y1="' + avgY + '" x2="' + (W - PAD) + '" y2="' + avgY + '" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="2 4" opacity="0.55"/>' +
-            '<text x="' + (W - PAD - 2) + '" y="' + (avgY - 4) + '" font-size="8" fill="var(--text-3)" text-anchor="end" font-family="Space Mono">avg ' + (avg >= 1000 ? '₹' + Math.round(avg/1000) + 'k' : '₹' + Math.round(avg)) + '</text>'
+            '<line x1="' + PAD + '" y1="' + avgY + '" x2="' + (W - PAD) + '" y2="' + avgY + '" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="2 4" opacity="0.5"/>'
         : '') +
         '<path d="' + pathD + '" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
         // Vertical drop line on active point
