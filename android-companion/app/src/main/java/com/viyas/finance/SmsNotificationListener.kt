@@ -24,23 +24,22 @@ class SmsNotificationListener : NotificationListenerService() {
     private val recentHashes = ArrayDeque<Int>()
     private val maxRecent = 60
 
-    // Packages we care about. Messaging apps + major Indian bank/UPI apps.
+    // Packages we care about. Messaging apps + major Indian bank apps.
+    // UPI apps (GPay/PhonePe/Paytm/BHIM) are intentionally excluded — their
+    // notifications lack parseable transaction details and just add diagnostic
+    // noise. Bank SMS via the messaging app is the source of truth.
     private val watchedPackages = setOf(
         // SMS apps
         "com.google.android.apps.messaging",
         "com.samsung.android.messaging",
         "com.android.messaging",
         "com.android.mms",
-        // Banks
+        // Bank apps (sometimes mirror SMS via push; useful backup)
         "com.snapwork.hdfc", "com.csam.icici.bank.imobile",
         "com.sbi.lotusintouch", "com.sbi.SBIFreedomPlus",
         "com.axis.mobile", "com.msf.kbank.mobile",
         "com.fss.indus", "com.idbibank.go", "com.YesBank",
-        "com.idfcfirstbank.optimus", "com.snapwork.IDBI",
-        // UPI
-        "com.google.android.apps.nbu.paisa.user", // GPay
-        "com.phonepe.app", "net.one97.paytm",
-        "in.org.npci.upiapp", "com.bhim.app"
+        "com.idfcfirstbank.optimus", "com.snapwork.IDBI"
     )
 
     // Quick filter: only forward if the text looks like a bank txn.
