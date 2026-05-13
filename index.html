@@ -2331,7 +2331,7 @@ async function loadRules() {
         list.innerHTML = merchants.map((r, i) => {
             const catInfo = getCatInfo(r.category);
             const color = catInfo ? catInfo.color : '#8E8E93';
-            const bg    = catInfo ? (catInfo.bg || color + '18') : '#F0F0F0';
+            const bg    = color + '22';
             const typeLabel = { spending: 'Spending', income: 'Income', investment: 'Investment', transfer: 'Transfer' }[r.category_type] || r.category_type || '';
             const typeColor = { spending: '#FF3B30', income: '#22C55E', investment: '#007AFF', transfer: '#8E8E93' }[r.category_type] || '#8E8E93';
             const name = (r.recipient || r.id || '').replace(/@\S+/g, '').trim();
@@ -2458,7 +2458,7 @@ function loadCatManager() {
                 // Sub-categories
                 '<div class="cat-mgr-subs">';
             (cat.subs || []).forEach(s => {
-                html += '<div class="cat-mgr-sub-chip" style="border-color:' + cat.color + '55;color:' + cat.color + ';background:' + (cat.bg||'#F5F5F5') + '">' +
+                html += '<div class="cat-mgr-sub-chip" style="border-color:' + cat.color + '55;color:' + cat.color + ';background:' + cat.color + '18">' +
                     s + '<button class="cat-mgr-sub-del" onclick="catMgrDelSub(\'' + safeName + '\',\'' + s.replace(/'/g,"\\'") + '\')" title="Remove">×</button>' +
                     '</div>';
             });
@@ -3597,7 +3597,7 @@ function renderTxnList(entries, expanded) {
             let subline = esc(catLabel);
             let displayIcon = getCatIcon(e.category);
             let displayColor = info.color;
-            let displayBg = info.bg || (info.color + '18');
+            let displayBg = info.color + '22';
             if (isReimburse) {
                 displayColor = '#FF9500';
                 displayBg = '#FF950018';
@@ -4333,7 +4333,7 @@ function openReimbursementPicker(uncatIdx) {
         }
         list.innerHTML = filtered.map(e => {
             const info = getCatInfo(e.category);
-            const bg = info.bg || (info.color + '18');
+            const bg = info.color + '22';
             return '<div class="rp-item" data-id="' + e.id + '" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border-light);cursor:pointer;">'
                 + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
                 +   '<div style="width:18px;height:18px;color:' + info.color + '">' + getCatIcon(e.category) + '</div>'
