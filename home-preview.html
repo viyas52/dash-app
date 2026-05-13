@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#EDEBE6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=VT323&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -59,15 +59,9 @@ body::before {
     width: 100vw; height: 100vh;
     pointer-events: none;
     z-index: 0;
-    /* Horizontal scanlines — CRT / Game Boy LCD vibe */
-    background-image: repeating-linear-gradient(
-        0deg,
-        transparent 0px,
-        transparent 2px,
-        var(--text-1) 2px,
-        var(--text-1) 3px
-    );
-    opacity: 0.07;
+    background-image: radial-gradient(circle, var(--text-1) 0.9px, transparent 0.9px);
+    background-size: 12px 12px;
+    opacity: 0.11;
 }
 body > * { position: relative; z-index: 1; }
 
@@ -201,9 +195,10 @@ body > * { position: relative; z-index: 1; }
     font-family: 'Space Mono', monospace; margin-bottom: 12px;
 }
 .hero-amount {
-    font-family: 'Space Mono', monospace;
-    font-size: 38px; font-weight: 700; letter-spacing: -0.025em;
-    line-height: 1; color: var(--text-1);
+    /* Retro CRT terminal font for the headline number */
+    font-family: 'VT323', 'Space Mono', monospace;
+    font-size: 56px; font-weight: 400; letter-spacing: 0;
+    line-height: 0.9; color: var(--text-1);
 }
 .hero-sub {
     font-size: 13px; color: var(--text-3); margin-top: 10px;
@@ -233,9 +228,10 @@ body > * { position: relative; z-index: 1; }
     align-items: center; justify-content: center;
 }
 .donut-pct {
-    font-family: 'Space Mono', monospace;
-    font-size: 30px; font-weight: 700; letter-spacing: -0.02em;
+    font-family: 'VT323', 'Space Mono', monospace;
+    font-size: 40px; font-weight: 400; letter-spacing: 0;
     color: var(--text-1);
+    display: flex; align-items: center; justify-content: center;
 }
 .donut-lbl {
     font-size: 10px; color: var(--text-3);
@@ -280,12 +276,13 @@ body > * { position: relative; z-index: 1; }
 }
 .stat-card-new .dot { width: 6px; height: 6px; border-radius: 50%; }
 .stat-card-new .val {
-    font-family: 'Space Mono', monospace;
-    font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
+    font-family: 'VT323', 'Space Mono', monospace;
+    font-size: 26px; font-weight: 400; letter-spacing: 0;
+    line-height: 1;
     color: var(--text-1);
 }
-.stat-card-new.income .val { font-size: 24px; color: var(--green); }
-.stat-card-new.saved  .val { font-size: 22px; color: var(--purple); }
+.stat-card-new.income .val { font-size: 36px; color: var(--green); }
+.stat-card-new.saved  .val { font-size: 32px; color: var(--purple); }
 .stat-card-new .val.inv { color: var(--blue); }
 .stat-card-new .sub {
     font-size: 10px; color: var(--text-3); margin-top: 2px;
@@ -396,7 +393,7 @@ body > * { position: relative; z-index: 1; }
     font-family: 'Space Mono', monospace;
 }
 .date-divider .day-totals {
-    font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700;
+    font-size: 15px; font-family: 'VT323', 'Space Mono', monospace; font-weight: 400;
     display: flex; align-items: center; gap: 6px;
 }
 .txn-row {
@@ -426,9 +423,9 @@ body > * { position: relative; z-index: 1; }
 .cat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .txn-right { text-align: right; flex-shrink: 0; }
 .txn-amt {
-    font-size: 13px; font-weight: 700;
-    font-family: 'Space Mono', monospace;
-    color: var(--red);
+    font-size: 18px; font-weight: 400;
+    font-family: 'VT323', 'Space Mono', monospace;
+    color: var(--red); letter-spacing: 0;
 }
 .txn-amt.cr { color: var(--green); }
 .txn-date {
