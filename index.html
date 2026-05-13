@@ -1547,6 +1547,32 @@
                 </div>
             </div>
 
+            <!-- What gets tracked (Privacy) -->
+            <div class="label setting-group-label">What gets tracked</div>
+            <div class="card" style="margin-bottom:12px;padding:14px 16px;">
+                <div style="font-size:12px;color:var(--text-2);line-height:1.65;">
+                    <div style="margin-bottom:6px;font-weight:600;color:var(--green);">✓ Read</div>
+                    <div>• Bank SMS in your messaging app (only with transaction keywords)</div>
+                    <div>• Push notifications from supported bank/UPI apps only</div>
+                    <div style="margin-bottom:12px;">• <strong>Only accounts you've linked above</strong> — others are dropped server-side</div>
+
+                    <div style="margin-bottom:6px;font-weight:600;color:var(--red);">✗ Never read</div>
+                    <div>• WhatsApp, Instagram, Gmail, social apps</div>
+                    <div>• Notifications without bank/transaction keywords</div>
+                    <div style="margin-bottom:12px;">• OTP-only / promotional / non-banking SMS</div>
+
+                    <div style="font-size:11px;color:var(--text-3);line-height:1.5;padding-top:8px;border-top:1px solid var(--border-light);">Code is open at <a href="https://github.com/viyas52/dash-app" target="_blank" style="color:var(--blue);">github.com/viyas52/dash-app</a> — you can audit every line that touches your data.</div>
+                </div>
+            </div>
+
+            <!-- Missed transactions -->
+            <div class="label setting-group-label">Missed transactions <span style="font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:normal;font-size:10px;font-family:'DM Sans',sans-serif;margin-left:6px;">unrecognized SMS</span></div>
+            <div class="card" style="margin-bottom:12px;padding:0;">
+                <div style="padding:12px 16px;font-size:11px;color:var(--text-3);line-height:1.5;border-bottom:1px solid var(--border-light);">If your bank's SMS isn't being tracked, it shows up here. Tap <strong>Copy</strong> and send the SMS text to Viyas — he'll add a parser within minutes.</div>
+                <div id="missed-list" style="padding:0;"></div>
+                <div id="missed-empty" style="display:none;padding:14px 16px;font-size:12px;color:var(--text-3);">✓ Nothing missed — all SMS received were recognized.</div>
+            </div>
+
             <!-- About -->
             <div class="label setting-group-label">About</div>
             <div class="card" style="margin-bottom:24px;">
@@ -2157,6 +2183,7 @@ function openSettings() {
     loadLinkedAccounts();
     loadCatManager();
     loadRules();
+    loadMissedSms();
     initSettingsSliders();
     // Populate account section
     const nameEl = document.getElementById('settings-user-name');
@@ -4317,9 +4344,10 @@ async function authGoogle() {
 }
 
 async function authLogout() {
-    // Detach the live transaction listener before signing out so it doesn't
-    // keep firing against the (now wrong) user's collection.
-    if (_monthUnsub) { try { _monthUnsub(); } catch(e) {} _monthUnsub = null; }
+    // Detach all live Firestore listeners before signing out so they don't
+    // keep firing against the (now wrong) user's collections.
+    if (_monthUnsub)  { try { _monthUnsub(); }  catch(e) {} _monthUnsub  = null; }
+    if (_missedUnsub) { try { _missedUnsub(); } catch(e) {} _missedUnsub = null; }
     try {
         await initFirebaseCore();
         await window.fbAuth.signOut(firebaseAuth);
@@ -4445,6 +4473,85 @@ function resyncCompanion() {
     sessionStorage.removeItem('companion_synced');
     localStorage.removeItem(lsKey('companion_listener_done'));
     maybeSyncCompanion();
+}
+
+/* ─── MISSED SMS (unrecognized bank messages) ─── */
+let _missedUnsub = null;
+
+function loadMissedSms() {
+    if (!firebaseReady || !USER_ID) return;
+    if (_missedUnsub) { try { _missedUnsub(); } catch(e) {} _missedUnsub = null; }
+    try {
+        const { collection, onSnapshot } = window.fb;
+        const q = collection(db, 'users', USER_ID, 'missed_sms');
+        _missedUnsub = onSnapshot(q, snap => {
+            const items = [];
+            snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+            items.sort((a, b) => (b.received_at || '').localeCompare(a.received_at || ''));
+            renderMissedSms(items.slice(0, 30));
+        }, err => console.warn('missed_sms listener error:', err));
+    } catch (err) { console.warn('loadMissedSms failed:', err); }
+}
+
+function renderMissedSms(items) {
+    const list = document.getElementById('missed-list');
+    const empty = document.getElementById('missed-empty');
+    if (!list) return;
+    if (items.length === 0) {
+        list.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.innerHTML = items.map((m, i) => {
+        const sep = i < items.length - 1 ? 'border-bottom:1px solid var(--border-light);' : '';
+        const when = m.received_at
+            ? new Date(m.received_at).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+            : '';
+        const raw = m.raw || '';
+        // Encode raw for safe transport via data attribute
+        const encoded = encodeURIComponent(raw);
+        return '<div style="padding:12px 16px;' + sep + '">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">' +
+              '<div style="font-size:11px;color:var(--text-3);font-family:\'Space Mono\',monospace;">' + esc(when) + '</div>' +
+              '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+                '<button data-raw="' + encoded + '" onclick="copyMissedSms(this)" style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Copy</button>' +
+                '<button onclick="deleteMissedSms(\'' + m.id + '\')" style="font-size:10px;padding:4px 10px;border-radius:6px;border:none;background:#FF3B3018;color:#FF3B30;cursor:pointer;font-family:\'DM Sans\',sans-serif;">Delete</button>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text-2);line-height:1.5;font-family:\'Space Mono\',monospace;word-break:break-word;white-space:pre-wrap;background:var(--bg);padding:8px 10px;border-radius:8px;">' + esc(raw.substring(0, 280)) + (raw.length > 280 ? '…' : '') + '</div>' +
+            '</div>';
+    }).join('');
+}
+
+function copyMissedSms(btn) {
+    const raw = decodeURIComponent(btn.dataset.raw || '');
+    if (!raw) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(raw).then(
+            () => showToast('Copied — send to Viyas to add parser'),
+            () => showToast('Copy failed')
+        );
+    } else {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = raw;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showToast('Copied'); }
+        catch(e) { showToast('Copy failed'); }
+        ta.remove();
+    }
+}
+
+async function deleteMissedSms(id) {
+    const ok = await confirmModal('Delete this missed SMS?', 'You can\'t recover it after delete.');
+    if (!ok) return;
+    try {
+        const { deleteDoc, doc } = window.fb;
+        await deleteDoc(doc(db, 'users', USER_ID, 'missed_sms', id));
+        showToast('Deleted');
+    } catch (err) { showToast('Delete failed'); console.error(err); }
 }
 
 /* ─── IN-APP MODALS (replaces native confirm/prompt) ─── */
