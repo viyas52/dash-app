@@ -1075,7 +1075,7 @@
         /* Chart corner pill — shows period avg without overlapping the line */
         .chart-avg-pill {
             position: absolute;
-            top: -2px; right: 0;
+            top: -16px; right: 0;
             font-size: 9px; font-weight: 600;
             color: var(--text-3);
             font-family: 'Space Mono', monospace;
@@ -1085,6 +1085,7 @@
             padding: 2px 8px;
             display: flex; align-items: center; gap: 5px;
             z-index: 3; pointer-events: none;
+            line-height: 1.4;
         }
         .chart-avg-pill::before {
             content: '';
@@ -1634,12 +1635,12 @@
         </div>
 
         <!-- Line chart (replaces bar chart) -->
-        <div class="card" id="monthly-bars-section" style="margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <div class="card" id="monthly-bars-section" style="margin-bottom:16px;padding-top:14px;padding-bottom:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px;">
                 <div id="chart-total-badge" class="chart-badge-live" style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text-1);text-shadow:0 0 10px color-mix(in srgb, var(--text-1) 18%, transparent), 0 0 22px color-mix(in srgb, var(--text-1) 10%, transparent);"></div>
                 <div class="label chart-axis-label" id="chart-period-label" style="font-size:10px;text-align:right;">Monthly Spending</div>
             </div>
-            <div id="line-chart-wrap"></div>
+            <div id="line-chart-wrap" style="padding-top:20px;"></div>
         </div>
 
         <!-- Category breakdown -->
@@ -5951,7 +5952,8 @@ async function triggerBiometric() {
                 timeout: 60000,
             },
         });
-        // Biometric passed
+        // Biometric passed — same unlock feedback as PIN success
+        sndConfirm(); hapConfirm();
         _pinBuffer = '';
         if (window._pinSetupMode) { window._pinSetupMode = false; }
         enterApp();
