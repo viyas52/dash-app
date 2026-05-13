@@ -915,8 +915,37 @@
         /* Line chart */
         .line-chart-svg { width: 100%; overflow: visible; display: block; }
         .line-chart-labels { display: flex; justify-content: space-between; padding: 4px 0 2px; }
-        .line-chart-label { font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace; text-align: center; flex: 1; }
+        .line-chart-label {
+            font-size: 9px; color: var(--text-3); font-family: 'Space Mono', monospace;
+            text-align: center; flex: 1;
+            cursor: pointer; transition: color 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
         .line-chart-label.active { color: var(--text-1); font-weight: 700; }
+        .line-chart-label:active { transform: scale(0.94); }
+        /* Live-cursor blink beside the chart total badge */
+        .chart-badge-live::after {
+            content: '';
+            display: inline-block;
+            width: 5px; height: 5px;
+            background: var(--green);
+            border-radius: 1px;
+            margin-left: 6px;
+            vertical-align: 0.2em;
+            animation: lcd-blink 1.2s infinite steps(2, start);
+            box-shadow: 0 0 5px var(--green);
+        }
+        /* Analytics title gets the dot brackets too */
+        .stats-view-title {
+            display: inline-flex; align-items: center; gap: 10px;
+        }
+        .stats-view-title::before,
+        .stats-view-title::after {
+            content: '';
+            width: 5px; height: 5px; border-radius: 1px;
+            background: var(--text-3);
+            flex-shrink: 0;
+        }
         .line-dot-tip {
             position: absolute; background: var(--text-1); color: #fff;
             font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700;
@@ -1404,8 +1433,8 @@
         <!-- Line chart (replaces bar chart) -->
         <div class="card" id="monthly-bars-section" style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-                <div id="chart-total-badge" style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text-1);"></div>
-                <div class="label" id="chart-period-label" style="font-size:10px;text-align:right;">Monthly Spending</div>
+                <div id="chart-total-badge" class="chart-badge-live" style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--text-1);text-shadow:0 0 14px color-mix(in srgb, var(--text-1) 8%, transparent);"></div>
+                <div class="label chart-axis-label" id="chart-period-label" style="font-size:10px;text-align:right;">Monthly Spending</div>
             </div>
             <div id="line-chart-wrap"></div>
         </div>
@@ -4230,13 +4259,17 @@ function _buildLineChartSvg(points, labels, activeIdx) {
         '<path d="' + fillD + '" fill="url(#lgfill)"/>' +
         '<path d="' + pathD + '" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
         // Vertical drop line on active point
-        '<line x1="' + ap.x + '" y1="' + ap.y + '" x2="' + ap.x + '" y2="' + H + '" stroke="var(--text-1)" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>' +
+        '<line x1="' + ap.x + '" y1="' + ap.y + '" x2="' + ap.x + '" y2="' + H + '" stroke="var(--text-1)" stroke-width="1" stroke-dasharray="3 3" opacity="0.35"/>' +
+        // Halo behind the active dot (subtle glow)
+        '<circle cx="' + ap.x + '" cy="' + ap.y + '" r="10" fill="var(--text-1)" opacity="0.12"/>' +
         pts.map((p, i) => {
             const isActive = i === activeIdx;
             const r = isActive ? 5 : 3;
             const fill = isActive ? 'var(--text-1)' : p.v > 0 ? 'var(--text-1)' : '#D8D5CF';
             const sw = isActive ? 2 : 1.5;
-            return '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '" stroke="white" stroke-width="' + sw + '"/>';
+            // Visible dot + invisible 14px hit area for easy mobile tapping
+            return '<circle class="chart-dot" cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '" stroke="white" stroke-width="' + sw + '" style="cursor:pointer;pointer-events:none;"/>' +
+                   '<circle cx="' + p.x + '" cy="' + p.y + '" r="14" fill="transparent" style="cursor:pointer;" onclick="selectChartPoint(' + i + ')"/>';
         }).join('') +
         '</svg>' +
         '</div>' +
