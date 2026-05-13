@@ -35,8 +35,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         b.btnTest.setOnClickListener {
-            val testSms = "Rs.100.00 debited from A/c XX1234 on " +
-                "13MAY26 to TEST@upi. UPI Ref 999999999999. -HDFC Bank"
+            // Real HDFC debit UPI format. Creates a ₹1 "COMPANION_TEST" txn in Firestore.
+            // Safe to run repeatedly — deduped by UPI ref. Delete the test txn from PWA after.
+            val testSms = "Sent Rs.1.00\nFrom HDFC Bank A/C *1234\n" +
+                "To COMPANION_TEST\nOn 13/05/26\nRef 888888888888"
             CoroutineScope(Dispatchers.Main).launch {
                 log("Sending test...")
                 val res = withContext(Dispatchers.IO) {
