@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -35,16 +36,12 @@ object UncatNotifier {
         val title = "Categorize this ${if (type == "debit") "payment" else "credit"}"
         val text = "₹${fmt(amount)} $arrow ${if (party.isNotBlank()) party else "?"}  ·  $bank"
 
-        // Tapping launches the PWA URL with ?openuncat=1 — Chrome routes this
-        // to the user's installed PWA shortcut (added via "Add to Home Screen")
-        // so it opens standalone, not in a browser tab. PWA reads the param
-        // on load and jumps straight to the Uncategorized screen.
-        val openIntent = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("https://viyas52.github.io/dash-app/?companion=1&openuncat=1")
-        ).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
+        // Tap routing priority:
+        //   1. If Chrome installed our PWA as a real WebAPK (proper standalone
+        //      PWA with no URL bar), open that — best UX.
+        //   2. Otherwise launch our own TWA wrapper, which loads the PWA and
+        //      jumps to the Uncategorized screen via ?openuncat=1.
+        val openIntent = buildOpenIntent(ctx)
         val pi = PendingIntent.getActivity(
             ctx,
             txn.optString("id").hashCode(),
@@ -67,6 +64,35 @@ object UncatNotifier {
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS not granted on Android 13+. Skip silently;
             // user can grant via Settings → Apps → Finance Companion.
+        }
+    }
+
+    private const val PWA_URL = "https://viyas52.github.io/dash-app/"
+
+    private fun buildOpenIntent(ctx: Context): Intent {
+        val pm = ctx.packageManager
+        val targetUrl = "$PWA_URL?companion=1&openuncat=1"
+
+        // 1) Look for a Chrome WebAPK that handles our PWA URL — those are
+        //    the no-URL-bar standalone PWAs installed via "Add to Home Screen".
+        val probe = Intent(Intent.ACTION_VIEW, Uri.parse(PWA_URL))
+        val webapk = try {
+            pm.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY)
+                .firstOrNull { it.activityInfo.packageName.startsWith("org.chromium.webapk.") }
+        } catch (_: Exception) { null }
+
+        if (webapk != null) {
+            return Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
+                setPackage(webapk.activityInfo.packageName)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        }
+
+        // 2) Fall back to our own TWA wrapper. CompanionLauncherActivity reads
+        //    the "openuncat" extra and appends ?openuncat=1 to the launching URL.
+        return Intent(ctx, CompanionLauncherActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("openuncat", true)
         }
     }
 

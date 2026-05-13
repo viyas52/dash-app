@@ -28,9 +28,13 @@ class CompanionLauncherActivity : LauncherActivity() {
         val base = super.getLaunchingUrl()
         val prefs = Prefs(this)
         val hasCreds = prefs.user.isNotBlank() && prefs.apiKey.isNotBlank()
+        val openUncat = intent?.getBooleanExtra("openuncat", false) ?: false
         return base.buildUpon()
             .appendQueryParameter("companion", "1")
-            .apply { if (hasCreds) appendQueryParameter("hasCreds", "1") }
+            .apply {
+                if (hasCreds) appendQueryParameter("hasCreds", "1")
+                if (openUncat) appendQueryParameter("openuncat", "1")
+            }
             .build()
     }
 
