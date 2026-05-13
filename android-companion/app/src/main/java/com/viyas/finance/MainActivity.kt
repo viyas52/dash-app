@@ -41,8 +41,10 @@ class MainActivity : AppCompatActivity() {
 
         b.btnTest.setOnClickListener {
             // Real HDFC debit UPI format. Creates a ₹1 "COMPANION_TEST" txn in Firestore.
+            // Date is dynamic so the test txn always lands on today.
+            val today = java.text.SimpleDateFormat("dd/MM/yy", java.util.Locale.US).format(java.util.Date())
             val testSms = "Sent Rs.1.00\nFrom HDFC Bank A/C *1234\n" +
-                "To COMPANION_TEST\nOn 13/05/26\nRef 888888888888"
+                "To COMPANION_TEST\nOn $today\nRef 888888888888"
             CoroutineScope(Dispatchers.Main).launch {
                 toast("Sending test...")
                 val result = withContext(Dispatchers.IO) {
@@ -96,7 +98,8 @@ class MainActivity : AppCompatActivity() {
             val body = ev.optString("body")
             val status = ev.optString("status")
             val emoji = when {
-                status.startsWith("forwarded: 200: {\"status\":\"created\"") -> "✅"
+                status.startsWith("forwarded: 200: {\"status\":\"saved\"") -> "✅"
+                status.startsWith("forwarded: 200: {\"status\":\"duplicate\"") -> "🔁"
                 status.startsWith("forwarded: 200: {\"status\":\"skipped\"") -> "⚠️"
                 status.startsWith("forwarded") -> "📤"
                 status.startsWith("filtered") -> "🔇"

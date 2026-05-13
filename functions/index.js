@@ -415,6 +415,29 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
 
       if (otherBank) {
         const pairedType = parsed.type === "debit" ? "credit" : "debit";
+
+        // Skip the auto-pair if the destination bank's own SMS already arrived
+        // and created the real leg (same upi_ref, opposite type).
+        let realLegExists = false;
+        if (parsed.upi_ref) {
+          try {
+            const existing = await db.collection(txnCol)
+              .where("upi_ref", "==", parsed.upi_ref)
+              .where("type", "==", pairedType)
+              .limit(1).get();
+            realLegExists = !existing.empty;
+          } catch (_) { /* index missing — fall through to dedup_key collision */ }
+        }
+        if (realLegExists) {
+          // Real leg present; don't double-count.
+          return res.status(200).json({
+            status: "saved", id: docRef.id, user: effectiveUser,
+            bank: parsed.bank, type: parsed.type,
+            amount: parsed.amount, date: parsed.date,
+            category: parsed.category, category_type: parsed.category_type,
+            recipient: parsed.recipient || parsed.source,
+          });
+        }
         const pairedKey  = parsed.dedup_key + "_paired";
         const paired = {
           raw_sms: "", bank: otherBank, account: "",

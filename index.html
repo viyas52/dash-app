@@ -1072,7 +1072,8 @@
                 <input id="auth-name" class="auth-input" type="text" placeholder="Enter your name" autocomplete="name">
 
                 <label class="auth-label">Username</label>
-                <input id="auth-username" class="auth-input" type="text" placeholder="Pick a username (lowercase, no spaces)" style="margin-bottom:6px;">
+                <input id="auth-username" class="auth-input" type="text" placeholder="Pick a username (lowercase, no spaces)" style="margin-bottom:6px;" oninput="updateUsernamePreview()">
+                <div id="auth-username-preview" style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:'Space Mono',monospace;min-height:14px;"></div>
                 <div style="font-size:11px;color:var(--text-3);margin-bottom:16px;">Used for your data path. Existing users: enter your current ID.</div>
             </div>
 
@@ -1485,7 +1486,12 @@
 
             <!-- Linked Accounts -->
             <div class="label setting-group-label">Linked Accounts</div>
-            <div id="linked-accounts-list" style="margin-bottom:12px;"></div>
+            <div id="linked-accounts-list" style="margin-bottom:8px;"></div>
+            <button class="cat-edit-btn" onclick="showAddAccountModal()" style="margin-bottom:12px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Add a Bank Account
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-left:auto;color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
 
             <!-- Categories -->
             <div class="label setting-group-label">Categories</div>
@@ -1502,20 +1508,6 @@
                 <div id="rules-empty" style="display:none;padding:14px 16px;font-size:12px;color:var(--text-3);">No rules saved yet</div>
             </div>
 
-            <!-- Contacts -->
-            <div class="label setting-group-label">Contacts</div>
-            <div class="card" style="margin-bottom:12px;padding:0;">
-                <button id="contacts-toggle" onclick="toggleContactsPanel()" style="width:100%;display:flex;align-items:center;gap:10px;padding:13px 16px;background:none;border:none;cursor:pointer;text-align:left;">
-                    <span style="font-size:16px;">👤</span>
-                    <span style="flex:1;font-size:13px;font-weight:500;color:var(--text-1);">Saved Contacts</span>
-                    <span id="contacts-count" style="font-size:11px;color:var(--text-3);font-family:'Space Mono',monospace;"></span>
-                    <svg id="contacts-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3);transition:transform 0.2s;"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                </button>
-                <div id="contacts-panel" style="display:none;border-top:1px solid var(--border-light);padding:4px 0;">
-                    <div id="contacts-list"></div>
-                    <div id="contacts-empty" style="display:none;padding:12px 16px;font-size:12px;color:var(--text-3);">No contacts saved yet</div>
-                </div>
-            </div>
 
             <!-- Export -->
             <div class="label setting-group-label">Data</div>
@@ -1533,11 +1525,19 @@
             <div class="label setting-group-label">Integrations</div>
             <div class="card" style="margin-bottom:12px;">
                 <div class="setting-row">
-                    <div><div class="setting-label">SMS Auto-import</div><div class="setting-desc">MacroDroid → Cloud Function</div></div>
+                    <div><div class="setting-label">SMS Auto-import</div><div class="setting-desc">Finance Companion → Cloud Function</div></div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
                         <span style="font-size:11px;color:var(--green);font-weight:500;">Active</span>
                     </div>
+                </div>
+                <div class="setting-row" id="companion-resync-row" style="display:none;cursor:pointer;" onclick="enableCompanionListener()">
+                    <div><div class="setting-label">Re-enable SMS forwarding</div><div class="setting-desc">Re-open Android's notification access</div></div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="setting-row" id="companion-diag-row" style="display:none;cursor:pointer;" onclick="openCompanionDiag()">
+                    <div><div class="setting-label">Companion diagnostics</div><div class="setting-desc">View recent SMS forwarding log</div></div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </div>
                 <div class="setting-row" style="border-bottom:none;">
                     <div><div class="setting-label">Cloud Function</div><div class="setting-desc">asia-south1 · parseSms</div></div>
@@ -1688,7 +1688,7 @@ function renderAcctCard(a) {
             <div class="acct-bank-icon" style="background:${a.color}">${a.initials}</div>
             <div class="acct-info">
                 <div class="acct-name">${a.name}</div>
-                <div class="acct-desc">••${a.last4} · SMS via MacroDroid</div>
+                <div class="acct-desc">••${a.last4} · Live SMS forwarding</div>
             </div>
             <div class="acct-live"><div class="acct-live-dot"></div>Live</div>
             <svg class="acct-chevron ${isOpen ? 'open' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -2167,6 +2167,13 @@ function openSettings() {
     if (emailEl && firebaseAuth && firebaseAuth.currentUser) {
         emailEl.textContent = firebaseAuth.currentUser.email || '';
     }
+    // Show companion-only rows if running inside the Android wrapper
+    if (window.isCompanion) {
+        const r1 = document.getElementById('companion-resync-row');
+        const r2 = document.getElementById('companion-diag-row');
+        if (r1) r1.style.display = '';
+        if (r2) r2.style.display = '';
+    }
     const sheet = document.getElementById('settings-sheet');
     sheet.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -2271,7 +2278,7 @@ let firebaseApp = null, firebaseAuth = null;
 async function initFirebaseCore() {
     if (firebaseApp) return;
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot }
+    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch }
         = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
             signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile }
@@ -2279,7 +2286,7 @@ async function initFirebaseCore() {
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
     firebaseAuth = getAuth(firebaseApp);
-    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot };
+    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch };
     window.fbAuth = { signInWithEmailAndPassword, createUserWithEmailAndPassword,
                       signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile };
 }
@@ -3011,12 +3018,18 @@ async function deleteFromModal() {
                         } else {
                             await addDoc(collection(db, txnCol()), data);
                         }
-                        // Re-apply balance
+                        // Re-apply balance to source bank
                         if (data.bank) {
                             const cur = parseFloat(lsGet('bal_' + data.bank)) || 0;
                             const restored = data.type === 'credit' ? cur + data.amount : cur - data.amount;
                             lsSet('bal_' + data.bank, restored);
                             lsSet('bal_upd_' + data.bank, new Date().toISOString());
+                        }
+                        // For manual transfers, also restore the bank_to side (was decremented during delete)
+                        if (data.bank_to) {
+                            const cur2 = parseFloat(lsGet('bal_' + data.bank_to)) || 0;
+                            lsSet('bal_' + data.bank_to, cur2 + data.amount);
+                            lsSet('bal_upd_' + data.bank_to, new Date().toISOString());
                         }
                     }
                     loadLinkedAccounts();
@@ -3104,24 +3117,30 @@ async function addEntry() {
         const { collection, addDoc } = window.fb;
 
         if (typeVal === 'transfer') {
-            // Self-transfer: two transactions — debit from, credit to
+            // Self-transfer: two transactions — debit from, credit to.
+            // Use a writeBatch so both legs commit atomically (no half-transfers).
             const bankTo = document.getElementById('add-bank-to').value || null;
             if (!bankTo || bankTo === bank) { showToast("Pick a different To account"); return; }
 
-            // Debit from-account
-            await addDoc(collection(db, txnCol()), {
+            const { writeBatch, doc } = window.fb;
+            const batch = writeBatch(db);
+            const debitRef  = doc(collection(db, txnCol()));
+            const creditRef = doc(collection(db, txnCol()));
+            batch.set(debitRef, {
                 date, amount, type: 'debit', category, sub_category, category_type: 'transfer',
                 bank: bank || null, bank_to: bankTo,
                 note: baseNote + ' → ' + (LINKED_ACCOUNTS.find(a=>a.id===bankTo)?.name.split(' ')[0] || bankTo),
-                recipient: '', upi_ref: '', created_at: now
+                recipient: '', upi_ref: '', created_at: now,
+                pair_id: creditRef.id,
             });
-            // Credit to-account
-            await addDoc(collection(db, txnCol()), {
+            batch.set(creditRef, {
                 date, amount, type: 'credit', category, sub_category, category_type: 'transfer',
                 bank: bankTo, bank_from: bank || null,
                 note: baseNote + ' ← ' + (LINKED_ACCOUNTS.find(a=>a.id===bank)?.name.split(' ')[0] || bank),
-                recipient: '', upi_ref: '', created_at: now
+                recipient: '', upi_ref: '', created_at: now,
+                pair_id: debitRef.id,
             });
+            await batch.commit();
 
             // Update balances: from-account down, to-account up
             if (bank) {
@@ -3162,10 +3181,23 @@ async function addEntry() {
 
 async function saveEditedEntry() {
     if (!firebaseReady || !editingId) { showToast("Cannot update"); return; }
-    // Warn if editing a transfer — paired leg won't be auto-updated
     const oldTxnCheck = [...(window._allCategorized || []), ...(uncatEntries || [])].find(x => x.id === editingId);
-    if (oldTxnCheck && oldTxnCheck.category_type === 'transfer') {
-        if (!confirm('This is a transfer entry. Editing it won\'t update the paired leg. Continue?')) return;
+    const oldType = oldTxnCheck?.category_type;
+    const newTypeVal = document.getElementById('add-type').value;
+    const newCatType = newTypeVal === 'credit' ? 'income'
+                     : newTypeVal === 'investment' ? 'investment'
+                     : newTypeVal === 'transfer' ? 'transfer'
+                     : 'spending';
+    // Block converting to/from transfer — the paired-leg logic isn't safe in updateDoc.
+    if (oldType === 'transfer' && newCatType !== 'transfer') {
+        showToast("Can't change a transfer to another type — delete and re-add"); return;
+    }
+    if (oldType !== 'transfer' && newCatType === 'transfer') {
+        showToast("Can't change a transaction into a transfer — delete and add a new transfer"); return;
+    }
+    if (oldType === 'transfer') {
+        const ok = await confirmModal('Edit transfer leg', "This is a transfer entry. Editing it won't update the paired leg. Continue?");
+        if (!ok) return;
     }
     const date = document.getElementById('add-date').value;
     const amount = parseFloat(document.getElementById('add-amount').value);
@@ -3424,19 +3456,38 @@ let _statsPeriod = 'daily';
 let _catDrillOpen = null;
 let _chartView = 'bar';
 
+// Merge currentEntries + history without duplicates. Used for time windows that
+// can span month boundaries (daily, weekly). Prevents the "near month start"
+// charts from silently dropping prior-month days.
+function _mergedEntries() {
+    const all = window._allHistoryEntries || [];
+    const seen = new Set();
+    const out = [];
+    for (const e of all) {
+        const k = e.id || e.dedup_key;
+        if (k) seen.add(k);
+        out.push(e);
+    }
+    for (const e of (currentEntries || [])) {
+        const k = e.id || e.dedup_key;
+        if (k && seen.has(k)) continue;
+        out.push(e);
+    }
+    return out;
+}
+
 function getEntriesForPeriod() {
     const all = window._allHistoryEntries || [];
     const now = new Date();
-
     if (_statsPeriod === 'daily') {
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 6); cutoff.setHours(0,0,0,0);
         const cut = cutoff.toISOString().split('T')[0];
-        return (currentEntries || []).filter(e => e.date >= cut);
+        return _mergedEntries().filter(e => e.date >= cut);
     }
     if (_statsPeriod === 'weekly') {
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 27); cutoff.setHours(0,0,0,0);
         const cut = cutoff.toISOString().split('T')[0];
-        return (currentEntries || []).filter(e => e.date >= cut);
+        return _mergedEntries().filter(e => e.date >= cut);
     }
     if (_statsPeriod === 'monthly') return currentEntries;
     if (_statsPeriod === 'annual') return all;
@@ -3455,6 +3506,7 @@ function buildChartForPeriod() {
     const now = new Date();
 
     if (_statsPeriod === 'daily') {
+        const merged = _mergedEntries();
         const points = [], labels = [];
         let activeIdx = 6;
         let maxVal = -1;
@@ -3462,25 +3514,24 @@ function buildChartForPeriod() {
             const d = new Date(now); d.setDate(now.getDate()-i);
             const key = d.toISOString().split('T')[0];
             const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0,2);
-            const total = (currentEntries || []).filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
+            const total = merged.filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
             points.push(total);
             labels.push(dayLabel);
-            // highlight the day with most spending (or today if all zero)
             if (total > maxVal) { maxVal = total; activeIdx = 6 - i; }
         }
         buildLineChart(points, labels, maxVal > 0 ? activeIdx : 6);
     } else if (_statsPeriod === 'weekly') {
+        const merged = _mergedEntries();
         const points = [], labels = [];
         let activeIdx = 3;
         let maxVal = -1;
         for (let i = 3; i >= 0; i--) {
-            // Use calendar weeks Mon–Sun
+            // Rolling 7-day buckets (not calendar weeks) — week i ends i*7 days ago.
             const end = new Date(now); end.setDate(now.getDate() - i*7);
             const start = new Date(end); start.setDate(end.getDate() - 6);
             const s = start.toISOString().split('T')[0];
             const e2 = end.toISOString().split('T')[0];
-            const total = (currentEntries||[]).filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
-            // Label = start date of that week e.g. "26 Apr"
+            const total = merged.filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
             const lbl = start.getDate() + ' ' + start.toLocaleDateString('en-IN',{month:'short'});
             labels.push(lbl);
             points.push(total);
@@ -3788,7 +3839,7 @@ async function loadHistory() {
             // Fallback if index missing — load all (legacy behavior)
             snap = await getDocs(collection(db, txnCol()));
         }
-        const all = []; snap.forEach(d => all.push(d.data()));
+        const all = []; snap.forEach(d => all.push({ id: d.id, ...d.data() }));
         window._allHistoryEntries = all;
         buildChartForPeriod();
     } catch(err) { console.error("History failed:", err); }
@@ -4164,6 +4215,119 @@ function resyncCompanion() {
     maybeSyncCompanion();
 }
 
+/* ─── IN-APP MODALS (replaces native confirm/prompt) ─── */
+function confirmModal(title, message) {
+    return new Promise((resolve) => {
+        const o = document.createElement('div');
+        o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+        o.innerHTML = '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:340px;width:100%;">'
+            + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">' + esc(title) + '</div>'
+            + '<div style="font-size:13px;color:var(--text-2);line-height:1.5;margin-bottom:16px;">' + esc(message) + '</div>'
+            + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+            +   '<button class="cm-cancel" style="font-size:13px;padding:8px 16px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Cancel</button>'
+            +   '<button class="cm-ok" style="font-size:13px;padding:8px 16px;border-radius:10px;border:none;background:var(--text-1);color:var(--bg);cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;">Continue</button>'
+            + '</div></div>';
+        document.body.appendChild(o);
+        o.querySelector('.cm-cancel').onclick = () => { o.remove(); resolve(false); };
+        o.querySelector('.cm-ok').onclick     = () => { o.remove(); resolve(true);  };
+    });
+}
+
+function pinActionModal() {
+    return new Promise(resolve => {
+        const o = document.createElement('div');
+        o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+        o.innerHTML = '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:340px;width:100%;">'
+            + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">You already have a PIN set</div>'
+            + '<div style="font-size:13px;color:var(--text-2);line-height:1.5;margin-bottom:16px;">What would you like to do?</div>'
+            + '<div style="display:flex;flex-direction:column;gap:8px;">'
+            +   '<button class="pm-change" style="font-size:13px;padding:11px 16px;border-radius:10px;border:none;background:var(--text-1);color:var(--bg);cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;">Change PIN</button>'
+            +   '<button class="pm-remove" style="font-size:13px;padding:11px 16px;border-radius:10px;border:1px solid #FF3B30;background:transparent;color:#FF3B30;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;">Remove PIN</button>'
+            +   '<button class="pm-cancel" style="font-size:13px;padding:11px 16px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Cancel</button>'
+            + '</div></div>';
+        document.body.appendChild(o);
+        o.querySelector('.pm-change').onclick = () => { o.remove(); resolve('change'); };
+        o.querySelector('.pm-remove').onclick = () => { o.remove(); resolve('remove'); };
+        o.querySelector('.pm-cancel').onclick = () => { o.remove(); resolve(null);     };
+    });
+}
+
+/* ─── USERNAME PREVIEW (during signup) ─── */
+function updateUsernamePreview() {
+    const raw = (document.getElementById('auth-username').value || '');
+    const clean = raw.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const el = document.getElementById('auth-username-preview');
+    if (!el) return;
+    if (!raw) { el.textContent = ''; return; }
+    if (clean.length < 2) {
+        el.textContent = 'Too short (need 2+ chars)';
+        el.style.color = '#FF3B30';
+    } else if (clean !== raw.trim().toLowerCase()) {
+        el.textContent = '→ will be saved as: ' + clean;
+        el.style.color = 'var(--text-3)';
+    } else {
+        el.textContent = '✓ ' + clean;
+        el.style.color = 'var(--green)';
+    }
+}
+
+/* ─── ADD LINKED ACCOUNT (Settings → Linked Accounts → "+ Add a Bank Account") ─── */
+function showAddAccountModal() {
+    const o = document.createElement('div');
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0;';
+    o.innerHTML = '<div style="background:var(--bg-card);border-radius:24px 24px 0 0;padding:24px 20px 32px;max-width:480px;width:100%;">'
+        + '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>'
+        + '<div style="font-size:18px;font-weight:700;margin-bottom:18px;">Link a bank account</div>'
+        + '<div class="label" style="margin-bottom:6px;">Bank name</div>'
+        + '<input class="aa-name" type="text" placeholder="HDFC Bank" style="width:100%;font-size:14px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text-1);margin-bottom:14px;font-family:\'DM Sans\',sans-serif;outline:none;">'
+        + '<div class="label" style="margin-bottom:6px;">Last 4 digits</div>'
+        + '<input class="aa-last4" type="text" inputmode="numeric" maxlength="4" placeholder="1234" style="width:100%;font-size:14px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text-1);margin-bottom:14px;font-family:\'Space Mono\',monospace;outline:none;">'
+        + '<div class="label" style="margin-bottom:8px;">Color</div>'
+        + '<div class="aa-colors" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;"></div>'
+        + '<div style="display:flex;gap:8px;">'
+        +   '<button class="aa-cancel" style="flex:1;font-size:14px;padding:13px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Cancel</button>'
+        +   '<button class="aa-save" style="flex:2;font-size:14px;padding:13px;border-radius:12px;border:none;background:var(--text-1);color:var(--bg);cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;">Link account</button>'
+        + '</div></div>';
+    document.body.appendChild(o);
+    const colors = ['#007AFF','#22C55E','#FF3B30','#FF9500','#5856D6','#8E8E93','#34D399','#F472B6'];
+    let selected = colors[0];
+    const cwrap = o.querySelector('.aa-colors');
+    const renderC = () => {
+        cwrap.innerHTML = colors.map(c =>
+            '<div data-c="' + c + '" style="width:32px;height:32px;border-radius:50%;background:' + c + ';cursor:pointer;border:3px solid ' + (c === selected ? 'var(--text-1)' : 'transparent') + ';box-sizing:border-box;"></div>'
+        ).join('');
+        cwrap.querySelectorAll('div[data-c]').forEach(d => {
+            d.onclick = () => { selected = d.dataset.c; renderC(); };
+        });
+    };
+    renderC();
+    o.querySelector('.aa-cancel').onclick = () => o.remove();
+    o.querySelector('.aa-save').onclick = async () => {
+        const name = o.querySelector('.aa-name').value.trim();
+        const last4 = o.querySelector('.aa-last4').value.trim();
+        if (!name) { showToast('Enter a bank name'); return; }
+        if (!/^\d{4}$/.test(last4)) { showToast('Last 4 must be 4 digits'); return; }
+        const id = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 12) || ('bank' + Date.now());
+        if (LINKED_ACCOUNTS.find(a => a.id === id || a.last4 === last4)) {
+            showToast('Already linked'); return;
+        }
+        const initials = name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+        LINKED_ACCOUNTS.push({ id, name, last4, color: selected, initials });
+        try {
+            const { setDoc, doc } = window.fb;
+            await setDoc(doc(db, 'users', USER_ID, 'config', 'accounts'), { linked_accounts: LINKED_ACCOUNTS });
+            loadLinkedAccounts();
+            renderAcctFilterChips();
+            showToast('Account linked');
+            o.remove();
+        } catch (err) {
+            console.error('Failed to save account:', err);
+            LINKED_ACCOUNTS.pop();
+            showToast('Save failed');
+        }
+    };
+}
+
 /* ─── PIN SYSTEM ─── */
 let _pinBuffer = '';
 
@@ -4195,13 +4359,25 @@ async function hashPin(pin) {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+let _pinFails = 0, _pinLockUntil = 0;
 async function verifyPin() {
+    const now = Date.now();
+    if (now < _pinLockUntil) {
+        showToast('Too many tries. Wait ' + Math.ceil((_pinLockUntil - now) / 1000) + 's');
+        _pinBuffer = ''; updatePinDots(); return;
+    }
     const stored = lsGet('pin_hash');
     const hash = await hashPin(_pinBuffer);
     if (hash === stored) {
-        _pinBuffer = '';
+        _pinBuffer = ''; _pinFails = 0;
         enterApp();
     } else {
+        _pinFails++;
+        if (_pinFails >= 5) {
+            _pinLockUntil = now + 30000; // 30s lockout after 5 wrong tries
+            _pinFails = 0;
+            showToast('Locked for 30 seconds');
+        }
         // Shake animation
         const dots = document.querySelectorAll('#pin-dots .pin-dot');
         dots.forEach(d => { d.classList.add('error'); });
@@ -4219,26 +4395,21 @@ async function verifyPin() {
 /* ─── PIN SETUP (from settings) ─── */
 let _pinSetupStep = 0, _pinSetupFirst = '';
 
-function showPinSetup() {
+async function showPinSetup() {
     const existing = lsGet('pin_hash');
     if (existing) {
-        // Offer change or remove
-        const action = confirm('You have a PIN set.\n\nOK = Change PIN\nCancel = Remove PIN');
-        if (action) {
-            _pinSetupStep = 0;
-            _pinSetupFirst = '';
+        const action = await pinActionModal();
+        if (action === 'change') {
+            _pinSetupStep = 0; _pinSetupFirst = '';
             showPinSetupModal('Enter a new 4-digit PIN');
-        } else {
-            lsSet('pin_hash', '');
+        } else if (action === 'remove') {
             localStorage.removeItem(lsKey('pin_hash'));
-            lsSet('bio_enabled', '');
             localStorage.removeItem(lsKey('bio_enabled'));
             showToast('PIN removed');
             updateSecurityUI();
         }
     } else {
-        _pinSetupStep = 0;
-        _pinSetupFirst = '';
+        _pinSetupStep = 0; _pinSetupFirst = '';
         showPinSetupModal('Set a 4-digit PIN');
     }
 }
