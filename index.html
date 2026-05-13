@@ -2674,6 +2674,47 @@ const firebaseConfig = {
 let db = null, firebaseReady = false, editingId = null;
 let currentEntries = [], uncatEntries = [], uncatState = {};
 
+/* ─── BACK-GESTURE TRAPPING (uses History API) ──────────────────────
+   Android's edge-swipe-back and the system back button both fire popstate
+   on the PWA. To prevent the app from exiting when the user just wants to
+   go back one level inside Settings (or close a modal), we push a history
+   state every time we open a modal/sub-page. popstate then closes the
+   current layer instead of exiting. In-app close/back buttons funnel
+   through history.back() too, so both gestures share one code path.       */
+let _processingPopstate = false;
+
+function _pushBackTrap(label) {
+    try { history.pushState({ trap: label, t: Date.now() }, ''); } catch(e) {}
+}
+
+window.addEventListener('popstate', () => {
+    _processingPopstate = true;
+    try {
+        // Close the topmost open layer (in priority order)
+        const settingsOpen = document.getElementById('settings-sheet')?.classList.contains('open');
+        const catEditorOpen = document.getElementById('cat-editor-sheet')?.classList.contains('open');
+        const obOpen = document.getElementById('onboarding-overlay')?.style.display === 'block';
+        const addModalOpen = document.getElementById('add-modal')?.classList.contains('active');
+
+        if (addModalOpen) {
+            document.getElementById('add-modal').classList.remove('active');
+            document.body.style.overflow = '';
+        } else if (obOpen) {
+            obSkip();
+        } else if (catEditorOpen) {
+            _internalCloseCatEditor();
+        } else if (settingsOpen) {
+            const currentPage = document.querySelector('#settings-sheet .settings-page:not([style*="display: none"])');
+            const isRoot = currentPage && currentPage.id === 'sp-root';
+            if (isRoot) _internalCloseSettings();
+            else settingsNav('root');
+        }
+    } finally {
+        // Re-arm in next tick so any nav calls inside don't see the flag stuck
+        setTimeout(() => { _processingPopstate = false; }, 0);
+    }
+});
+
 /* ─── SOUND DESIGN (Game Boy / chiptune palette via Web Audio) ─── */
 let _audioCtx = null;
 let _soundsEnabled = (localStorage.getItem('pft_sounds_enabled') !== '0');
@@ -2869,11 +2910,19 @@ function settingsNav(page) {
     if (titleEl) titleEl.textContent = _settingsPageTitles[page] || 'Settings';
     const backBtn = document.getElementById('settings-back-btn');
     if (backBtn) backBtn.style.display = page === 'root' ? 'none' : 'flex';
-    // Scroll the scrollable body back to top on every nav
     const body = document.querySelector('.settings-fs-body');
     if (body) body.scrollTop = 0;
+    // Trap the back gesture when we drill into a sub-page (skip if we got
+    // here from a popstate, otherwise we'd push an extra state on every back).
+    if (page !== 'root' && !_processingPopstate) {
+        _pushBackTrap('settings:' + page);
+    }
 }
-function settingsNavBack() { settingsNav('root'); }
+function settingsNavBack() {
+    // The in-app ← button. Pop history so popstate handles the actual nav.
+    if (_processingPopstate) { settingsNav('root'); return; }
+    history.back();
+}
 
 function openSettings() {
     loadLinkedAccounts();
@@ -2895,15 +2944,24 @@ function openSettings() {
     // Show companion row only when running inside the Android wrapper
     const companionRow = document.getElementById('row-companion');
     if (companionRow) companionRow.style.display = window.isCompanion ? '' : 'none';
-    // Always reset to root view
+    // Reset to root, open the sheet, then trap the system back gesture by
+    // pushing a history state. The popstate handler closes the sheet so
+    // Android's edge-swipe-back doesn't exit the app.
     settingsNav('root');
     const sheet = document.getElementById('settings-sheet');
     sheet.classList.add('open');
     document.body.style.overflow = 'hidden';
+    _pushBackTrap('settings');
 }
-function closeSettings() {
+function _internalCloseSettings() {
     document.getElementById('settings-sheet').classList.remove('open');
     document.body.style.overflow = '';
+}
+function closeSettings() {
+    // Called from the × button. Pop the trap state — the popstate handler
+    // does the actual close.
+    if (_processingPopstate) { _internalCloseSettings(); return; }
+    history.back();
 }
 
 function initSettingsSliders() {
@@ -2926,10 +2984,15 @@ function openCatEditor() {
     initNewCatSwatches();
     const sheet = document.getElementById('cat-editor-sheet');
     sheet.classList.add('open');
+    _pushBackTrap('cat-editor');
+}
+function _internalCloseCatEditor() {
+    document.getElementById('cat-editor-sheet').classList.remove('open');
 }
 function closeCatEditor(e) {
     if (e && e.target !== document.getElementById('cat-editor-sheet')) return;
-    document.getElementById('cat-editor-sheet').classList.remove('open');
+    if (_processingPopstate) { _internalCloseCatEditor(); return; }
+    history.back();
 }
 
 function addNewCat() {
@@ -3689,6 +3752,7 @@ function openAddModal() {
     updateBankFieldsForType();
     document.getElementById('add-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    _pushBackTrap('add-modal');
 }
 
 function rowTap(id) {
@@ -5358,6 +5422,7 @@ function obShow() {
     obRenderStep();
     overlay.style.display = 'block';
     document.body.style.overflow = 'hidden';
+    _pushBackTrap('onboarding');
 }
 
 function obRenderStep() {
