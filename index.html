@@ -163,21 +163,28 @@
         .hero-sub .g { color: var(--green); font-weight: 500; }
         .hero-sub .r { color: var(--red); font-weight: 500; }
 
+        /* Filled pie (no inner hole) — radius 40, stroke 80 fills the whole disc */
         .donut-wrap { position: relative; width: 160px; height: 160px; margin: 16px auto 0; overflow: visible; }
         .donut-wrap svg { width: 160px; height: 160px; transform: rotate(-90deg); overflow: visible; }
-        .donut-track { fill: none; stroke: #E8E6E1; stroke-width: 12; }
+        .donut-track { fill: none; stroke: var(--border-light); stroke-width: 80; }
         .donut-fill {
-            fill: none; stroke: var(--text-1); stroke-width: 12; stroke-linecap: round;
+            fill: none; stroke: var(--text-1); stroke-width: 80; stroke-linecap: butt;
             transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);
             filter: drop-shadow(0 0 4px color-mix(in srgb, var(--text-1) 18%, transparent));
         }
         [data-theme="dark"] .donut-fill {
             filter: drop-shadow(0 0 6px color-mix(in srgb, var(--text-1) 38%, transparent));
         }
+        /* Small backplate disc behind the % text so it stays readable on the pie */
         .donut-center {
-            position: absolute; inset: 0;
+            position: absolute; top: 50%; left: 50%;
+            width: 60px; height: 60px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: var(--bg-card);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
+            box-shadow: 0 0 0 1px var(--border);
         }
         .donut-pct {
             font-size: 24px; font-weight: 700; font-family: 'Space Mono', monospace;
@@ -1044,7 +1051,29 @@
         }
         .period-btn.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
 
+        /* Spending heatmap (GitHub-style grid) */
+        .heat-cell {
+            display: inline-block;
+            width: 11px; height: 11px;
+            border-radius: 2px;
+            background: var(--bg-tinted);
+            cursor: pointer;
+            transition: transform 0.12s;
+        }
+        .heat-cell:active { transform: scale(1.4); }
+        .heat-col { display: flex; flex-direction: column; gap: 3px; }
+        .heat-col-label {
+            font-size: 8px; color: var(--text-3);
+            font-family: 'Space Mono', monospace;
+            text-align: center; margin-top: 2px;
+            min-height: 10px;
+        }
+
         /* Line chart */
+        #line-chart-wrap {
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+        #line-chart-wrap.chart-anim-out { opacity: 0; transform: translateY(-4px); }
         .line-chart-svg { width: 100%; overflow: visible; display: block; }
         .line-chart-labels { display: flex; justify-content: space-between; padding: 4px 0 2px; }
         .line-chart-label {
@@ -1435,9 +1464,9 @@
         <div class="hero-sub" id="hero-sub"></div>
         <div class="donut-wrap">
             <svg viewBox="0 0 160 160">
-                <circle class="donut-track" cx="80" cy="80" r="66"/>
-                <circle class="donut-fill" id="donut-ring" cx="80" cy="80" r="66"
-                    stroke-dasharray="414.7" stroke-dashoffset="414.7"/>
+                <circle class="donut-track" cx="80" cy="80" r="40"/>
+                <circle class="donut-fill" id="donut-ring" cx="80" cy="80" r="40"
+                    stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
             </svg>
             <div class="donut-center">
                 <div class="donut-pct" id="donut-pct">0%</div>
@@ -1627,6 +1656,27 @@
                 <!-- Flow bar: income split into expense + invest + saved -->
                 <div id="fin-flow-bar" style="height:6px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin-top:4px;"></div>
                 <div id="fin-flow-legend" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;"></div>
+            </div>
+        </div>
+
+        <!-- Heatmap calendar (last 90 days of spending) -->
+        <div class="card" id="heatmap-section" style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+                <div class="label">Spending heatmap</div>
+                <div style="font-size:10px;color:var(--text-3);font-family:'Space Mono',monospace;">last 90 days</div>
+            </div>
+            <div id="heatmap-grid" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                <div id="heatmap-info" style="font-size:11px;color:var(--text-3);min-height:14px;">Tap a square for details</div>
+                <div style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text-3);font-family:'Space Mono',monospace;">
+                    <span>less</span>
+                    <span class="heat-cell" style="background:var(--bg-tinted);"></span>
+                    <span class="heat-cell" style="background:color-mix(in srgb, var(--red) 18%, var(--bg));"></span>
+                    <span class="heat-cell" style="background:color-mix(in srgb, var(--red) 45%, var(--bg));"></span>
+                    <span class="heat-cell" style="background:color-mix(in srgb, var(--red) 75%, var(--bg));"></span>
+                    <span class="heat-cell" style="background:var(--red);"></span>
+                    <span>more</span>
+                </div>
             </div>
         </div>
 
@@ -2978,9 +3028,10 @@ function updateDashboard(entries) {
     document.getElementById('invest-progress').style.background = investPct >= 100 ? 'var(--green)' : 'var(--blue)';
     document.getElementById('invest-meta').textContent = investPct + '% of ₹' + f(INVEST_TARGET);
 
-    // Donut ring — colour shifts green→amber→red as spend rises
+    // Pie fill — colour shifts green→amber→red as spend rises.
+    // Circle r=40, circumference = 2*π*40 ≈ 251.3
     const pct = Math.min(100, Math.round((totalExpense / BUDGET) * 100));
-    const ringOffset = 414.7 - (414.7 * pct / 100);
+    const ringOffset = 251.3 - (251.3 * pct / 100);
     const ring = document.getElementById('donut-ring');
     ring.style.strokeDashoffset = ringOffset;
     ring.style.stroke = pct >= 100 ? '#FF3B30'
@@ -4220,12 +4271,129 @@ function initChartSwipe() {
     }, { passive: true });
 }
 
+/* ─── HEATMAP — last 90 days of spending intensity ─── */
+function buildHeatmap() {
+    const grid = document.getElementById('heatmap-grid');
+    const info = document.getElementById('heatmap-info');
+    if (!grid) return;
+
+    // Pool data from history + currentEntries (deduped)
+    const seen = new Set();
+    const all = [];
+    const push = e => {
+        const k = e.id || e.dedup_key;
+        if (k && seen.has(k)) return;
+        if (k) seen.add(k);
+        if (e.category_type === 'spending') all.push(e);
+    };
+    (window._allHistoryEntries || []).forEach(push);
+    (currentEntries || []).forEach(push);
+
+    // Bucket by date
+    const byDate = {};
+    all.forEach(e => {
+        if (!e.date) return;
+        byDate[e.date] = (byDate[e.date] || 0) + (e.amount || 0);
+    });
+    const max = Math.max(1, ...Object.values(byDate));
+
+    // Build last 90 days array, oldest → newest
+    const today = new Date(); today.setHours(0,0,0,0);
+    const days = [];
+    for (let i = 89; i >= 0; i--) {
+        const d = new Date(today); d.setDate(today.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        days.push({ date: key, d, amount: byDate[key] || 0 });
+    }
+
+    // Group into columns by week (7 rows each)
+    // First column may be partial (leading days of week 1)
+    const cols = [];
+    let cur = [];
+    days.forEach((day, idx) => {
+        const dow = day.d.getDay(); // 0=Sun, 6=Sat
+        if (idx === 0) {
+            // Pad with empty cells at start of week
+            for (let p = 0; p < dow; p++) cur.push(null);
+        }
+        cur.push(day);
+        if (day.d.getDay() === 6) { cols.push(cur); cur = []; }
+    });
+    if (cur.length) {
+        while (cur.length < 7) cur.push(null);
+        cols.push(cur);
+    }
+
+    const intensity = (amt) => {
+        if (amt <= 0) return 'var(--bg-tinted)';
+        const r = amt / max;
+        if (r < 0.25) return 'color-mix(in srgb, var(--red) 18%, var(--bg))';
+        if (r < 0.5)  return 'color-mix(in srgb, var(--red) 45%, var(--bg))';
+        if (r < 0.85) return 'color-mix(in srgb, var(--red) 75%, var(--bg))';
+        return 'var(--red)';
+    };
+
+    // Render — month labels every ~4 cols
+    let lastMonth = -1;
+    grid.innerHTML = cols.map((col, ci) => {
+        // First non-null day in column determines its month
+        const firstDay = col.find(c => c !== null);
+        const colMonth = firstDay ? firstDay.d.getMonth() : -1;
+        const monthLabel = (colMonth !== lastMonth && firstDay && firstDay.d.getDate() <= 7)
+            ? firstDay.d.toLocaleDateString('en-IN', { month: 'short' })
+            : '';
+        if (monthLabel) lastMonth = colMonth;
+
+        return '<div class="heat-col">'
+            + col.map(day => {
+                if (!day) return '<div class="heat-cell" style="visibility:hidden;"></div>';
+                const bg = intensity(day.amount);
+                const label = day.d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                return '<div class="heat-cell" style="background:' + bg + ';" '
+                    + 'data-date="' + day.date + '" data-amount="' + day.amount + '" '
+                    + 'data-label="' + label + '" onclick="heatmapTap(this)"></div>';
+            }).join('')
+            + '<div class="heat-col-label">' + monthLabel + '</div>'
+            + '</div>';
+    }).join('');
+
+    // Compute total / best stat to show as initial info
+    const total = Object.values(byDate).reduce((s, v) => s + v, 0);
+    const days_with = Object.keys(byDate).length;
+    const avgPerDay = days_with > 0 ? Math.round(total / days_with) : 0;
+    if (info) info.textContent = days_with > 0
+        ? days_with + ' active days · avg ₹' + fmt(avgPerDay) + '/day'
+        : 'No spending data yet';
+}
+
+function heatmapTap(el) {
+    const info = document.getElementById('heatmap-info');
+    if (!info) return;
+    const amt = parseFloat(el.dataset.amount || '0');
+    const label = el.dataset.label || '';
+    info.innerHTML = '<strong>' + esc(label) + '</strong> · ' +
+        (amt > 0
+            ? '<span style="color:var(--red);font-family:\'Space Mono\',monospace;font-weight:700;">-₹' + fmt(amt) + '</span>'
+            : '<span style="color:var(--green);">₹0 — no spending</span>');
+}
+
 function setStatsPeriod(period, btn) {
     _statsPeriod = period;
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    buildStats();
-    buildChartForPeriod();
+    // Smooth period transition: fade out the chart, swap data, fade in.
+    const wrap = document.getElementById('line-chart-wrap');
+    if (wrap) {
+        wrap.classList.add('chart-anim-out');
+        setTimeout(() => {
+            buildStats();
+            buildChartForPeriod();
+            requestAnimationFrame(() => wrap.classList.remove('chart-anim-out'));
+        }, 180);
+    } else {
+        buildStats();
+        buildChartForPeriod();
+    }
 }
 
 function buildChartForPeriod() {
@@ -4343,6 +4511,7 @@ function buildStats() {
     } else { portfolioSection.style.display = 'none'; }
 
     buildChartForPeriod();
+    buildHeatmap();
 }
 
 function switchChartView(mode) {
@@ -4509,6 +4678,13 @@ function _buildLineChartSvg(points, labels, activeIdx) {
     const tipX = Math.min(Math.max(ap.x, 28), W - 28);
     const tipY = Math.max(ap.y - 14, 2);
 
+    // Average line — horizontal dashed line at the mean of all points
+    const nonZeroPoints = points.filter(v => v > 0);
+    const avg = nonZeroPoints.length > 0
+        ? nonZeroPoints.reduce((s, v) => s + v, 0) / nonZeroPoints.length
+        : 0;
+    const avgY = avg > 0 ? yScale(avg) : null;
+
     wrap.innerHTML =
         '<div style="position:relative;">' +
         '<svg class="line-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px;overflow:visible;">' +
@@ -4517,6 +4693,11 @@ function _buildLineChartSvg(points, labels, activeIdx) {
         '<stop offset="100%" stop-color="var(--text-1)" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
         '<path d="' + fillD + '" fill="url(#lgfill)"/>' +
+        // Average line + label
+        (avgY !== null ?
+            '<line x1="' + PAD + '" y1="' + avgY + '" x2="' + (W - PAD) + '" y2="' + avgY + '" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="2 4" opacity="0.55"/>' +
+            '<text x="' + (W - PAD - 2) + '" y="' + (avgY - 4) + '" font-size="8" fill="var(--text-3)" text-anchor="end" font-family="Space Mono">avg ' + (avg >= 1000 ? '₹' + Math.round(avg/1000) + 'k' : '₹' + Math.round(avg)) + '</text>'
+        : '') +
         '<path d="' + pathD + '" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
         // Vertical drop line on active point
         '<line x1="' + ap.x + '" y1="' + ap.y + '" x2="' + ap.x + '" y2="' + H + '" stroke="var(--text-1)" stroke-width="1" stroke-dasharray="3 3" opacity="0.35"/>' +
