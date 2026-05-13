@@ -111,7 +111,17 @@
             padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 0;
         }
         .greeting { font-size: 11px; color: var(--text-3); font-weight: 400; font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
-        .app-name { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; color: var(--text-1); }
+        .app-name {
+            font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; color: var(--text-1);
+            text-shadow:
+                0 0 10px color-mix(in srgb, var(--text-1) 18%, transparent),
+                0 0 22px color-mix(in srgb, var(--text-1) 10%, transparent);
+        }
+        [data-theme="dark"] .app-name {
+            text-shadow:
+                0 0 12px color-mix(in srgb, var(--text-1) 40%, transparent),
+                0 0 26px color-mix(in srgb, var(--text-1) 22%, transparent);
+        }
         .month-pill {
             display: flex; align-items: center; gap: 2px;
             font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
@@ -155,6 +165,14 @@
         .donut-fill {
             fill: none; stroke: var(--text-1); stroke-width: 12; stroke-linecap: round;
             transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);
+            filter:
+                drop-shadow(0 0 4px color-mix(in srgb, var(--text-1) 30%, transparent))
+                drop-shadow(0 0 10px color-mix(in srgb, var(--text-1) 15%, transparent));
+        }
+        [data-theme="dark"] .donut-fill {
+            filter:
+                drop-shadow(0 0 6px color-mix(in srgb, var(--text-1) 60%, transparent))
+                drop-shadow(0 0 14px color-mix(in srgb, var(--text-1) 30%, transparent));
         }
         .donut-center {
             position: absolute; inset: 0;
