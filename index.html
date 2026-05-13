@@ -1204,10 +1204,11 @@
         .cat-mgr-input:focus { border-color: var(--text-1); }
         .cat-mgr-add-btn {
             padding: 8px 14px; border-radius: 10px; background: var(--text-1);
-            color: #fff; border: none; font-size: 12px; font-weight: 600;
+            color: var(--bg); border: none; font-size: 12px; font-weight: 600;
             cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
             -webkit-tap-highlight-color: transparent;
         }
+        .cat-mgr-add-btn:active { transform: scale(0.95); }
         .cat-mgr-del-btn {
             padding: 6px 12px; border-radius: 8px; background: #FF3B3015;
             color: #FF3B30; border: 1px solid #FF3B3030; font-size: 12px; font-weight: 600;
@@ -2075,6 +2076,12 @@
         </div>
         <div style="overflow-y:auto;flex:1;padding:0 20px 40px;">
             <p style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Tap a category to expand. Add or remove sub-categories.</p>
+            <!-- Type tabs: switch between Spending / Investment / Income -->
+            <div class="period-tabs" style="margin-bottom:14px;">
+                <button class="period-btn active" data-cat-type="spending" onclick="setCatType('spending',this)">Spending</button>
+                <button class="period-btn" data-cat-type="investment" onclick="setCatType('investment',this)">Investment</button>
+                <button class="period-btn" data-cat-type="income" onclick="setCatType('income',this)">Income</button>
+            </div>
             <div id="cat-manager-wrap"></div>
             <!-- Add new category -->
             <div class="label setting-group-label" style="margin-top:8px;">Add New Category</div>
@@ -2363,11 +2370,29 @@ function colorSwatchesHtml(selectedColor, onclickFn) {
     ).join('');
 }
 
+/* ─── CAT MANAGER (Spending / Investment / Income) ─── */
+let _catMgrType = 'spending';
+
+function _catListForType(type) {
+    if (type === 'investment') return INVEST_CATS;
+    if (type === 'income')     return INCOME_CATS;
+    return SPENDING_CATS;
+}
+
+function setCatType(type, btn) {
+    _catMgrType = type;
+    document.querySelectorAll('[data-cat-type]').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    _catMgrExpanded = null; // reset expanded state when switching types
+    loadCatManager();
+}
+
 function loadCatManager() {
     const el = document.getElementById('cat-manager-wrap');
     if (!el) return;
+    const list = _catListForType(_catMgrType);
     let html = '';
-    SPENDING_CATS.forEach((cat, idx) => {
+    list.forEach((cat, idx) => {
         const isExp = _catMgrExpanded === cat.name;
         const subCount = (cat.subs || []).length;
         const safeName = cat.name.replace(/'/g, "\\'");
@@ -2408,8 +2433,8 @@ function loadCatManager() {
         html += '</div>';
     });
     el.innerHTML = html;
-    // Wire up per-cat swatch onclick handlers
-    SPENDING_CATS.forEach((cat, idx) => {
+    // Wire up per-cat swatch onclick handlers for the active list
+    list.forEach((cat, idx) => {
         window['catMgrChangeColor_' + idx] = (color) => catMgrChangeColor(cat.name, color, idx);
     });
 }
@@ -2424,7 +2449,7 @@ function catMgrAddSub(catName, idx) {
     if (!inp) return;
     const val = inp.value.trim();
     if (!val) return;
-    const cat = SPENDING_CATS.find(c => c.name === catName);
+    const cat = _catListForType(_catMgrType).find(c => c.name === catName);
     if (!cat) return;
     if (!cat.subs) cat.subs = [];
     if (cat.subs.includes(val)) { showToast('Already exists'); return; }
@@ -2435,7 +2460,7 @@ function catMgrAddSub(catName, idx) {
 }
 
 function catMgrDelSub(catName, sub) {
-    const cat = SPENDING_CATS.find(c => c.name === catName);
+    const cat = _catListForType(_catMgrType).find(c => c.name === catName);
     if (!cat || !cat.subs) return;
     cat.subs = cat.subs.filter(s => s !== sub);
     saveCatsToStorage();
@@ -2444,7 +2469,7 @@ function catMgrDelSub(catName, sub) {
 }
 
 function catMgrChangeColor(catName, color, idx) {
-    const cat = SPENDING_CATS.find(c => c.name === catName);
+    const cat = _catListForType(_catMgrType).find(c => c.name === catName);
     if (!cat) return;
     cat.color = color;
     cat.bg = color + '22';
@@ -2462,11 +2487,13 @@ function catMgrChangeColor(catName, color, idx) {
     if (card) { const dot = card.querySelector('.cat-mgr-dot'); if (dot) dot.style.background = color; }
 }
 
-function catMgrDeleteCat(catName) {
-    if (!confirm('Delete "' + catName + '"? This won\'t affect existing transactions.')) return;
-    const idx = SPENDING_CATS.findIndex(c => c.name === catName);
+async function catMgrDeleteCat(catName) {
+    const ok = await confirmModal('Delete "' + catName + '"?', "Won't affect existing transactions.");
+    if (!ok) return;
+    const list = _catListForType(_catMgrType);
+    const idx = list.findIndex(c => c.name === catName);
     if (idx === -1) return;
-    SPENDING_CATS.splice(idx, 1);
+    list.splice(idx, 1);
     if (_catMgrExpanded === catName) _catMgrExpanded = null;
     saveCatsToStorage();
     loadCatManager();
@@ -2491,11 +2518,32 @@ function initNewCatSwatches() {
 
 // INVEST_TARGET now loaded via loadUserPrefs()
 
-// ── Persist custom category edits ──
+// ── Persist custom category edits (all three types) ──
 function saveCatsToStorage() {
+    // Legacy key — still keeps spending cats for backward compat
     lsSet('custom_cats', JSON.stringify(SPENDING_CATS));
+    // Newer combined key with all three types
+    lsSet('custom_cats_v2', JSON.stringify({
+        spending: SPENDING_CATS,
+        investment: INVEST_CATS,
+        income: INCOME_CATS,
+    }));
 }
 function loadCatsFromStorage() {
+    // Prefer the v2 combined snapshot if present
+    const rawV2 = lsGet('custom_cats_v2');
+    if (rawV2) {
+        try {
+            const saved = JSON.parse(rawV2);
+            if (saved && typeof saved === 'object') {
+                if (Array.isArray(saved.spending)   && saved.spending.length)   { SPENDING_CATS.length = 0; saved.spending.forEach(c => SPENDING_CATS.push(c)); }
+                if (Array.isArray(saved.investment) && saved.investment.length) { INVEST_CATS.length = 0;   saved.investment.forEach(c => INVEST_CATS.push(c)); }
+                if (Array.isArray(saved.income)     && saved.income.length)     { INCOME_CATS.length = 0;   saved.income.forEach(c => INCOME_CATS.push(c)); }
+                return;
+            }
+        } catch(e) { /* ignore corrupt data, fall back to legacy */ }
+    }
+    // Legacy fallback (spending-only)
     const raw = lsGet('custom_cats');
     if (!raw) return;
     try {
@@ -2633,8 +2681,33 @@ function switchView(name) {
 
 /* ─── SWIPE NAVIGATION ─── */
 let _txX = 0, _txY = 0;
+let _edgeSwipeFromLeft = false;
 document.addEventListener('touchstart', e => {
     _txX = e.touches[0].clientX; _txY = e.touches[0].clientY;
+    // Track if the gesture started from the very left edge — used for the
+    // "swipe-from-edge to go back" gesture inside Settings sub-pages and
+    // the category editor sheet.
+    _edgeSwipeFromLeft = _txX <= 24;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+    if (!_edgeSwipeFromLeft) return;
+    const dx = e.changedTouches[0].clientX - _txX;
+    const dy = e.changedTouches[0].clientY - _txY;
+    _edgeSwipeFromLeft = false;
+    if (dx < 80) return;
+    if (Math.abs(dy) > Math.abs(dx) * 0.5) return;
+    // Decide which open surface should respond to the back-swipe
+    const settingsOpen = document.getElementById('settings-sheet')?.classList.contains('open');
+    const catEditorOpen = document.getElementById('cat-editor-sheet')?.classList.contains('open');
+    if (settingsOpen) {
+        const currentPage = document.querySelector('#settings-sheet .settings-page:not([style*="display: none"])');
+        const isRoot = currentPage && currentPage.id === 'sp-root';
+        if (isRoot) closeSettings(); else settingsNavBack();
+        e.stopPropagation();
+    } else if (catEditorOpen) {
+        closeCatEditor();
+        e.stopPropagation();
+    }
 }, { passive: true });
 document.addEventListener('touchend', e => {
     // Don't swipe if a sheet is open
@@ -2738,13 +2811,14 @@ function addNewCat() {
     const nameEl = document.getElementById('new-cat-name');
     const name = (nameEl.value || '').trim();
     if (!name) return;
-    if (SPENDING_CATS.find(c => c.name === name)) { showToast('Already exists'); return; }
+    const list = _catListForType(_catMgrType);
+    if (list.find(c => c.name === name)) { showToast('Already exists'); return; }
     const color = _newCatColor || '#8E8E93';
-    SPENDING_CATS.push({ name, color, bg: color + '22', subs: [] });
+    list.push({ name, color, bg: color + '22', subs: [] });
     nameEl.value = '';
     saveCatsToStorage();
     loadCatManager();
-    showToast('Category added');
+    showToast('Added to ' + _catMgrType);
 }
 
 /* ─── EXPORT DATA ─── */
