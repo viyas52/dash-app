@@ -49,6 +49,75 @@ body {
     margin: 0 auto;
     -webkit-font-smoothing: antialiased;
     padding-bottom: 60px;
+    position: relative;
+}
+/* ─── RETRO DOT GRID (subtle Game Boy LCD texture) ─── */
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: radial-gradient(circle, var(--text-1) 0.5px, transparent 0.5px);
+    background-size: 14px 14px;
+    opacity: 0.045;
+    max-width: 480px; margin: 0 auto;
+    left: 50%; transform: translateX(-50%);
+}
+body > * { position: relative; z-index: 1; }
+
+/* ─── RETRO PHOSPHOR GLOW on hero amount ─── */
+.hero-amount {
+    text-shadow: 0 0 24px color-mix(in srgb, var(--text-1) 8%, transparent);
+}
+[data-theme="dark"] .hero-amount {
+    text-shadow: 0 0 28px color-mix(in srgb, var(--text-1) 20%, transparent);
+}
+
+/* ─── BLINKING CURSOR / dot on donut percentage ─── */
+.donut-pct::after {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 1px;
+    margin-left: 6px;
+    vertical-align: 0.3em;
+    animation: lcd-blink 1.2s infinite steps(2, start);
+    box-shadow: 0 0 6px var(--green);
+}
+@keyframes lcd-blink {
+    50% { opacity: 0; }
+}
+
+/* ─── PIXELATED CARD CORNERS (faint, subtle) ─── */
+.stat-card-new {
+    position: relative;
+}
+.stat-card-new::before,
+.stat-card-new::after {
+    content: '';
+    position: absolute;
+    width: 5px; height: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+}
+.stat-card-new::before { top: -1px; left: -1px;
+    border-right: none; border-bottom: none;
+}
+.stat-card-new::after  { bottom: -1px; right: -1px;
+    border-left: none; border-top: none;
+}
+
+/* ─── SECTION LABEL — leading + trailing dots ─── */
+.section-header .label {
+    display: inline-flex; align-items: center; gap: 8px;
+}
+.section-header .label::before,
+.section-header .label::after {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 1px;
+    background: var(--text-3);
 }
 
 .mono { font-family: 'Space Mono', monospace; }
@@ -312,7 +381,7 @@ body {
     background: var(--bg-tinted);
     display: flex; justify-content: space-between;
     align-items: center;
-    border-top: 1px solid var(--border-light);
+    border-top: 1px dashed var(--border);  /* dashed = subtle retro */
 }
 .date-divider:first-of-type { border-top: none; }
 .date-divider .date-label {
