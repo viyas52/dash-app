@@ -2520,6 +2520,12 @@ function updateDashboard(entries) {
         document.getElementById('uncat-banner-txt').textContent = uncatEntries.length + ' uncategorized';
         document.getElementById('uncat-banner-count').textContent = uncatEntries.length;
     } else { banner.style.display = 'none'; }
+    // If the Uncategorized view is currently visible (e.g. opened via the
+    // companion's "Categorize this txn" notification before Firestore had
+    // finished loading), re-render the cards now that we have fresh data.
+    if (document.getElementById('view-uncat')?.classList.contains('active')) {
+        renderUncatCards();
+    }
 
     // Spending badges
     const categorized = entries.filter(e => e.category && e.category_type);
