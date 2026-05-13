@@ -60,13 +60,41 @@
             max-width: 480px;
             margin: 0 auto;
             -webkit-font-smoothing: antialiased;
+            position: relative;
         }
+        /* ─── RETRO LCD DOT-GRID TEXTURE (subtle screen feel) ─── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; right: 0; bottom: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            background-image: radial-gradient(circle, var(--text-1) 0.9px, transparent 0.9px);
+            background-size: 12px 12px;
+            opacity: 0.07;
+        }
+        body > * { position: relative; z-index: 1; }
 
         .mono { font-family: 'Space Mono', monospace; }
         .label {
             font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
             text-transform: uppercase; color: var(--text-3);
             font-family: 'Space Mono', monospace;
+        }
+        /* Section group labels (used in Settings + main spending header) get
+           tiny retro dot brackets at start/end: · LABEL · */
+        .setting-group-label,
+        .badge-section > .label {
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .setting-group-label::before, .setting-group-label::after,
+        .badge-section > .label::before, .badge-section > .label::after {
+            content: '';
+            width: 4px; height: 4px;
+            border-radius: 1px;
+            background: var(--text-3);
+            flex-shrink: 0;
         }
 
         /* ─── CARDS ─── */
@@ -108,6 +136,10 @@
         .hero-amount {
             font-size: 36px; font-weight: 700; letter-spacing: -1.5px;
             margin: 6px 0 4px; line-height: 1; font-family: 'Space Mono', monospace;
+            text-shadow: 0 0 24px color-mix(in srgb, var(--text-1) 8%, transparent);
+        }
+        [data-theme="dark"] .hero-amount {
+            text-shadow: 0 0 28px color-mix(in srgb, var(--text-1) 20%, transparent);
         }
         .hero-sub { font-size: 12px; color: var(--text-3); font-weight: 400; }
         .hero-sub .g { color: var(--green); font-weight: 500; }
@@ -125,30 +157,89 @@
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
         }
-        .donut-pct { font-size: 24px; font-weight: 700; font-family: 'Space Mono', monospace; }
+        .donut-pct {
+            font-size: 24px; font-weight: 700; font-family: 'Space Mono', monospace;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        /* Live-data blinking dot — terminal cursor vibe */
+        .donut-pct::after {
+            content: '';
+            display: inline-block;
+            width: 5px; height: 5px;
+            background: var(--green);
+            border-radius: 1px;
+            margin-left: 5px;
+            vertical-align: 0.25em;
+            animation: lcd-blink 1.2s infinite steps(2, start);
+            box-shadow: 0 0 5px var(--green);
+        }
+        @keyframes lcd-blink { 50% { opacity: 0; } }
         .donut-lbl { font-size: 10px; color: var(--text-3); margin-top: 2px; font-family: 'Space Mono', monospace; letter-spacing: 0.08em; }
 
-        /* ─── STAT CARDS ─── */
-        .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px 20px 0; }
-        .stat-card { padding: 14px 16px; }
-        .stat-card .label { margin-bottom: 6px; }
-        .stat-val { font-size: 18px; font-weight: 700; font-family: 'Space Mono', monospace; }
+        /* ─── STAT BENTO (criss-cross — Income wide, Invested narrow / Spent narrow, Net Saved wide) ─── */
+        .stat-bento {
+            display: flex; flex-direction: column;
+            gap: 10px; padding: 16px 20px 0;
+        }
+        .stat-bento-row { display: flex; gap: 10px; }
+        .stat-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            display: flex; flex-direction: column; gap: 4px;
+            min-width: 0;
+            position: relative;
+        }
+        .stat-card.wide { flex: 1.7; }
+        .stat-card.narrow { flex: 1; }
+        .stat-card.income {
+            background: linear-gradient(140deg, var(--bg-card) 0%, color-mix(in srgb, var(--green) 9%, var(--bg-card)) 100%);
+            border-color: color-mix(in srgb, var(--green) 22%, var(--border));
+        }
+        .stat-card.saved {
+            background: linear-gradient(140deg, var(--bg-card) 0%, color-mix(in srgb, var(--purple) 8%, var(--bg-card)) 100%);
+            border-color: color-mix(in srgb, var(--purple) 22%, var(--border));
+        }
+        .stat-card .label { margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+        .stat-card .label .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .stat-val { font-size: 17px; font-weight: 700; font-family: 'Space Mono', monospace; letter-spacing: -0.02em; line-height: 1; }
+        .stat-card.income .stat-val { font-size: 24px; color: var(--green); }
+        .stat-card.saved  .stat-val { font-size: 22px; color: var(--purple); }
         .stat-val.inc { color: var(--green); }
         .stat-val.inv { color: var(--blue); }
         .stat-val.sav { color: var(--purple); }
-        .stat-progress { height: 3px; background: var(--border-light); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .stat-progress { height: 3px; background: var(--border-light); border-radius: 2px; margin-top: 6px; overflow: hidden; }
         .stat-progress-fill { height: 100%; border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+        .stat-meta { font-size: 9px; color: var(--text-3); margin-top: 1px; font-family: 'Space Mono', monospace; }
+        /* Pixel-corner accents on every stat card */
+        .stat-card::before, .stat-card::after {
+            content: ''; position: absolute;
+            width: 5px; height: 5px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+        }
+        .stat-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .stat-card::after  { bottom: -1px; right: -1px; border-left: none; border-top: none; }
         .stat-meta { font-size: 10px; color: var(--text-3); margin-top: 4px; font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
 
-        /* ─── UNCATEGORIZED BANNER ─── */
+        /* ─── UNCATEGORIZED BANNER (refined: tinted gradient + pulsing dot) ─── */
         .notif-strip {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--bg-card), color-mix(in srgb, var(--orange) 8%, var(--bg-card)));
+            border: 1px solid color-mix(in srgb, var(--orange) 30%, var(--border));
+            border-radius: 14px;
             padding: 12px 16px; margin: 16px 20px 0;
             display: flex; align-items: center; gap: 10px;
-            cursor: pointer; transition: transform 0.12s;
+            cursor: pointer; transition: transform 0.15s;
         }
         .notif-strip:active { transform: scale(0.98); }
-        .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+        .notif-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0;
+            animation: notif-pulse 2.4s infinite ease-out;
+        }
+        @keyframes notif-pulse {
+            0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange) 60%, transparent); }
+            100% { box-shadow: 0 0 0 8px transparent; }
+        }
         .notif-txt { font-size: 13px; font-weight: 500; flex: 1; color: var(--text-1); }
         .notif-count {
             font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
@@ -362,6 +453,13 @@
             font-size: 10px; font-weight: 500; color: var(--text-3);
             text-transform: uppercase; letter-spacing: 0.1em;
             margin: 14px 0 6px; font-family: 'Space Mono', monospace;
+            padding-top: 14px;
+            border-top: 1px dashed var(--border);  /* retro-style dashed divider */
+        }
+        .date-label:first-of-type { border-top: none; padding-top: 0; }
+        .date-label > span:last-child {  /* day totals on the right */
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
         }
         .txn-row {
             display: flex; align-items: center; gap: 12px;
@@ -1187,25 +1285,29 @@
         </div>
     </div>
 
-    <!-- Stats -->
-    <div class="stat-row">
-        <div class="card stat-card">
-            <div class="label">Income</div>
-            <div class="stat-val inc" id="s-income"><div class="skel skel-val"></div></div>
+    <!-- Stats — criss-cross bento layout -->
+    <div class="stat-bento">
+        <div class="stat-bento-row">
+            <div class="stat-card wide income">
+                <div class="label"><span class="dot" style="background:var(--green)"></span>Income</div>
+                <div class="stat-val inc" id="s-income"><div class="skel skel-val"></div></div>
+            </div>
+            <div class="stat-card narrow">
+                <div class="label"><span class="dot" style="background:var(--blue)"></span>Invested</div>
+                <div class="stat-val inv" id="s-invest"><div class="skel skel-val"></div></div>
+                <div class="stat-progress"><div class="stat-progress-fill" id="invest-progress" style="width:0%;background:var(--blue);"></div></div>
+                <div class="stat-meta" id="invest-meta"></div>
+            </div>
         </div>
-        <div class="card stat-card">
-            <div class="label">Invested</div>
-            <div class="stat-val inv" id="s-invest"><div class="skel skel-val"></div></div>
-            <div class="stat-progress"><div class="stat-progress-fill" id="invest-progress" style="width:0%;background:var(--blue);"></div></div>
-            <div class="stat-meta" id="invest-meta"></div>
-        </div>
-        <div class="card stat-card">
-            <div class="label">Spent</div>
-            <div class="stat-val" id="s-expense"><div class="skel skel-val"></div></div>
-        </div>
-        <div class="card stat-card">
-            <div class="label">Net saved</div>
-            <div class="stat-val sav" id="s-saved"><div class="skel skel-val"></div></div>
+        <div class="stat-bento-row">
+            <div class="stat-card narrow">
+                <div class="label"><span class="dot" style="background:var(--text-1)"></span>Spent</div>
+                <div class="stat-val" id="s-expense"><div class="skel skel-val"></div></div>
+            </div>
+            <div class="stat-card wide saved">
+                <div class="label"><span class="dot" style="background:var(--purple)"></span>Net saved</div>
+                <div class="stat-val sav" id="s-saved"><div class="skel skel-val"></div></div>
+            </div>
         </div>
     </div>
 
