@@ -159,20 +159,16 @@
         .hero-sub .g { color: var(--green); font-weight: 500; }
         .hero-sub .r { color: var(--red); font-weight: 500; }
 
-        .donut-wrap { position: relative; width: 160px; height: 160px; margin: 16px auto 0; }
-        .donut-wrap svg { width: 160px; height: 160px; transform: rotate(-90deg); }
+        .donut-wrap { position: relative; width: 160px; height: 160px; margin: 16px auto 0; overflow: visible; }
+        .donut-wrap svg { width: 160px; height: 160px; transform: rotate(-90deg); overflow: visible; }
         .donut-track { fill: none; stroke: #E8E6E1; stroke-width: 12; }
         .donut-fill {
             fill: none; stroke: var(--text-1); stroke-width: 12; stroke-linecap: round;
             transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);
-            filter:
-                drop-shadow(0 0 4px color-mix(in srgb, var(--text-1) 30%, transparent))
-                drop-shadow(0 0 10px color-mix(in srgb, var(--text-1) 15%, transparent));
+            filter: drop-shadow(0 0 4px color-mix(in srgb, var(--text-1) 18%, transparent));
         }
         [data-theme="dark"] .donut-fill {
-            filter:
-                drop-shadow(0 0 6px color-mix(in srgb, var(--text-1) 60%, transparent))
-                drop-shadow(0 0 14px color-mix(in srgb, var(--text-1) 30%, transparent));
+            filter: drop-shadow(0 0 6px color-mix(in srgb, var(--text-1) 38%, transparent));
         }
         .donut-center {
             position: absolute; inset: 0;
