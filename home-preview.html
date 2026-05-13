@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#EDEBE6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DotGothic16&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -61,7 +61,7 @@ body::before {
     z-index: 0;
     background-image: radial-gradient(circle, var(--text-1) 0.9px, transparent 0.9px);
     background-size: 12px 12px;
-    opacity: 0.11;
+    opacity: 0.07;
 }
 body > * { position: relative; z-index: 1; }
 
@@ -195,10 +195,10 @@ body > * { position: relative; z-index: 1; }
     font-family: 'Space Mono', monospace; margin-bottom: 12px;
 }
 .hero-amount {
-    /* Chunky modern-retro display font */
-    font-family: 'Major Mono Display', 'Space Mono', monospace;
-    font-size: 40px; font-weight: 400; letter-spacing: -0.01em;
-    line-height: 1.05; color: var(--text-1);
+    /* Pixel-block retro font */
+    font-family: 'DotGothic16', 'Space Mono', monospace;
+    font-size: 44px; font-weight: 400; letter-spacing: 0;
+    line-height: 1; color: var(--text-1);
 }
 .hero-sub {
     font-size: 13px; color: var(--text-3); margin-top: 10px;
@@ -228,8 +228,8 @@ body > * { position: relative; z-index: 1; }
     align-items: center; justify-content: center;
 }
 .donut-pct {
-    font-family: 'Major Mono Display', 'Space Mono', monospace;
-    font-size: 30px; font-weight: 400; letter-spacing: -0.01em;
+    font-family: 'DotGothic16', 'Space Mono', monospace;
+    font-size: 32px; font-weight: 400; letter-spacing: 0;
     color: var(--text-1);
     display: flex; align-items: center; justify-content: center;
 }
@@ -276,13 +276,13 @@ body > * { position: relative; z-index: 1; }
 }
 .stat-card-new .dot { width: 6px; height: 6px; border-radius: 50%; }
 .stat-card-new .val {
-    font-family: 'Major Mono Display', 'Space Mono', monospace;
-    font-size: 18px; font-weight: 400; letter-spacing: -0.01em;
+    font-family: 'DotGothic16', 'Space Mono', monospace;
+    font-size: 20px; font-weight: 400; letter-spacing: 0;
     line-height: 1.1;
     color: var(--text-1);
 }
-.stat-card-new.income .val { font-size: 24px; color: var(--green); }
-.stat-card-new.saved  .val { font-size: 22px; color: var(--purple); }
+.stat-card-new.income .val { font-size: 28px; color: var(--green); }
+.stat-card-new.saved  .val { font-size: 24px; color: var(--purple); }
 .stat-card-new .val.inv { color: var(--blue); }
 .stat-card-new .sub {
     font-size: 10px; color: var(--text-3); margin-top: 2px;
@@ -393,7 +393,7 @@ body > * { position: relative; z-index: 1; }
     font-family: 'Space Mono', monospace;
 }
 .date-divider .day-totals {
-    font-size: 11px; font-family: 'Major Mono Display', 'Space Mono', monospace; font-weight: 400;
+    font-size: 12px; font-family: 'DotGothic16', 'Space Mono', monospace; font-weight: 400;
     display: flex; align-items: center; gap: 6px;
 }
 .txn-row {
@@ -423,9 +423,9 @@ body > * { position: relative; z-index: 1; }
 .cat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .txn-right { text-align: right; flex-shrink: 0; }
 .txn-amt {
-    font-size: 13px; font-weight: 400;
-    font-family: 'Major Mono Display', 'Space Mono', monospace;
-    color: var(--red); letter-spacing: -0.01em;
+    font-size: 14px; font-weight: 400;
+    font-family: 'DotGothic16', 'Space Mono', monospace;
+    color: var(--red); letter-spacing: 0;
 }
 .txn-amt.cr { color: var(--green); }
 .txn-date {
