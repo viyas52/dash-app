@@ -182,38 +182,35 @@ body {
     font-size: 11px; color: var(--text-3);
 }
 
-/* ─── STATS BENTO GRID ─── */
-/* Income takes a large block (col 1, spans 2 rows). Invested + Spent
-   stack to the right as smaller tiles. Net saved spans the full width
-   below.                                                                 */
+/* ─── STATS BENTO (CRISS-CROSS) ─── */
+/* Row 1: Income wide + Invested narrow.
+   Row 2: Spent narrow + Net saved wide.
+   The wide cards diagonally anchor the grid; narrow cards balance.       */
 .stat-bento {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    grid-auto-rows: minmax(78px, auto);
-    gap: 10px;
-    margin: 16px 20px 0;
+    display: flex; flex-direction: column;
+    gap: 10px; margin: 16px 20px 0;
+}
+.stat-row {
+    display: flex; gap: 10px;
 }
 .stat-card-new {
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 14px 16px;
-    display: flex; flex-direction: column; gap: 6px;
+    display: flex; flex-direction: column; gap: 4px;
     min-width: 0;
 }
 .stat-card-new.income {
-    grid-column: 1; grid-row: 1 / span 2;
-    justify-content: space-between;
-    background: linear-gradient(140deg, var(--bg-card) 0%, color-mix(in srgb, var(--green) 8%, var(--bg-card)) 100%);
-    border-color: color-mix(in srgb, var(--green) 20%, var(--border));
+    flex: 1.7;
+    background: linear-gradient(140deg, var(--bg-card) 0%, color-mix(in srgb, var(--green) 9%, var(--bg-card)) 100%);
+    border-color: color-mix(in srgb, var(--green) 22%, var(--border));
 }
-.stat-card-new.invested { grid-column: 2; grid-row: 1; }
-.stat-card-new.spent    { grid-column: 2; grid-row: 2; }
+.stat-card-new.invested { flex: 1; }
+.stat-card-new.spent    { flex: 1; }
 .stat-card-new.saved {
-    grid-column: 1 / span 2; grid-row: 3;
-    flex-direction: row; align-items: center; justify-content: space-between;
-    gap: 12px;
+    flex: 1.7;
+    background: linear-gradient(140deg, var(--bg-card) 0%, color-mix(in srgb, var(--purple) 8%, var(--bg-card)) 100%);
+    border-color: color-mix(in srgb, var(--purple) 22%, var(--border));
 }
-.stat-card-new.saved .label-inline { margin: 0; }
-.stat-card-new.saved .val { font-size: 20px; }
 .stat-card-new .label-inline {
     display: flex; align-items: center; gap: 6px;
     font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
@@ -226,22 +223,18 @@ body {
     font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
     color: var(--text-1);
 }
-.stat-card-new.income .val {
-    font-size: 28px;
-    color: var(--green);
-}
-.stat-card-new.income .sub {
-    font-size: 11px; color: var(--text-3); margin-top: 4px;
+.stat-card-new.income .val { font-size: 24px; color: var(--green); }
+.stat-card-new.saved  .val { font-size: 22px; color: var(--purple); }
+.stat-card-new .val.inv { color: var(--blue); }
+.stat-card-new .sub {
+    font-size: 10px; color: var(--text-3); margin-top: 2px;
     font-family: 'Space Mono', monospace;
 }
-.stat-card-new .val.inv { color: var(--blue); }
-.stat-card-new .val.exp { color: var(--text-1); }
-.stat-card-new .val.sav { color: var(--text-1); }
 
 /* Investment mini-progress within card */
 .stat-card-new .mini-progress {
     height: 3px; background: var(--bg-tinted); border-radius: 2px;
-    margin-top: 2px; overflow: hidden;
+    margin-top: 4px; overflow: hidden;
 }
 .stat-card-new .mini-progress-fill {
     height: 100%; background: var(--blue); border-radius: 2px;
@@ -442,44 +435,32 @@ body {
     </div>
 </div>
 
-<!-- ═══ STATS BENTO GRID ═══ -->
+<!-- ═══ STATS BENTO (CRISS-CROSS) ═══ -->
 <div class="stat-bento">
-    <!-- Income — big anchor card, spans 2 rows -->
-    <div class="stat-card-new income">
-        <div>
+    <!-- Row 1: Income WIDE + Invested narrow -->
+    <div class="stat-row">
+        <div class="stat-card-new income">
             <div class="label-inline"><span class="dot" style="background:var(--green)"></span>Income</div>
             <div class="val">₹85,000</div>
             <div class="sub">+₹3,200 this week</div>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:6px;height:24px;">
-            <div style="flex:1;background:#22C55E33;border-radius:2px;height:40%;"></div>
-            <div style="flex:1;background:#22C55E55;border-radius:2px;height:65%;"></div>
-            <div style="flex:1;background:#22C55E77;border-radius:2px;height:35%;"></div>
-            <div style="flex:1;background:#22C55E99;border-radius:2px;height:85%;"></div>
-            <div style="flex:1;background:var(--green);border-radius:2px;height:55%;"></div>
+        <div class="stat-card-new invested">
+            <div class="label-inline"><span class="dot" style="background:var(--blue)"></span>Invested</div>
+            <div class="val inv">₹18,000</div>
+            <div class="mini-progress"><div class="mini-progress-fill" style="width:82%;"></div></div>
+            <div class="mini-meta">82% of ₹22k</div>
         </div>
     </div>
-    <!-- Invested — small, top right -->
-    <div class="stat-card-new invested">
-        <div class="label-inline"><span class="dot" style="background:var(--blue)"></span>Invested</div>
-        <div class="val inv">₹18,000</div>
-        <div class="mini-progress"><div class="mini-progress-fill" style="width:82%;"></div></div>
-        <div class="mini-meta">82% of ₹22,000</div>
-    </div>
-    <!-- Spent — small, mid right -->
-    <div class="stat-card-new spent">
-        <div class="label-inline"><span class="dot" style="background:var(--text-1)"></span>Spent</div>
-        <div class="val exp">₹17,840</div>
-    </div>
-    <!-- Net saved — full width strip -->
-    <div class="stat-card-new saved">
-        <div>
+    <!-- Row 2: Spent narrow + Net saved WIDE -->
+    <div class="stat-row">
+        <div class="stat-card-new spent">
+            <div class="label-inline"><span class="dot" style="background:var(--text-1)"></span>Spent</div>
+            <div class="val">₹17,840</div>
+        </div>
+        <div class="stat-card-new saved">
             <div class="label-inline"><span class="dot" style="background:var(--purple)"></span>Net saved</div>
-            <div class="val sav">₹49,160</div>
-        </div>
-        <div style="text-align:right;">
-            <div style="font-size:11px;color:var(--text-3);font-family:'Space Mono',monospace;">vs last month</div>
-            <div style="font-size:12px;color:var(--green);font-weight:600;">+₹4,210 ↑</div>
+            <div class="val">₹49,160</div>
+            <div class="sub" style="color:var(--green);">+₹4,210 vs last month ↑</div>
         </div>
     </div>
 </div>
