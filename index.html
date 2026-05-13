@@ -550,13 +550,6 @@
             font-size: 10px; font-weight: 500; color: var(--text-3);
             text-transform: uppercase; letter-spacing: 0.1em;
             margin: 14px 0 6px; font-family: 'Space Mono', monospace;
-            padding-top: 14px;
-            border-top: 1px dashed var(--border);  /* retro-style dashed divider */
-        }
-        .date-label:first-of-type { border-top: none; padding-top: 0; }
-        .date-label > span:last-child {  /* day totals on the right */
-            font-family: 'Space Mono', monospace;
-            font-weight: 700;
         }
         .txn-row {
             display: flex; align-items: center; gap: 12px;
@@ -2746,11 +2739,32 @@ window.addEventListener('popstate', () => {
 let _audioCtx = null;
 let _soundsEnabled = (localStorage.getItem('pft_sounds_enabled') !== '0');
 
+// Pre-warm immediately at script run — the launch click from the home-screen
+// icon may still count as user activation on Chromium, letting resume() succeed
+// before any in-app gesture has happened.
+(function _preWarmAudio() {
+    if (!_soundsEnabled) return;
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        _audioCtx = new Ctx();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+    } catch (_) {}
+})();
+
+// Hook every plausible gesture event so the audio context wakes as soon
+// as any user interaction touches the page.
+['touchstart','touchend','pointerdown','mousedown','keydown','click'].forEach(ev => {
+    document.addEventListener(ev, () => {
+        if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+    }, { passive: true });
+});
+
 function _ensureAudio() {
     if (!_soundsEnabled) return null;
     try {
         if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
         return _audioCtx;
     } catch (e) { return null; }
 }
@@ -5965,8 +5979,23 @@ async function triggerBiometric() {
                 timeout: 60000,
             },
         });
-        // Biometric passed — same unlock feedback as PIN success
-        sndConfirm(); hapConfirm();
+        // Biometric passed — same unlock feedback as PIN success.
+        // If the audio context is still suspended (no JS gesture yet, since
+        // the in-display sensor touch is captured by the OS WebAuthn prompt
+        // and never reaches the page), schedule the sound to fire on the
+        // next real touch in the app.
+        if (_audioCtx && _audioCtx.state === 'running') {
+            sndConfirm();
+        } else {
+            const playOnce = () => {
+                sndConfirm();
+                document.removeEventListener('touchstart', playOnce);
+                document.removeEventListener('pointerdown', playOnce);
+            };
+            document.addEventListener('touchstart', playOnce, { once: true, passive: true });
+            document.addEventListener('pointerdown', playOnce, { once: true, passive: true });
+        }
+        hapConfirm();
         _pinBuffer = '';
         if (window._pinSetupMode) { window._pinSetupMode = false; }
         enterApp();
