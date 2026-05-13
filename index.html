@@ -550,17 +550,17 @@
             font-size: 10px; font-weight: 500; color: var(--text-3);
             text-transform: uppercase; letter-spacing: 0.1em;
             font-family: 'Space Mono', monospace;
-            /* Tinted strip with subtle dashed divider above — matches the
-               home-redesign preview layout */
-            padding: 10px 4px 8px;
-            margin: 0 -4px 4px;
+            /* Solid tinted strip with dashed top border, edge-to-edge inside
+               the txn card. Matches the redesign-preview look. */
+            padding: 10px 16px 9px;
+            margin: 12px -16px 4px;
             border-top: 1px dashed var(--border);
-            background: linear-gradient(to bottom, var(--bg-tinted), transparent);
-            border-radius: 6px 6px 0 0;
+            background: var(--bg-tinted);
         }
-        .date-label:first-of-type { border-top: none; margin-top: 6px; }
+        .date-label:first-of-type { margin-top: -4px; border-top: none; }
         .date-label > span:last-child {
             font-family: 'Space Mono', monospace; font-weight: 700;
+            font-size: 11px;
         }
         .txn-row {
             display: flex; align-items: center; gap: 12px;
@@ -2804,17 +2804,27 @@ function _ensureAudio() {
 function _tone(freq, dur = 50, type = 'square', gain = 0.05) {
     const ctx = _ensureAudio();
     if (!ctx) return;
-    const t0 = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const env = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    env.gain.setValueAtTime(0, t0);
-    env.gain.linearRampToValueAtTime(gain, t0 + 0.005);
-    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur / 1000);
-    osc.connect(env); env.connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur / 1000 + 0.02);
+    const play = () => {
+        const t0 = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        env.gain.setValueAtTime(0, t0);
+        env.gain.linearRampToValueAtTime(gain, t0 + 0.005);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur / 1000);
+        osc.connect(env); env.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + dur / 1000 + 0.02);
+    };
+    if (ctx.state === 'running') {
+        play();
+    } else {
+        // Context suspended (no user gesture yet) — queue the play on resume.
+        // Chrome resolves resume() the moment a user activation arrives, so
+        // the tone fires as early as physically possible.
+        ctx.resume().then(play).catch(() => {});
+    }
 }
 
 // Specific game sounds — each crafted to feel low and pleasant
@@ -2839,6 +2849,13 @@ function sndNotif() {
     _tone(660, 50, 'square', 0.045);
     setTimeout(() => _tone(880, 50, 'square', 0.045), 60);
     setTimeout(() => _tone(1175, 90, 'square', 0.045), 120);
+}
+// Biometric unlock — distinct from PIN's two-note sndConfirm.
+// Three-note ascending arpeggio (C5-E5-A5) — feels like an "ID accepted" beep.
+function sndBio() {
+    _tone(523, 45, 'triangle', 0.045);
+    setTimeout(() => _tone(659, 45, 'triangle', 0.045), 50);
+    setTimeout(() => _tone(880, 90, 'triangle', 0.05), 100);
 }
 
 function setSoundsEnabled(on) {
@@ -6019,22 +6036,13 @@ async function triggerBiometric() {
                 timeout: 60000,
             },
         });
-        // Biometric passed — same unlock feedback as PIN success.
-        // If the audio context is still suspended (no JS gesture yet, since
-        // the in-display sensor touch is captured by the OS WebAuthn prompt
-        // and never reaches the page), schedule the sound to fire on the
-        // next real touch in the app.
-        if (_audioCtx && _audioCtx.state === 'running') {
-            sndConfirm();
-        } else {
-            const playOnce = () => {
-                sndConfirm();
-                document.removeEventListener('touchstart', playOnce);
-                document.removeEventListener('pointerdown', playOnce);
-            };
-            document.addEventListener('touchstart', playOnce, { once: true, passive: true });
-            document.addEventListener('pointerdown', playOnce, { once: true, passive: true });
-        }
+        // Biometric passed — distinct three-note unlock arpeggio.
+        // _tone() now self-queues on AudioContext.resume() so the chime
+        // fires as soon as audio is allowed, which Chrome grants on the
+        // next user gesture (typically the very next touch the user makes
+        // after unlocking — often within the first 10-100ms as they move
+        // their finger off the sensor).
+        sndBio();
         hapConfirm();
         _pinBuffer = '';
         if (window._pinSetupMode) { window._pinSetupMode = false; }
