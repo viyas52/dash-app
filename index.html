@@ -113,14 +113,20 @@
             text-transform: uppercase; color: var(--text-3);
             font-family: 'Space Mono', monospace;
         }
-        /* Section group labels (used in Settings + main spending header) get
-           tiny retro dot brackets at start/end: · LABEL · */
+        /* Section group labels get tiny retro dot brackets at start/end:
+           · LABEL ·  Applied to Settings groups, the Spending badge
+           header, Recent's sec-title, and any element opted in via
+           the .section-label class.                                       */
         .setting-group-label,
-        .badge-section > .label {
+        .badge-section > .label,
+        .sec-title,
+        .section-label {
             display: inline-flex; align-items: center; gap: 8px;
         }
         .setting-group-label::before, .setting-group-label::after,
-        .badge-section > .label::before, .badge-section > .label::after {
+        .badge-section > .label::before, .badge-section > .label::after,
+        .sec-title::before, .sec-title::after,
+        .section-label::before, .section-label::after {
             content: '';
             width: 4px; height: 4px;
             border-radius: 1px;
@@ -1646,7 +1652,7 @@
         <!-- Category breakdown -->
         <div class="card cat-breakdown" id="cat-breakdown-section" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <div class="label" id="breakdown-label">By Category</div>
+                <div class="label section-label" id="breakdown-label">By Category</div>
                 <div class="chart-toggle">
                     <button class="chart-toggle-btn" id="chart-bar-btn" onclick="switchChartView('bar')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="8" width="3" height="7"/><rect x="6" y="4" width="3" height="11"/><rect x="11" y="1" width="3" height="14"/></svg>
@@ -1665,14 +1671,14 @@
 
         <!-- Portfolio -->
         <div class="card" id="portfolio-section" style="margin-bottom:16px; display:none;">
-            <div class="label" style="margin-bottom:12px;">Portfolio</div>
+            <div class="label section-label" style="margin-bottom:12px;">Portfolio</div>
             <div id="portfolio-list"></div>
         </div>
 
         <!-- Income / Expense / Investment Summary (always open) -->
         <div class="card" id="fin-summary-section" style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                <div class="label">Financial Summary</div>
+                <div class="label section-label">Financial Summary</div>
                 <div style="font-size:10px;color:var(--text-3);font-family:'Space Mono',monospace;">this month</div>
             </div>
             <div id="fin-summary-body">
@@ -1705,7 +1711,7 @@
         <!-- Heatmap calendar (last 90 days of spending) -->
         <div class="card" id="heatmap-section" style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
-                <div class="label">Spending heatmap</div>
+                <div class="label section-label">Spending heatmap</div>
                 <div style="font-size:10px;color:var(--text-3);font-family:'Space Mono',monospace;">last 90 days</div>
             </div>
             <div id="heatmap-grid" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;"></div>
@@ -2865,12 +2871,19 @@ function switchView(name) {
 let _txX = 0, _txY = 0;
 let _edgeSwipeFromLeft = false;
 document.addEventListener('touchstart', e => {
+    // Wake the Web Audio context on the first screen touch of the session
+    // — needed so the biometric unlock sound plays (in-display fingerprint
+    // sensors fire touchstart on the screen even though they don't fire
+    // a button click).
+    try { _ensureAudio(); } catch (_) {}
     _txX = e.touches[0].clientX; _txY = e.touches[0].clientY;
-    // Track if the gesture started from the very left edge — used for the
-    // "swipe-from-edge to go back" gesture inside Settings sub-pages and
-    // the category editor sheet.
     _edgeSwipeFromLeft = _txX <= 24;
 }, { passive: true });
+// Cover the rare phone with a side-mounted (non-screen) fingerprint sensor
+// by also priming audio on the first pointerdown anywhere in the page.
+document.addEventListener('pointerdown', () => {
+    try { _ensureAudio(); } catch (_) {}
+}, { passive: true, once: false });
 document.addEventListener('touchend', e => {
     if (!_edgeSwipeFromLeft) return;
     const dx = e.changedTouches[0].clientX - _txX;
