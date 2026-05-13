@@ -4100,7 +4100,10 @@ function fireCompanionDeepLink(url) {
 function maybeSyncCompanion() {
     if (!window.isCompanion) return;
     const banner = document.getElementById('companion-banner');
-    if (banner) banner.style.display = 'flex';
+    // Only show the "enable forwarding" banner if user hasn't dismissed it
+    if (banner && lsGet('companion_listener_done') !== '1') {
+        banner.style.display = 'flex';
+    }
 
     // One-time auto-sync per session. User can re-sync via the resync button.
     if (sessionStorage.getItem('companion_synced') === '1') return;
@@ -4113,10 +4116,16 @@ function maybeSyncCompanion() {
 
 function enableCompanionListener() {
     fireCompanionDeepLink('financecompanion://enable_notifications');
+    // Mark as done so the banner stops nagging. If forwarding doesn't work,
+    // user can re-enable via the "Re-enable SMS forwarding" button in settings.
+    lsSet('companion_listener_done', '1');
+    const banner = document.getElementById('companion-banner');
+    if (banner) banner.style.display = 'none';
 }
 
 function resyncCompanion() {
     sessionStorage.removeItem('companion_synced');
+    localStorage.removeItem(lsKey('companion_listener_done'));
     maybeSyncCompanion();
 }
 
