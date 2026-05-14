@@ -119,7 +119,7 @@ function buildPatterns(acctToBank) {
         dedup_key: "icici_cu_" + m[5],
       }),
     },
-    // ── HDFC credit ──
+    // ── HDFC credit (old inline "Credit Alert" format) ──
     {
       name: "hdfc_credit",
       rx: /Credit Alert[\s\S]*?Rs\.?\s*([\d,]+\.?\d*) credited to HDFC Bank A\/c XX(\d+) on (\d{2}-\d{2}-\d{2}) from (?:VPA )?(.+?) \(UPI (?:Ref )?(\d+)\)/i,
@@ -127,6 +127,21 @@ function buildPatterns(acctToBank) {
         raw_sms: sms, bank: "hdfc", account: m[2],
         amount: parseFloat(m[1].replace(/,/g, "")),
         date: parseDateNum(m[3]),
+        type: "credit", category: null, category_type: null,
+        recipient: "", source: cleanUpiId(m[4].trim()), source_account: "",
+        note: cleanUpiId(m[4].trim()), upi_ref: m[5], balance_after: null,
+        created_at: new Date().toISOString(),
+        dedup_key: "hdfc_c_" + m[5],
+      }),
+    },
+    // ── HDFC credit (new multiline "Money Received" UPI format) ──
+    {
+      name: "hdfc_credit_upi",
+      rx: /Money Received[\s\S]*?Rs\.?\s*([\d,]+\.?\d*) credited to (?:your )?(?:HDFC Bank )?[Aa]\/[Cc] (?:XX|\*)(\d+)[\s\S]*?On (\d{2}\/\d{2}\/\d{2})[\s\S]*?From (.+?)\n[\s\S]*?UPI Ref[:\s]+(\d+)/i,
+      parse: (m, sms) => ({
+        raw_sms: sms, bank: "hdfc", account: m[2],
+        amount: parseFloat(m[1].replace(/,/g, "")),
+        date: parseDateSlash(m[3]),
         type: "credit", category: null, category_type: null,
         recipient: "", source: cleanUpiId(m[4].trim()), source_account: "",
         note: cleanUpiId(m[4].trim()), upi_ref: m[5], balance_after: null,
