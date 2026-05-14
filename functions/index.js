@@ -410,7 +410,7 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   if (userConfig.linkedAccounts && userConfig.linkedAccounts.length > 0 && parsed.account) {
     const acctTail = String(parsed.account);
     const matches = userConfig.linkedAccounts.some(
-      la => la && la.last4 && acctTail.endsWith(String(la.last4))
+      la => la && la.last4 && (acctTail.endsWith(String(la.last4)) || String(la.last4).endsWith(acctTail))
     );
     if (!matches) {
       return res.status(200).json({
