@@ -42,15 +42,24 @@ class SmsNotificationListener : NotificationListenerService() {
         "com.idfcfirstbank.optimus", "com.snapwork.IDBI"
     )
 
-    // Quick filter: only forward if the text looks like a bank txn.
+    // Body keywords that bank/UPI transaction SMS contain
     private val txnRegex = Regex(
         """(?i)(debited|credited|debit|credit|spent|received|deducted|withdrawn|paid|sent|txn|transaction|a/c|acct|rs\.?\s*\d|inr\s*\d|₹\s*\d|upi)"""
+    )
+
+    // Bank sender-ID patterns (Indian DLT-registered headers). A real bank SMS
+    // title looks like "AD-HDFCBK", "VM-ICICIB", "BP-SBIINB", etc.
+    private val bankSenderRegex = Regex(
+        """(?i)\b(HDFCB?K?|ICICI[BT]?|SBIINB|SBI(IND)?|SBIBN?K?|AXISB?K?|KOTAK(BK)?|KMBL|IDFCFB|IDBI(BK)?|YESBNK|YES\s?BANK|FEDBNK|FEDERAL|CANBNK|CANARA|PNBSMS|PNB|BOBSMS|BOIIND|IOBIND|UCOBNK|CUBIN?B?|INDBNK|INDIAN\s?BANK|RBL|BOMBNK|UNBNK|CITIN?B?|HSBC|SCBIND|GPAY|PHONEPE|PAYTM|BHIM)\b"""
     )
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try {
             val pkg = sbn.packageName ?: return
-            val isWatched = pkg in watchedPackages
+            // Strict: only consider notifications from our watched messaging
+            // and bank-app packages. Everything else (WhatsApp, Insta, Gmail,
+            // etc.) is dropped here — never read further, never logged.
+            if (pkg !in watchedPackages) return
 
             val extras = sbn.notification.extras ?: return
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
@@ -58,24 +67,21 @@ class SmsNotificationListener : NotificationListenerService() {
             val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
             val body = listOf(bigText, text).firstOrNull { it.isNotBlank() } ?: return
 
+            // Strict bank-SMS filter: the notification must look like a bank
+            // SMS (sender-ID pattern in the title) AND have transaction
+            // keywords in the body. This blocks OTPs, promos, personal SMS,
+            // and any non-banking notification from being touched at all.
+            val titleLooksBank = bankSenderRegex.containsMatchIn(title)
+            val bodyLooksTxn = txnRegex.containsMatchIn(body)
+            if (!titleLooksBank || !bodyLooksTxn) return  // not a bank txn SMS
+
             val composed = if (title.isNotBlank()) "$title: $body" else body
-            val hasTxnKeyword = txnRegex.containsMatchIn(composed)
 
-            // Skip silently if not watched AND no txn keyword (random notification noise)
-            if (!isWatched && !hasTxnKeyword) return
-
-            if (!hasTxnKeyword) {
-                recordEvent(pkg, composed, "filtered: no txn keyword")
-                return
-            }
-
-            // De-dupe (notification updates fire repeatedly)
+            // De-dupe (notification updates fire repeatedly). Don't log dupes
+            // — keeps the diagnostics view clean.
             val h = composed.hashCode()
             synchronized(recentHashes) {
-                if (h in recentHashes) {
-                    recordEvent(pkg, composed, "dropped: duplicate")
-                    return
-                }
+                if (h in recentHashes) return
                 recentHashes.addFirst(h)
                 while (recentHashes.size > maxRecent) recentHashes.removeLast()
             }
@@ -89,6 +95,8 @@ class SmsNotificationListener : NotificationListenerService() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "onNotificationPosted error", e)
+            // Only error events are logged outside the happy path. No content
+            // from non-bank SMS ever enters the diagnostics store.
             recordEvent(sbn.packageName ?: "unknown", "", "error: ${e.message}")
         }
     }

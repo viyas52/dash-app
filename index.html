@@ -2044,16 +2044,17 @@
                 <div class="card" style="margin-bottom:14px;padding:14px 16px;">
                     <div style="font-size:12px;color:var(--text-2);line-height:1.65;">
                         <div style="margin-bottom:6px;font-weight:600;color:var(--green);">✓ Read</div>
-                        <div>• Bank SMS in your messaging app (only with transaction keywords)</div>
-                        <div>• Push notifications from supported bank/UPI apps only</div>
-                        <div style="margin-bottom:12px;">• <strong>Only accounts you've linked</strong> — others dropped server-side</div>
+                        <div>• Bank SMS with a known DLT sender ID (HDFCBK, ICICIB, SBIINB…)</div>
+                        <div>• Body must contain transaction keywords (debited / credited / UPI / Rs / ₹…)</div>
+                        <div style="margin-bottom:12px;">• <strong>Only your linked accounts</strong> — anything else is dropped server-side</div>
 
                         <div style="margin-bottom:6px;font-weight:600;color:var(--red);">✗ Never read</div>
-                        <div>• WhatsApp, Instagram, Gmail, social apps</div>
-                        <div>• Notifications without bank/transaction keywords</div>
-                        <div style="margin-bottom:12px;">• OTP-only / promotional / non-banking SMS</div>
+                        <div>• WhatsApp, Instagram, Gmail, social, news, any non-messaging app</div>
+                        <div>• OTPs, promotional SMS, personal messages</div>
+                        <div>• Any SMS whose sender isn't a known bank header</div>
+                        <div style="margin-bottom:12px;">• Bank SMS for accounts you haven't linked</div>
 
-                        <div style="font-size:11px;color:var(--text-3);line-height:1.5;padding-top:8px;border-top:1px solid var(--border-light);">Code is open at <a href="https://github.com/viyas52/dash-app" target="_blank" style="color:var(--blue);">github.com/viyas52/dash-app</a> — you can audit every line that touches your data.</div>
+                        <div style="font-size:11px;color:var(--text-3);line-height:1.5;padding-top:8px;border-top:1px solid var(--border-light);">Diagnostics only stores bank txn SMS we actually forwarded — nothing else. Code is open at <a href="https://github.com/viyas52/dash-app" target="_blank" style="color:var(--blue);">github.com/viyas52/dash-app</a>.</div>
                     </div>
                 </div>
 
