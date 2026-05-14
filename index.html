@@ -588,6 +588,10 @@
             cursor: pointer; transition: opacity 0.12s;
         }
         .txn-row:last-child { border-bottom: none; }
+        /* When a txn-row is immediately followed by a date-label (i.e. it's
+           the last row of a day group), drop its separator — the tinted
+           date strip already provides visual separation between days. */
+        .txn-row:has(+ .date-label) { border-bottom: none; }
         .txn-row:active { opacity: 0.6; }
         .txn-icon {
             width: 40px; height: 40px; border-radius: var(--radius-sm);
