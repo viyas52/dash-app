@@ -70,10 +70,10 @@ function acctToBankDynamic(acct, acctBankMap) {
 // acctToBank is passed as a param now (per-user)
 function buildPatterns(acctToBank) {
   return [
-    // ── ICICI debit (UPI) ──
+    // ── ICICI debit (UPI) ── (forgiving whitespace + optional period after "credited")
     {
       name: "icici_debit_upi",
-      rx: /ICICI Bank Acct XX(\d+) debited for Rs\.?\s*([\d,]+\.?\d*) on (\d{1,2}-\w{3}-\d{2}); (.+?) credited\. UPI:(\d+)/i,
+      rx: /ICICI Bank Acct XX(\d+)\s+debited\s+for\s+Rs\.?\s*([\d,]+\.?\d*)\s+on\s+(\d{1,2}-\w{3}-\d{2})[;,]\s*(.+?)\s+credited\.?\s+UPI:?\s*(\d+)/i,
       parse: (m, sms) => ({
         raw_sms: sms, bank: "icici", account: m[1],
         amount: parseFloat(m[2].replace(/,/g, "")),
