@@ -371,19 +371,9 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   const acctToBank = (acct) => acctToBankDynamic(acct, userConfig.acctBankMap);
   const parsed = parseSms(sms, acctToBank);
   if (!parsed) {
+    // Privacy: don't persist the unrecognised SMS — just log a short
+    // prefix server-side for debugging and return.
     console.warn("SMS not recognized:", sms.substring(0, 120));
-    // Save to Firestore so the user can review missing SMS formats in the PWA
-    // and submit them for parser additions. Deduped by hash so the same SMS
-    // arriving twice doesn't pile up.
-    try {
-      const hash = crypto.createHash("sha1")
-        .update(sms.substring(0, 600))
-        .digest("hex").substring(0, 16);
-      await db.collection(`users/${effectiveUser}/missed_sms`).doc(hash).create({
-        raw: sms.substring(0, 1000),
-        received_at: new Date().toISOString(),
-      });
-    } catch (_) { /* duplicate or write failed — non-critical */ }
     return res.status(200).json({ status: "skipped", reason: "SMS format not recognized" });
   }
 

@@ -2087,12 +2087,6 @@
                     </div>
                 </div>
 
-                <div class="label setting-group-label">Missed transactions <span style="font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:normal;font-size:10px;font-family:'DM Sans',sans-serif;margin-left:6px;">unrecognized SMS</span></div>
-                <div class="card" style="margin-bottom:12px;padding:0;">
-                    <div style="padding:12px 16px;font-size:11px;color:var(--text-3);line-height:1.5;border-bottom:1px solid var(--border-light);">If your bank's SMS isn't being tracked, it shows up here. Tap <strong>Copy</strong> and send the SMS text to Viyas — he'll add a parser within minutes.</div>
-                    <div id="missed-list" style="padding:0;"></div>
-                    <div id="missed-empty" style="display:none;padding:14px 16px;font-size:12px;color:var(--text-3);">✓ Nothing missed — all SMS received were recognized.</div>
-                </div>
             </div>
 
             <!-- ════ SUB-PAGE: DATA ════ -->
@@ -3124,7 +3118,6 @@ function openSettings() {
     loadLinkedAccounts();
     loadCatManager();
     loadRules();
-    loadMissedSms();
     initSettingsSliders();
     // Populate account section
     const nameEl = document.getElementById('settings-user-name');
