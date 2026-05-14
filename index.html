@@ -512,6 +512,20 @@
             font-size: 10px; color: var(--text-3); margin-top: 6px;
             font-family: 'Space Mono', monospace;
         }
+        .acct-unlink-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-top: 12px;
+            padding: 7px 12px;
+            background: transparent; color: var(--red);
+            border: 1px solid var(--red);
+            border-radius: 9px;
+            font-size: 11px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.12s, background 0.15s;
+        }
+        .acct-unlink-btn:active { transform: scale(0.96); background: var(--danger-soft); }
+        .acct-unlink-btn svg { width: 12px; height: 12px; }
 
         /* ─── ACCOUNT FILTER ─── */
         .acct-filter {
@@ -2282,6 +2296,10 @@ function renderAcctCard(a) {
                 <button class="acct-bal-save" onclick="saveAcctBal('${a.id}')">SAVE</button>
             </div>` : ''}
             ${updLabel ? `<div class="acct-updated">${updLabel}</div>` : ''}
+            <button class="acct-unlink-btn" onclick="unlinkAccount('${a.id}', event)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 13L13 3M3 3l10 10"/></svg>
+                Unlink this account
+            </button>
         </div>
     </div>`;
 }
@@ -5802,6 +5820,36 @@ function updateUsernamePreview() {
     } else {
         el.textContent = '✓ ' + clean;
         el.style.color = 'var(--green)';
+    }
+}
+
+/* ─── UNLINK ACCOUNT — removes a bank from Settings → Linked Accounts ─── */
+async function unlinkAccount(id, ev) {
+    if (ev) ev.stopPropagation();
+    const acct = LINKED_ACCOUNTS.find(a => a.id === id);
+    if (!acct) return;
+    const ok = await confirmModal(
+        'Unlink ' + acct.name + '?',
+        "We'll stop tracking SMS for this account. Past transactions stay in your history."
+    );
+    if (!ok) return;
+    if (!USER_ID || !firebaseReady) { showToast('Sign in first'); return; }
+    // Remove + persist + also clear the locally-stored balance for this bank
+    LINKED_ACCOUNTS = LINKED_ACCOUNTS.filter(a => a.id !== id);
+    localStorage.removeItem(lsKey('bal_' + id));
+    localStorage.removeItem(lsKey('bal_upd_' + id));
+    try {
+        const { setDoc, doc } = window.fb;
+        await setDoc(doc(db, 'users', USER_ID, 'config', 'accounts'), { linked_accounts: LINKED_ACCOUNTS });
+        sndCancel(); hapCancel();
+        showToast('Unlinked');
+        loadLinkedAccounts();
+        renderAcctFilterChips();
+        // Refresh onboarding wizard list if open
+        if (typeof obRefreshLinkedList === 'function') obRefreshLinkedList();
+    } catch (err) {
+        console.error('Failed to unlink account:', err);
+        showToast('Failed — try again');
     }
 }
 
