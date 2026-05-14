@@ -393,15 +393,36 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
   // just specific accounts (e.g. only HDFC, ignore the other banks they get
   // SMS from). If no accounts are linked yet, accept all parsed SMS.
   if (userConfig.linkedAccounts && userConfig.linkedAccounts.length > 0 && parsed.account) {
-    const acctTail = String(parsed.account);
-    const matches = userConfig.linkedAccounts.some(
-      la => la && la.last4 && (acctTail.endsWith(String(la.last4)) || String(la.last4).endsWith(acctTail))
-    );
+    const parsedDigits = String(parsed.account).replace(/\D/g, "");
+    const parsedTail = parsedDigits.slice(-4);
+    const matches = userConfig.linkedAccounts.some(la => {
+      if (!la || !la.last4) return false;
+      const linkedTail = String(la.last4).replace(/\D/g, "").slice(-4);
+      if (!linkedTail || !parsedTail) return false;
+      return parsedTail === linkedTail
+          || parsedTail.endsWith(linkedTail)
+          || linkedTail.endsWith(parsedTail);
+    });
     if (!matches) {
+      // Save the rejected SMS as a one-tap-link suggestion so the PWA can
+      // pop a banner: "ICICI ••489 detected — Tap to link". Deduped by
+      // bank+last4 so multiple SMS for the same unlinked account merge.
+      try {
+        const sugHash = crypto.createHash("sha1")
+          .update((parsed.bank || "?") + ":" + parsedTail)
+          .digest("hex").substring(0, 16);
+        await db.collection(`users/${effectiveUser}/suggested_accounts`).doc(sugHash).set({
+          bank: parsed.bank || "?",
+          last4: parsedTail,
+          first_seen: new Date().toISOString(),
+          sample_amount: parsed.amount || 0,
+          sample_recipient: parsed.recipient || parsed.source || "",
+        }, { merge: true });
+      } catch (_) { /* non-critical */ }
       return res.status(200).json({
         status: "skipped",
         reason: "account_not_linked",
-        account: "XX" + acctTail.slice(-4),
+        account: "XX" + parsedTail,
       });
     }
   }

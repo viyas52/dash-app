@@ -1588,6 +1588,13 @@
         <div class="notif-count" id="companion-banner-count" style="background:#22C55E;">→</div>
     </div>
 
+    <!-- Suggested Account Banner (from cloud-function detected unlinked accounts) -->
+    <div id="suggested-banner" style="display:none;" class="notif-strip" onclick="acceptTopSuggestedAccount()">
+        <div class="notif-dot" style="background:var(--blue);"></div>
+        <div class="notif-txt" id="suggested-banner-txt">⚡ New bank detected — tap to link</div>
+        <div class="notif-count" id="suggested-banner-count" style="background:var(--blue);">+</div>
+    </div>
+
 
     <!-- Spending Breakdown -->
     <div id="spending-badges-section" style="display:none;" class="badge-section">
@@ -3220,6 +3227,7 @@ async function initFirebase() {
         loadMonth();
         loadLinkedAccounts();
         loadCatManager();
+        loadSuggestedAccounts();
     } catch (err) {
         console.error("Firebase init failed:", err);
         showToast("Firebase connection failed");
@@ -5469,8 +5477,9 @@ async function authGoogle() {
 async function authLogout() {
     // Detach all live Firestore listeners before signing out so they don't
     // keep firing against the (now wrong) user's collections.
-    if (_monthUnsub)  { try { _monthUnsub(); }  catch(e) {} _monthUnsub  = null; }
-    if (_missedUnsub) { try { _missedUnsub(); } catch(e) {} _missedUnsub = null; }
+    if (_monthUnsub)     { try { _monthUnsub(); }     catch(e) {} _monthUnsub     = null; }
+    if (_missedUnsub)    { try { _missedUnsub(); }    catch(e) {} _missedUnsub    = null; }
+    if (_suggestedUnsub) { try { _suggestedUnsub(); } catch(e) {} _suggestedUnsub = null; }
     try {
         await initFirebaseCore();
         await window.fbAuth.signOut(firebaseAuth);
@@ -5821,6 +5830,91 @@ function updateUsernamePreview() {
         el.textContent = '✓ ' + clean;
         el.style.color = 'var(--green)';
     }
+}
+
+/* ─── SUGGESTED ACCOUNTS — one-tap link from "saw a bank SMS we couldn't track" ─── */
+let _suggestedUnsub = null;
+let _suggestedTop = null;
+
+function loadSuggestedAccounts() {
+    if (!firebaseReady || !USER_ID) return;
+    if (_suggestedUnsub) { try { _suggestedUnsub(); } catch(e) {} _suggestedUnsub = null; }
+    try {
+        const { collection, onSnapshot } = window.fb;
+        const col = collection(db, 'users', USER_ID, 'suggested_accounts');
+        _suggestedUnsub = onSnapshot(col, snap => {
+            const items = [];
+            snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+            items.sort((a, b) => (a.first_seen || '').localeCompare(b.first_seen || ''));
+            renderSuggestedBanner(items);
+        }, err => console.warn('suggested_accounts listener:', err));
+    } catch (err) { console.warn('loadSuggestedAccounts failed:', err); }
+}
+
+function renderSuggestedBanner(items) {
+    const banner = document.getElementById('suggested-banner');
+    const txt = document.getElementById('suggested-banner-txt');
+    if (!banner || !txt) return;
+    // Filter out any that are already covered by an existing linked account
+    const stillUnlinked = items.filter(s => {
+        const tail = String(s.last4 || '').replace(/\D/g, '').slice(-4);
+        if (!tail) return false;
+        return !LINKED_ACCOUNTS.some(la => {
+            const lt = String(la.last4 || '').replace(/\D/g, '').slice(-4);
+            return lt && (lt === tail || lt.endsWith(tail) || tail.endsWith(lt));
+        });
+    });
+    if (stillUnlinked.length === 0) {
+        banner.style.display = 'none';
+        _suggestedTop = null;
+        return;
+    }
+    _suggestedTop = stillUnlinked[0];
+    const bankName = (_suggestedTop.bank || '?').toUpperCase();
+    txt.textContent = '⚡ ' + bankName + ' ••' + _suggestedTop.last4 + ' detected — Tap to link';
+    banner.style.display = 'flex';
+}
+
+async function acceptTopSuggestedAccount() {
+    if (!_suggestedTop) return;
+    sndTap(); hapTap();
+    const s = _suggestedTop;
+    const bankKey = (s.bank || 'bank').toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Build a clean entry — name = friendly bank name, color from defaults
+    const defaultColors = { icici: '#FF6B00', hdfc: '#004C8F', sbi: '#22409A', cub: '#7B3F9E',
+        axis: '#97144D', kotak: '#003874', idfc: '#9B1C2C', idbi: '#0F6F4C', yes: '#003049' };
+    const nameMap = { icici: 'ICICI Bank', hdfc: 'HDFC Bank', sbi: 'SBI', cub: 'City Union Bank',
+        axis: 'Axis Bank', kotak: 'Kotak', idfc: 'IDFC First', idbi: 'IDBI Bank', yes: 'Yes Bank' };
+    const name = nameMap[bankKey] || (s.bank ? s.bank.toUpperCase() + ' Bank' : 'New Bank');
+    const color = defaultColors[bankKey] || '#5856D6';
+    const initials = name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+    const id = bankKey + s.last4;
+    // Already linked under same id? skip
+    if (LINKED_ACCOUNTS.find(a => a.id === id)) {
+        await _dismissSuggestion(s.id);
+        return;
+    }
+    LINKED_ACCOUNTS.push({ id, name, last4: s.last4, color, initials });
+    try {
+        const { setDoc, doc, deleteDoc } = window.fb;
+        await setDoc(doc(db, 'users', USER_ID, 'config', 'accounts'), { linked_accounts: LINKED_ACCOUNTS });
+        await deleteDoc(doc(db, 'users', USER_ID, 'suggested_accounts', s.id));
+        sndConfirm(); hapConfirm();
+        showToast(name + ' linked');
+        loadLinkedAccounts();
+        renderAcctFilterChips();
+    } catch (err) {
+        console.error('Failed to link suggested account:', err);
+        LINKED_ACCOUNTS.pop();
+        showToast('Failed to link');
+    }
+}
+
+async function _dismissSuggestion(id) {
+    try {
+        const { deleteDoc, doc } = window.fb;
+        await deleteDoc(doc(db, 'users', USER_ID, 'suggested_accounts', id));
+    } catch (_) {}
 }
 
 /* ─── UNLINK ACCOUNT — removes a bank from Settings → Linked Accounts ─── */
