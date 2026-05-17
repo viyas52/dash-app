@@ -2109,6 +2109,20 @@
                     </div>
                 </div>
 
+                <div class="label setting-group-label">Smart format learning</div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="border-bottom:none;">
+                        <div style="min-width:0;flex:1;padding-right:12px;">
+                            <div class="setting-label">Learn new bank formats</div>
+                            <div class="setting-desc">If your bank isn't recognised, the SMS is sent once to an AI to learn its format. After that it's parsed on-device — no further AI use.</div>
+                        </div>
+                        <div class="toggle" id="llm-parser-toggle" onclick="toggleLlmParser()"><div class="toggle-thumb"></div></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:14px;padding:12px 16px;">
+                    <div style="font-size:11px;color:var(--text-3);line-height:1.55;">Off → only built-in bank formats work; an unrecognised bank shows "format not recognized" until support is added manually. Your existing transactions are never sent.</div>
+                </div>
+
             </div>
 
             <!-- ════ SUB-PAGE: DATA ════ -->
@@ -2292,6 +2306,7 @@
 let USER_ID   = localStorage.getItem('pft_user_id') || null;
 let USER_NAME = localStorage.getItem('pft_user_name') || null;
 let USER_API_KEY = null;          // random per-user SMS key, read from profile (never derived)
+let LLM_PARSER_ENABLED = true;    // smart format learning — on unless the user opts out (server reads config/profile.llm_parser_enabled)
 let _signupInProgress = false;    // guards onAuthReady against the mid-signup auth-state race
 let _appEntered = false;          // idempotency guard so enterApp() can't double-init listeners
 // Set to the deployed parseSms URL at cutover (Phase 6) so the companion app
@@ -3162,6 +3177,7 @@ function openSettings() {
     if (idEl)   idEl.textContent   = '@' + (USER_ID || 'unknown').substring(0, 12);
     // Security
     updateSecurityUI();
+    applyLlmParserToggleUI();
     const emailEl = document.getElementById('settings-email-display');
     if (emailEl && firebaseAuth && firebaseAuth.currentUser) {
         emailEl.textContent = firebaseAuth.currentUser.email || '';
@@ -3282,6 +3298,30 @@ function toggleDark() {
         if (typeof buildHeatmap === 'function') buildHeatmap();
         if (typeof buildChartForPeriod === 'function') buildChartForPeriod();
     });
+}
+
+function applyLlmParserToggleUI() {
+    const t = document.getElementById('llm-parser-toggle');
+    if (t) t.classList.toggle('on', LLM_PARSER_ENABLED !== false);
+}
+
+async function toggleLlmParser() {
+    const next = !LLM_PARSER_ENABLED;
+    sndToggle(next); hapTap();
+    LLM_PARSER_ENABLED = next;
+    applyLlmParserToggleUI();
+    if (!USER_ID) return;
+    try {
+        await window.fb.setDoc(
+            window.fb.doc(db, 'users', USER_ID, 'config', 'profile'),
+            { llm_parser_enabled: next }, { merge: true }
+        );
+        showToast(next ? 'Smart format learning on' : 'Smart format learning off');
+    } catch (e) {
+        LLM_PARSER_ENABLED = !next;            // revert on save failure
+        applyLlmParserToggleUI();
+        showToast('Couldn’t save — check connection');
+    }
 }
 
 function showUncategorized() {
@@ -5687,6 +5727,8 @@ async function onAuthReady(user) {
             try {
                 const profSnap = await window.fb.getDoc(window.fb.doc(db, 'users', USER_ID, 'config', 'profile'));
                 USER_API_KEY = profSnap.exists() ? (profSnap.data().api_key || null) : null;
+                LLM_PARSER_ENABLED = profSnap.exists() ? (profSnap.data().llm_parser_enabled !== false) : true;
+                applyLlmParserToggleUI();
             } catch (_) { USER_API_KEY = null; }
         }
     } catch (err) {

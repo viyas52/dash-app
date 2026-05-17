@@ -1,8 +1,14 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const crypto = require("crypto");
+const Anthropic = require("@anthropic-ai/sdk");
+
+// Reused Anthropic key (shared with the Household Expense Tracker app).
+// Set with: firebase functions:secrets:set ANTHROPIC_API_KEY
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
 initializeApp();
 const db = getFirestore();
@@ -366,8 +372,10 @@ async function loadUserConfig(userId) {
   const selfNamesRx = selfData.names_regex ? new RegExp(selfData.names_regex, "i") : null;
   const selfAccounts = selfData.accounts || [];
   const apiKey = profileData.api_key || null;
+  // LLM parser learning is on unless the user explicitly turned it off.
+  const llmEnabled = profileData.llm_parser_enabled !== false;
 
-  return { acctBankMap, linkedAccounts, selfNamesRx, selfAccounts, apiKey };
+  return { acctBankMap, linkedAccounts, selfNamesRx, selfAccounts, apiKey, llmEnabled };
 }
 
 // ── Coarse per-user rate limit (best-effort abuse cap). ──
@@ -398,8 +406,265 @@ async function checkRateLimit(userId) {
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════
+//  HYBRID PARSER — learn a bank's SMS format ONCE with Claude (Haiku 4.5),
+//  save a validated regex template per-user, then parse locally forever.
+//  The LLM is a one-time teacher, never a runtime parser. Steady state for
+//  a user with no new formats ≈ zero API calls.
+// ════════════════════════════════════════════════════════════════════════
+
+// Allowed date_format tokens the model may emit; the normalizer below maps
+// a captured date substring → ISO YYYY-MM-DD for all future matches.
+const LEARN_SYSTEM_PROMPT = `You extract one bank transaction from a single Indian bank SMS, and induce a REUSABLE regular expression that will parse every future SMS of this exact format.
+
+Return ONLY JSON matching the provided schema. No prose.
+
+STEP 1 — Is this a real transaction SMS (money actually debited or credited from the user's account)?
+- YES for: UPI/IMPS/NEFT/RTGS debits & credits, card spends, ACH/NACH/SI auto-debits, ATM withdrawals, salary credits.
+- NO for: OTPs, promotional/offer messages, "available balance is" with no debit/credit event, payment requests/reminders, failed/declined txn, EMI due reminders, statement notices. If NO → {"is_transaction": false, "transaction": null, "template": null}.
+
+STEP 2 — Extract the transaction:
+- amount: the transaction amount as a number (no commas/₹/Rs).
+- type: "debit" if money left the user's account, "credit" if money came in.
+- date: the transaction date as ISO "YYYY-MM-DD". 2-digit years are 20YY. If the SMS has no date, null.
+- account_last4: last 4 digits of the USER's own account/card if present, else null.
+- counterparty: the other party — payee/merchant/VPA for a debit, sender/source for a credit. Keep it as written (e.g. "swiggy@okicici", "AMAZON", "BANK OF AMERICA"). null if none.
+- upi_ref / reference / transaction number if present, else null.
+- balance_after: available balance after the txn as a number, else null.
+- bank: short lowercase id of the user's bank from the sender/text (e.g. "icici","hdfc","sbi","axis","kotak","bob"). Best guess; "other" if unclear.
+
+STEP 3 — Induce a template regex that matches THIS sms and every future sms of the same format:
+- JavaScript regex (will run case-insensitively). Escape all literal punctuation. Use [\\\\d,]+ for money, [\\\\s\\\\S] (not .) to cross newlines, \\\\d for digits, \\\\S+ for tokens. Anchor with surrounding literal words from the template so it can't match unrelated SMS.
+- Put each variable field in its own ( ) capture group. Report 1-based group indices in "groups" (the index into a JS String.match array). Use null for any field this format does not contain.
+- Keep it LINEAR — no nested or adjacent unbounded quantifiers (no (a+)+, .*.*, (.*)* ), no backreferences. Prefer specific character classes over .* .
+- date_format: one of "DD-MM-YY","DD-MM-YYYY","DD/MM/YY","DD/MM/YYYY","DD.MM.YY","DD.MM.YYYY","DD-MON-YY","DD-MON-YYYY","YYYY-MM-DD","YYYYMMDD" describing the captured date group, or null if no date group. MON = 3-letter month name.
+- type: "debit" or "credit" (fixed for this template).
+
+EXAMPLE A
+SMS: "Dear Customer, Rs.450.00 debited from A/c XX9012 on 14-05-26 to swiggy@okhdfcbank UPI Ref 451237812345. Avl Bal Rs.12,300.50 -ABC Bank"
+{"is_transaction":true,"transaction":{"amount":450,"type":"debit","date":"2026-05-14","account_last4":"9012","counterparty":"swiggy@okhdfcbank","upi_ref":"451237812345","balance_after":12300.50,"bank":"other"},"template":{"regex":"Rs\\\\.?\\\\s*([\\\\d,]+\\\\.?\\\\d*) debited from A/c XX(\\\\d+) on (\\\\d{2}-\\\\d{2}-\\\\d{2}) to (\\\\S+) UPI Ref (\\\\d+)\\\\. Avl Bal Rs\\\\.?\\\\s*([\\\\d,]+\\\\.?\\\\d*)","groups":{"amount":1,"account_last4":2,"date":3,"counterparty":4,"upi_ref":5,"balance_after":6},"date_format":"DD-MM-YY","type":"debit","bank":"other"}}
+
+EXAMPLE B
+SMS: "Your A/c XX4471 is credited INR 51,000.00 on 01-May-26 by NEFT from BANK OF AMERICA. Ref N123456789. -XYZ"
+{"is_transaction":true,"transaction":{"amount":51000,"type":"credit","date":"2026-05-01","account_last4":"4471","counterparty":"BANK OF AMERICA","upi_ref":"N123456789","balance_after":null,"bank":"other"},"template":{"regex":"A/c XX(\\\\d+) is credited INR ([\\\\d,]+\\\\.?\\\\d*) on (\\\\d{1,2}-[A-Za-z]{3}-\\\\d{2}) by NEFT from ([\\\\s\\\\S]+?)\\\\. Ref (\\\\w+)","groups":{"amount":2,"account_last4":1,"date":3,"counterparty":4,"upi_ref":5,"balance_after":null},"date_format":"DD-MON-YY","type":"credit","bank":"other"}}`;
+
+const EXTRACTION_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    is_transaction: { type: "boolean" },
+    transaction: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        amount: { type: "number" },
+        type: { type: "string", enum: ["debit", "credit"] },
+        date: { type: ["string", "null"] },
+        account_last4: { type: ["string", "null"] },
+        counterparty: { type: ["string", "null"] },
+        upi_ref: { type: ["string", "null"] },
+        balance_after: { type: ["number", "null"] },
+        bank: { type: ["string", "null"] },
+      },
+      required: ["amount", "type", "date", "account_last4", "counterparty", "upi_ref", "balance_after", "bank"],
+    },
+    template: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        regex: { type: "string" },
+        groups: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            amount: { type: ["integer", "null"] },
+            account_last4: { type: ["integer", "null"] },
+            date: { type: ["integer", "null"] },
+            counterparty: { type: ["integer", "null"] },
+            upi_ref: { type: ["integer", "null"] },
+            balance_after: { type: ["integer", "null"] },
+          },
+          required: ["amount", "account_last4", "date", "counterparty", "upi_ref", "balance_after"],
+        },
+        date_format: { type: ["string", "null"] },
+        type: { type: "string", enum: ["debit", "credit"] },
+        bank: { type: ["string", "null"] },
+      },
+      required: ["regex", "groups", "date_format", "type", "bank"],
+    },
+  },
+  required: ["is_transaction", "transaction", "template"],
+};
+
+// Captured date substring + format token → ISO YYYY-MM-DD. Falls back to
+// today's date if it can't parse (never throws — keeps ingestion flowing).
+function normalizeLearnedDate(raw, fmt) {
+  if (!raw) return todayDate();
+  const s = String(raw).trim();
+  try {
+    if (fmt === "YYYY-MM-DD") {
+      const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+      if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    }
+    if (fmt === "YYYYMMDD") {
+      const m = s.match(/(\d{4})(\d{2})(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    // Day-first: DD<sep>MM<sep>YY(YY) or DD<sep>MON<sep>YY(YY)
+    const m = s.match(/(\d{1,2})\W+([A-Za-z]{3}|\d{1,2})\W+(\d{2,4})/);
+    if (m) {
+      const day = m[1].padStart(2, "0");
+      let mon;
+      if (/^[A-Za-z]{3}$/.test(m[2])) {
+        const key = m[2][0].toUpperCase() + m[2].slice(1).toLowerCase();
+        mon = MONTHS[key] || MONTHS[m[2].toUpperCase()];
+      } else {
+        mon = m[2].padStart(2, "0");
+      }
+      let yr = m[3];
+      if (yr.length === 2) yr = "20" + yr;
+      if (mon && +mon >= 1 && +mon <= 12 && +day >= 1 && +day <= 31) {
+        return `${yr}-${mon}-${day}`;
+      }
+    }
+  } catch (_) { /* fall through */ }
+  return todayDate();
+}
+
+// Reject model-generated regexes that could ReDoS the function. SMS is
+// already length-capped (≤2048) upstream; this blocks pathological patterns.
+function isSafeRegex(p) {
+  if (typeof p !== "string") return false;
+  if (p.length < 8 || p.length > 600) return false;
+  if (/(\*\*|\+\+|\*\+|\+\*)/.test(p)) return false;            // adjacent unbounded quantifiers
+  if (/\([^()]*[+*][^()]*\)\s*[+*]/.test(p)) return false;       // quantified group w/ inner quantifier: (a+)+
+  if (/\{\d+,\}\s*[+*]/.test(p)) return false;                   // {n,} followed by + / *
+  if (/\\\d/.test(p) || /\(\?R\)|\(\?\d/.test(p)) return false;  // backreferences / recursion
+  return true;
+}
+
+// Build the standard parsed-txn object (same shape the regex patterns emit)
+// from an extracted transaction — shared by the template path and the LLM
+// path so everything downstream (self-transfer, rules, dedupe) is identical.
+function buildParsedFromExtraction(ext, sms, via) {
+  const amount = Number(ext.amount);
+  const type = ext.type === "credit" ? "credit" : "debit";
+  const counterparty = cleanUpiId((ext.counterparty || "").toString().trim());
+  const upiRef = (ext.upi_ref || "").toString().trim();
+  const acct = (ext.account_last4 || "").toString().replace(/\D/g, "");
+  const date = ext.date || todayDate();
+  const dedup = upiRef
+    ? "lt_" + upiRef
+    : "lt_" + crypto.createHash("sha1")
+        .update([type, date, amount, counterparty, acct].join("|"))
+        .digest("hex").substring(0, 20);
+  return {
+    raw_sms: sms,
+    bank: (ext.bank || "other").toString().toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 16) || "other",
+    account: acct,
+    amount,
+    date,
+    type,
+    category: null, category_type: null,
+    recipient: type === "debit" ? counterparty : "",
+    source: type === "credit" ? counterparty : "",
+    source_account: "",
+    note: counterparty || (type === "credit" ? "Credit" : "Debit"),
+    upi_ref: upiRef,
+    balance_after: (ext.balance_after === null || ext.balance_after === undefined || ext.balance_after === "")
+      ? null : Number(ext.balance_after),
+    created_at: new Date().toISOString(),
+    dedup_key: dedup,
+    parsed_via: via,
+  };
+}
+
+// Try this user's previously-learned templates. Pure regex, no API call.
+function matchLearnedTemplates(sms, templateDocs) {
+  for (const t of templateDocs) {
+    const d = t.data || {};
+    if (!d.regex || !isSafeRegex(d.regex)) continue;
+    let re, m;
+    try { re = new RegExp(d.regex, "i"); } catch (_) { continue; }
+    try { m = sms.match(re); } catch (_) { continue; }
+    if (!m) continue;
+    const g = d.groups || {};
+    const gv = (i) => (i && m[i] != null ? String(m[i]).trim() : null);
+    const amtRaw = gv(g.amount);
+    if (!amtRaw) continue;
+    const amount = parseFloat(amtRaw.replace(/,/g, ""));
+    if (!isFinite(amount) || amount <= 0) continue;
+    const balRaw = gv(g.balance_after);
+    const ext = {
+      amount,
+      type: d.type === "credit" ? "credit" : "debit",
+      date: g.date ? normalizeLearnedDate(gv(g.date), d.date_format) : todayDate(),
+      account_last4: gv(g.account_last4),
+      counterparty: gv(g.counterparty),
+      upi_ref: gv(g.upi_ref),
+      balance_after: balRaw ? parseFloat(balRaw.replace(/,/g, "")) : null,
+      bank: d.bank || "other",
+    };
+    return { parsed: buildParsedFromExtraction(ext, sms, "template"), templateId: t.id };
+  }
+  return null;
+}
+
+// Gate before persisting an induced template: it must compile, match the
+// teaching SMS, and re-extract the SAME amount the model reported. This
+// proves the regex targets the right field rather than just "matching".
+function validateLearnedTemplate(tpl, sms, txn) {
+  if (!tpl || !tpl.regex || !isSafeRegex(tpl.regex)) return false;
+  const g = tpl.groups || {};
+  if (!g.amount) return false;
+  let re, m;
+  try { re = new RegExp(tpl.regex, "i"); } catch (_) { return false; }
+  try { m = sms.match(re); } catch (_) { return false; }
+  if (!m || m[g.amount] == null) return false;
+  const capAmt = parseFloat(String(m[g.amount]).replace(/,/g, ""));
+  if (!isFinite(capAmt)) return false;
+  if (Math.abs(capAmt - Number(txn.amount)) > 0.01) return false;
+  if (g.date && m[g.date] == null) return false;
+  return true;
+}
+
+// One-time teacher call. Returns {transaction, template} on success,
+// {notTransaction:true} for non-txn SMS, or null on any error (→ skip).
+async function learnViaLLM(sms, apiKey) {
+  if (!apiKey) return null;
+  const client = new Anthropic({ apiKey });
+  let resp;
+  try {
+    resp = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 1024,
+      system: [{ type: "text", text: LEARN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: "Bank SMS:\n```\n" + sms + "\n```" }],
+      output_config: { format: { type: "json_schema", schema: EXTRACTION_SCHEMA } },
+    });
+  } catch (err) {
+    console.error("LLM learn call failed:", (err && err.message) || err);
+    return null;
+  }
+  if (resp.stop_reason === "refusal") return { notTransaction: true };
+  let txt = "";
+  for (const b of (resp.content || [])) if (b.type === "text") txt += b.text;
+  let data;
+  try {
+    data = JSON.parse(txt);
+  } catch (_) {
+    const mm = txt.match(/\{[\s\S]*\}/);
+    if (!mm) return null;
+    try { data = JSON.parse(mm[0]); } catch (_) { return null; }
+  }
+  if (!data || data.is_transaction !== true || !data.transaction) {
+    return { notTransaction: true };
+  }
+  return { transaction: data.transaction, template: data.template || null };
+}
+
 // ── HTTPS Cloud Function ──
-exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asia-south1" }, async (req, res) => {
+exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asia-south1", secrets: [ANTHROPIC_API_KEY] }, async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   // ── User ID (required for multi-user routing) ──
@@ -434,10 +699,63 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
 
   // ── Parse SMS with per-user account mapping ──
   const acctToBank = (acct) => acctToBankDynamic(acct, userConfig.acctBankMap);
-  const parsed = parseSms(sms, acctToBank);
+  let parsed = parseSms(sms, acctToBank);
+
+  // ── Hybrid fallback: built-in regex missed ──
+  // 1) try this user's previously-learned templates (pure regex, no API)
+  // 2) on a template miss, ask Claude ONCE to extract + induce a reusable
+  //    regex template, validate it, and persist it — so we never call the
+  //    API again for this format. Steady state ≈ zero API calls.
   if (!parsed) {
-    // Privacy: don't persist the unrecognised SMS — just log a short
-    // prefix server-side for debugging and return.
+    let templateDocs = [];
+    try {
+      const tSnap = await db.collection(`users/${effectiveUser}/parser_templates`).get();
+      templateDocs = tSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
+    } catch (_) { /* no templates yet */ }
+
+    const tMatch = matchLearnedTemplates(sms, templateDocs);
+    if (tMatch) {
+      parsed = tMatch.parsed;
+      const prev = templateDocs.find((t) => t.id === tMatch.templateId);
+      db.doc(`users/${effectiveUser}/parser_templates/${tMatch.templateId}`)
+        .set({ hit_count: ((prev && prev.data && prev.data.hit_count) || 0) + 1,
+               last_used: new Date().toISOString() }, { merge: true })
+        .catch(() => {});
+    } else if (userConfig.llmEnabled) {
+      const learned = await learnViaLLM(sms, ANTHROPIC_API_KEY.value());
+      if (learned && learned.transaction) {
+        const txn = learned.transaction;
+        const amt = Number(txn.amount);
+        if (isFinite(amt) && amt > 0 && (txn.type === "debit" || txn.type === "credit")) {
+          parsed = buildParsedFromExtraction(txn, sms, "llm");
+          // Persist the induced template only if it provably re-extracts the
+          // same amount. If not, this txn is still saved (money captured) and
+          // we simply re-learn next time — rare and self-correcting.
+          if (learned.template && validateLearnedTemplate(learned.template, sms, txn)) {
+            const tpl = learned.template;
+            const tplId = crypto.createHash("sha1")
+              .update((tpl.bank || "other") + "|" + tpl.regex)
+              .digest("hex").substring(0, 24);
+            db.doc(`users/${effectiveUser}/parser_templates/${tplId}`).set({
+              regex: tpl.regex,
+              groups: tpl.groups || {},
+              date_format: tpl.date_format || null,
+              type: tpl.type === "credit" ? "credit" : "debit",
+              bank: (tpl.bank || "other").toString().toLowerCase().substring(0, 24),
+              sample_sms: sms.substring(0, 400),
+              created_at: new Date().toISOString(),
+              source: "llm",
+              hit_count: 0,
+            }, { merge: true }).catch((e) => console.error("template save failed:", (e && e.message) || e));
+          }
+        }
+      }
+    }
+  }
+
+  if (!parsed) {
+    // Not a recognised txn (LLM off, said "not a transaction", or errored).
+    // Privacy: don't persist the SMS — log a short prefix only.
     console.warn("SMS not recognized:", sms.substring(0, 120));
     return res.status(200).json({ status: "skipped", reason: "SMS format not recognized" });
   }
