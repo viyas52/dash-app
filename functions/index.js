@@ -260,6 +260,38 @@ function buildPatterns(acctToBank) {
         };
       },
     },
+    // ── Bank of Baroda debit (UPI) ──
+    {
+      name: "bob_debit_upi",
+      rx: /Rs\.?\s*([\d,]+\.?\d*)\s*Dr\.?\s*from\s*A\/C\s*[Xx]+(\d+)\s*and\s*Cr\.?\s*to\s*(.+?)\.?\s*Ref:?\s*(\d+)\.?\s*AvlBal:?\s*Rs\.?\s*([\d,]+\.?\d*)\s*\(\s*(\d{4}):(\d{2}):(\d{2})/i,
+      parse: (m, sms) => ({
+        raw_sms: sms, bank: "bob", account: m[2],
+        amount: parseFloat(m[1].replace(/,/g, "")),
+        date: `${m[6]}-${m[7]}-${m[8]}`,
+        type: "debit", category: null, category_type: null,
+        recipient: cleanUpiId(m[3].trim()), note: cleanUpiId(m[3].trim()),
+        upi_ref: m[4], source: "", source_account: "",
+        balance_after: parseFloat(m[5].replace(/,/g, "")),
+        created_at: new Date().toISOString(),
+        dedup_key: "bob_d_" + m[4],
+      }),
+    },
+    // ── Bank of Baroda credit (UPI) ──
+    {
+      name: "bob_credit_upi",
+      rx: /Dear BOB UPI User:[\s\S]*?credited with INR\s*([\d,]+\.?\d*)\s*on\s*(\d{4}-\d{2}-\d{2})[\s\S]*?UPI Ref No\s*(\d+);\s*AvlBal:?\s*Rs\.?\s*([\d,]+\.?\d*)/i,
+      parse: (m, sms) => ({
+        raw_sms: sms, bank: "bob", account: "",
+        amount: parseFloat(m[1].replace(/,/g, "")),
+        date: m[2],
+        type: "credit", category: null, category_type: null,
+        recipient: "", source: "", source_account: "",
+        note: "UPI Credit", upi_ref: m[3],
+        balance_after: parseFloat(m[4].replace(/,/g, "")),
+        created_at: new Date().toISOString(),
+        dedup_key: "bob_c_" + m[3],
+      }),
+    },
   ];
 }
 
