@@ -154,14 +154,12 @@ firebase deploy --only functions</pre>
     Copy that URL — you'll need it for Tasker in Step 3.
 </div>
 
-<div class="card">
-    <div class="card-title">Your API key (set in functions/index.js)</div>
-    <pre id="api-key-display">myfinance_viyas_2026</pre>
-    <button class="copy-btn" onclick="copyText('api-key-display', this)">Copy</button>
-</div>
-
-<div class="warn">
-    <strong>Want a different API key?</strong> Open <code>functions/index.js</code>, change the <code>API_KEY</code> value on line 8, then redeploy.
+<div class="info">
+    <strong>API keys are per-user now.</strong> Each account gets a random key
+    generated at sign-up and stored in its Firestore profile. There is no
+    shared/default key. Get yours in the app: <strong>Settings → Companion →
+    API key → Copy</strong> (the companion app is also auto-configured via the
+    sign-in deep link).
 </div>
 
 <div class="divider"></div>
@@ -181,8 +179,12 @@ firebase deploy --only functions</pre>
         <input type="text" id="func-url" placeholder="https://parsesms-XXXXX-uc.a.run.app">
     </div>
     <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="func-user" placeholder="your account username (e.g. viyas)">
+    </div>
+    <div class="form-group">
         <label>API Key</label>
-        <input type="text" id="func-key" value="myfinance_viyas_2026">
+        <input type="text" id="func-key" placeholder="paste your key from Settings → Companion">
     </div>
     <div class="form-group">
         <label>SMS Text</label>
@@ -229,9 +231,10 @@ URL:     YOUR_FUNCTION_URL_HERE
          (paste the URL from Step 1)
 
 Headers: Content-Type: application/json
-         x-api-key: myfinance_viyas_2026
+         x-api-key: YOUR_API_KEY
+         (from Settings → Companion → API key)
 
-Body:    {"sms": "%evtprm1"}</pre>
+Body:    {"user": "YOUR_USERNAME", "sms": "%evtprm1"}</pre>
     <button class="copy-btn" onclick="copyText('tasker-config', this)">Copy</button>
 </div>
 
@@ -278,11 +281,13 @@ Body:    {"sms": "%evtprm1"}</pre>
 <script>
 async function testFunction() {
     var url = document.getElementById('func-url').value.trim();
+    var user = document.getElementById('func-user').value.trim();
     var key = document.getElementById('func-key').value.trim();
     var sms = document.getElementById('test-sms').value.trim();
     var res = document.getElementById('test-result');
 
     if (!url) { res.className='result error'; res.textContent='Enter your Cloud Function URL first'; return; }
+    if (!user) { res.className='result error'; res.textContent='Enter your username'; return; }
     if (!sms) { res.className='result error'; res.textContent='Enter SMS text'; return; }
 
     res.className='result parsed'; res.textContent='Sending...';
@@ -294,7 +299,7 @@ async function testFunction() {
                 'Content-Type': 'application/json',
                 'x-api-key': key
             },
-            body: JSON.stringify({ sms: sms })
+            body: JSON.stringify({ user: user, sms: sms })
         });
         var data = await resp.json();
 

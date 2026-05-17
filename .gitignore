@@ -7,3 +7,5 @@ push.bat
 Thumbs.db
 # Dev-only preview file — never push to prod
 index-dev.html
+# One-off function helper/maintenance scripts (analytics, migration) — never deploy/commit
+functions/_*.js

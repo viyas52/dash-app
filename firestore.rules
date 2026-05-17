@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Personal Finance Tracker — Firestore security rules.
+//
+// Data-isolation model: data lives under users/{username}/**. The owner of a
+// username is recorded once in usernames/{username} = { uid } and that mapping
+// is immutable (create-only, no update/delete) so it cannot be repointed to
+// hijack another user's subtree. Every users/** access is gated on the caller's
+// Firebase Auth uid matching that recorded owner uid.
+//
+// The SMS cloud function writes via the Admin SDK, which bypasses these rules
+// entirely — so server-side ingestion is unaffected. These rules only lock the
+// client (browser) boundary.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Per-user auth metadata, keyed by Firebase Auth uid. Each user owns
+    // exactly their own document.
+    match /auth_users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // username -> { uid } ownership map. Readable by any signed-in user
+    // (needed for the signup availability check). Claimable exactly once,
+    // only with your own uid, and only the `uid` field. Immutable thereafter
+    // so a username can never be re-pointed at a different account.
+    match /usernames/{username} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid']);
+      allow update, delete: if false;
+    }
+
+    // All user financial data. Read/write only if the caller's uid is the
+    // recorded owner of this username. Covers config/*, transactions/*,
+    // rules/*, suggested_accounts/*, and any future subcollection.
+    match /users/{username}/{document=**} {
+      allow read, write: if request.auth != null
+        && get(/databases/$(database)/documents/usernames/$(username)).data.uid == request.auth.uid;
+    }
+
+    // Default deny — anything not matched above is inaccessible to clients.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

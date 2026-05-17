@@ -9,8 +9,8 @@ import android.widget.Toast
 /**
  * Receives financecompanion:// deep links from the PWA.
  *
- *   financecompanion://save?user=viyas&key=myfinance_viyas_2026
- *     -> save credentials to SharedPreferences
+ *   financecompanion://save?user=<name>&key=<random>&url=<endpoint>
+ *     -> save credentials (and optional endpoint) to SharedPreferences
  *
  *   financecompanion://enable_notifications
  *     -> open Android's notification listener settings
@@ -40,10 +40,12 @@ class CredentialReceiverActivity : Activity() {
             "save" -> {
                 val user = uri.getQueryParameter("user").orEmpty()
                 val key = uri.getQueryParameter("key").orEmpty()
+                val url = uri.getQueryParameter("url").orEmpty()
                 if (user.isNotBlank() && key.isNotBlank()) {
                     Prefs(this).apply {
                         this.user = user
                         this.apiKey = key
+                        if (url.isNotBlank()) this.endpoint = url
                     }
                     Toast.makeText(this, "Companion connected as $user ✓", Toast.LENGTH_SHORT).show()
                 } else {

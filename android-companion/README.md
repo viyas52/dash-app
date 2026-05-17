@@ -10,7 +10,7 @@ Tiny Kotlin app that replaces MacroDroid. Listens to bank/UPI notifications and 
 ## What it does
 1. `NotificationListenerService` watches notifications from messaging apps + major Indian bank/UPI apps
 2. Filters to ones that look like transactions (regex on body)
-3. POSTs `{user, sms}` to `https://parsesms-2esp6326ba-el.a.run.app` with `x-api-key` header
+3. POSTs `{user, sms}` to the `parseSms` cloud function with the per-user `x-api-key` header. The endpoint is configurable (set automatically by the sign-in deep link, or manually in the app); `SmsForwarder.DEFAULT_ENDPOINT` is only the fallback.
 4. Cloud function does the same parsing it did for MacroDroid — no backend changes needed
 
 ## Build

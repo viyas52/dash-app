@@ -2065,6 +2065,17 @@
                         <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);">v3.2</span>
                     </div>
                 </div>
+                <div class="label setting-group-label">Companion credentials</div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="setting-row">
+                        <div><div class="setting-label">Username</div><div class="setting-desc" id="cc-user">—</div></div>
+                        <button type="button" onclick="copyCompanionField('user', this)" style="font-size:11px;font-weight:600;color:var(--blue);background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;">Copy</button>
+                    </div>
+                    <div class="setting-row" style="border-bottom:none;">
+                        <div style="min-width:0;flex:1;"><div class="setting-label">API key</div><div class="setting-desc" id="cc-key" style="font-family:'Space Mono',monospace;word-break:break-all;">—</div></div>
+                        <button type="button" onclick="copyCompanionField('key', this)" style="font-size:11px;font-weight:600;color:var(--blue);background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;flex-shrink:0;">Copy</button>
+                    </div>
+                </div>
             </div>
 
             <!-- ════ SUB-PAGE: PRIVACY ════ -->
@@ -2112,6 +2123,10 @@
                     <div class="setting-row">
                         <div><div class="setting-label">My Finance</div><div class="setting-desc">Multi-user PWA</div></div>
                         <span style="font-family:'Space Mono',monospace; font-size:12px; color:var(--text-3);">PWA</span>
+                    </div>
+                    <div class="setting-row" id="admin-usage-row" style="display:none;cursor:pointer;" onclick="openAdminUsage()">
+                        <div><div class="setting-label">Usage analytics</div><div class="setting-desc">Owner only · live user stats</div></div>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </div>
                     <div class="setting-row" style="border-bottom:none;cursor:pointer;" onclick="window.open('https://github.com/viyas52/dash-app','_blank')">
                         <div><div class="setting-label">Source Code</div><div class="setting-desc">github.com/viyas52/dash-app</div></div>
@@ -2265,6 +2280,16 @@
 /* ─── MULTI-USER ─── */
 let USER_ID   = localStorage.getItem('pft_user_id') || null;
 let USER_NAME = localStorage.getItem('pft_user_name') || null;
+let USER_API_KEY = null;          // random per-user SMS key, read from profile (never derived)
+let _signupInProgress = false;    // guards onAuthReady against the mid-signup auth-state race
+let _appEntered = false;          // idempotency guard so enterApp() can't double-init listeners
+// Set to the deployed parseSms URL at cutover (Phase 6) so the companion app
+// auto-configures its endpoint via the credential deep link.
+const COMPANION_FN_URL = "https://asia-south1-my-finance-e7937.cloudfunctions.net/parseSms";
+// Owner-only admin usage view. OWNER_UID is set right after viyas re-signs up
+// on the new project (Phase 6); ADMIN_FN_URL = deployed adminStats URL.
+const OWNER_UID = "zX4n4bDJIRYMwjZR6qZ05M2BcXR2";
+const ADMIN_FN_URL = "https://asia-south1-my-finance-e7937.cloudfunctions.net/adminStats";
 
 // Namespaced localStorage helpers (theme stays global, everything else per-user)
 function lsKey(key) { return key === 'pft_theme' ? key : 'pft_' + USER_ID + '_' + key.replace(/^pft_/, ''); }
@@ -2802,12 +2827,12 @@ function resolveParentCat(name) {
 }
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCUWFkzMEW5A8P5MTmwH_W8OCo4q5-svh0",
-    authDomain: "home-expense-tracker-8a5c9.firebaseapp.com",
-    projectId: "home-expense-tracker-8a5c9",
-    storageBucket: "home-expense-tracker-8a5c9.firebasestorage.app",
-    messagingSenderId: "633753070851",
-    appId: "1:633753070851:web:90e06fbca29650373fcd36"
+    apiKey: "AIzaSyBez1EEb24rDiBNbClZlD2Y3_OXQVJBqIU",
+    authDomain: "my-finance-e7937.firebaseapp.com",
+    projectId: "my-finance-e7937",
+    storageBucket: "my-finance-e7937.firebasestorage.app",
+    messagingSenderId: "658697368084",
+    appId: "1:658697368084:web:1571aa09c294b461e7ad01"
 };
 
 let db = null, firebaseReady = false, editingId = null;
@@ -5437,6 +5462,30 @@ function showAuthError(msg) {
 }
 function hideAuthError() { document.getElementById('auth-error').style.display = 'none'; }
 
+// Cryptographically-random per-user SMS-ingest key (256-bit hex). Replaces
+// the old guessable `myfinance_<username>_2026` scheme.
+function genApiKey() {
+    const b = new Uint8Array(32);
+    crypto.getRandomValues(b);
+    return Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// Atomically claim a username for a uid. Returns true if it's now owned by
+// `uid`, false if taken by someone else. Reads first for a friendly result,
+// but the create-only / own-uid Firestore rule is what actually makes this
+// race-safe: a losing concurrent claim becomes an update → permission denied.
+async function claimUsername(username, uid) {
+    const ref = window.fb.doc(db, 'usernames', username);
+    try {
+        const snap = await window.fb.getDoc(ref);
+        if (snap.exists()) return snap.data().uid === uid;
+        await window.fb.setDoc(ref, { uid });
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
 async function authSubmit() {
     hideAuthError();
     const email = (document.getElementById('auth-email').value || '').trim();
@@ -5456,35 +5505,57 @@ async function authSubmit() {
             const usernameRaw = (document.getElementById('auth-username').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
             const username = usernameRaw || name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16);
             if (!username || username.length < 2) { btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Enter a valid username (2+ chars)'); }
-            // Check if username is taken
-            const existingSnap = await window.fb.getDoc(window.fb.doc(db, 'usernames', username));
-            if (existingSnap.exists()) { btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Username "' + username + '" is taken'); }
 
-            const cred = await window.fbAuth.createUserWithEmailAndPassword(firebaseAuth, email, pass);
-            await window.fbAuth.updateProfile(cred.user, { displayName: name });
-            // Create username → uid mapping
-            await window.fb.setDoc(window.fb.doc(db, 'usernames', username), { uid: cred.user.uid });
-            // Store username in auth user's Firestore profile
-            await window.fb.setDoc(window.fb.doc(db, 'auth_users', cred.user.uid), {
-                username: username,
-                name: name,
-                email: email,
-                created_at: new Date().toISOString(),
-            });
-            // Create user config in Firestore under username path (don't overwrite existing)
-            const existingProfile = await window.fb.getDoc(window.fb.doc(db, 'users', username, 'config', 'profile'));
-            if (existingProfile.exists()) {
-                // Existing user (e.g. viyas) — just link auth_uid
-                const { updateDoc } = window.fb;
-                await updateDoc(window.fb.doc(db, 'users', username, 'config', 'profile'), { auth_uid: cred.user.uid, email: email });
-            } else {
-                await window.fb.setDoc(window.fb.doc(db, 'users', username, 'config', 'profile'), {
+            _signupInProgress = true;
+            try {
+                // Create the auth user FIRST so the username claim runs while
+                // authenticated — the Firestore rules enforce a create-only,
+                // own-uid claim, making it atomic and squat-proof. Reuse an
+                // existing half-finished session (e.g. a prior attempt where
+                // the chosen username was taken) rather than recreating it.
+                let user = firebaseAuth.currentUser;
+                if (!user) {
+                    const cred = await window.fbAuth.createUserWithEmailAndPassword(firebaseAuth, email, pass);
+                    user = cred.user;
+                    await window.fbAuth.updateProfile(user, { displayName: name });
+                }
+
+                if (!(await claimUsername(username, user.uid))) {
+                    _signupInProgress = false;
+                    btn.disabled = false; btn.textContent = 'Create Account';
+                    return showAuthError('Username "' + username + '" is taken — pick another');
+                }
+
+                await window.fb.setDoc(window.fb.doc(db, 'auth_users', user.uid), {
+                    username: username,
                     name: name,
                     email: email,
-                    auth_uid: cred.user.uid,
-                    api_key: 'myfinance_' + username + '_2026',
                     created_at: new Date().toISOString(),
                 });
+                const profRef = window.fb.doc(db, 'users', username, 'config', 'profile');
+                const existingProfile = await window.fb.getDoc(profRef);
+                if (existingProfile.exists()) {
+                    // Existing data subtree (e.g. viyas migration) — link the
+                    // new auth uid, keep the already-provisioned api_key.
+                    await window.fb.updateDoc(profRef, { auth_uid: user.uid, email: email });
+                    USER_API_KEY = existingProfile.data().api_key || null;
+                } else {
+                    const apiKey = genApiKey();
+                    await window.fb.setDoc(profRef, {
+                        name: name,
+                        email: email,
+                        auth_uid: user.uid,
+                        api_key: apiKey,
+                        created_at: new Date().toISOString(),
+                    });
+                    USER_API_KEY = apiKey;
+                }
+                _signupInProgress = false;
+                await onAuthReady(firebaseAuth.currentUser);
+                return;
+            } catch (e) {
+                _signupInProgress = false;
+                throw e;
             }
         } else {
             await window.fbAuth.signInWithEmailAndPassword(firebaseAuth, email, pass);
@@ -5508,35 +5579,49 @@ async function authGoogle() {
     try {
         await initFirebaseCore();
         const provider = new window.fbAuth.GoogleAuthProvider();
+        _signupInProgress = true;
         const cred = await window.fbAuth.signInWithPopup(firebaseAuth, provider);
-        // Create profile if first time
         const uid = cred.user.uid;
         const authDocRef = window.fb.doc(db, 'auth_users', uid);
         const authSnap = await window.fb.getDoc(authDocRef);
         if (!authSnap.exists()) {
+            // First Google sign-in — provision atomically.
             const name = cred.user.displayName || 'User';
             let username = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16) || uid.substring(0, 8);
-            // Check for username collision and append suffix if taken
-            const existingSnap = await window.fb.getDoc(window.fb.doc(db, 'usernames', username));
-            if (existingSnap.exists()) {
+            if (!(await claimUsername(username, uid))) {
                 username = username.substring(0, 12) + '_' + uid.substring(0, 4);
+                if (!(await claimUsername(username, uid))) {
+                    _signupInProgress = false;
+                    return showAuthError('Could not reserve a username — please retry');
+                }
             }
-            await window.fb.setDoc(window.fb.doc(db, 'usernames', username), { uid });
             await window.fb.setDoc(authDocRef, {
                 username: username,
                 name: name,
                 email: cred.user.email || '',
                 created_at: new Date().toISOString(),
             });
-            await window.fb.setDoc(window.fb.doc(db, 'users', username, 'config', 'profile'), {
-                name: name,
-                email: cred.user.email || '',
-                auth_uid: uid,
-                api_key: 'myfinance_' + username + '_2026',
-                created_at: new Date().toISOString(),
-            });
+            const profRef = window.fb.doc(db, 'users', username, 'config', 'profile');
+            const existingProfile = await window.fb.getDoc(profRef);
+            if (existingProfile.exists()) {
+                await window.fb.updateDoc(profRef, { auth_uid: uid, email: cred.user.email || '' });
+                USER_API_KEY = existingProfile.data().api_key || null;
+            } else {
+                const apiKey = genApiKey();
+                await window.fb.setDoc(profRef, {
+                    name: name,
+                    email: cred.user.email || '',
+                    auth_uid: uid,
+                    api_key: apiKey,
+                    created_at: new Date().toISOString(),
+                });
+                USER_API_KEY = apiKey;
+            }
         }
+        _signupInProgress = false;
+        await onAuthReady(firebaseAuth.currentUser);
     } catch (err) {
+        _signupInProgress = false;
         if (err.code !== 'auth/popup-closed-by-user') {
             showAuthError(err.message || 'Google sign-in failed');
         }
@@ -5555,7 +5640,7 @@ async function authLogout() {
     } catch (err) { console.error('Logout failed:', err); }
     localStorage.removeItem('pft_user_id');
     localStorage.removeItem('pft_user_name');
-    USER_ID = null; USER_NAME = null;
+    USER_ID = null; USER_NAME = null; USER_API_KEY = null; _appEntered = false;
     firebaseReady = false;
     closeSettings();
     showScreen('auth');
@@ -5566,7 +5651,13 @@ async function onAuthReady(user) {
         showScreen('auth');
         return;
     }
+    // A racing onAuthStateChanged can fire mid-signup (createUser flips auth
+    // state before auth_users/profile are written). Skip it — authSubmit /
+    // authGoogle drive entry explicitly once provisioning is complete.
+    if (_signupInProgress) return;
+
     // Resolve Firebase UID → username (used for Firestore paths)
+    let resolved = false;
     try {
         const authDocRef = window.fb.doc(db, 'auth_users', user.uid);
         const authSnap = await window.fb.getDoc(authDocRef);
@@ -5574,15 +5665,24 @@ async function onAuthReady(user) {
             const data = authSnap.data();
             USER_ID   = data.username;
             USER_NAME = data.name || user.displayName || user.email.split('@')[0];
-        } else {
-            // Fallback: first-time user or legacy — use short uid
-            USER_ID   = user.uid.substring(0, 12);
-            USER_NAME = user.displayName || user.email.split('@')[0];
+            resolved = true;
+            try {
+                const profSnap = await window.fb.getDoc(window.fb.doc(db, 'users', USER_ID, 'config', 'profile'));
+                USER_API_KEY = profSnap.exists() ? (profSnap.data().api_key || null) : null;
+            } catch (_) { USER_API_KEY = null; }
         }
     } catch (err) {
         console.error('Failed to resolve username:', err);
-        USER_ID   = user.uid.substring(0, 12);
-        USER_NAME = user.displayName || user.email.split('@')[0];
+        showAuthError('Couldn’t load your profile — check your connection and reopen the app.');
+        showScreen('auth');
+        return;
+    }
+    if (!resolved) {
+        // Authenticated but provisioning never finished (abandoned mid-signup).
+        // Don't enter the app with a junk id — send back to finish sign-up.
+        showAuthError('Your account setup didn’t finish — please sign up again to complete it.');
+        showScreen('auth');
+        return;
     }
 
     localStorage.setItem('pft_user_id', USER_ID);
@@ -5607,6 +5707,8 @@ async function onAuthReady(user) {
 }
 
 function enterApp() {
+    if (_appEntered) return;
+    _appEntered = true;
     sessionStorage.setItem('pft_unlocked', '1');
     showScreen('app');
     migrateLocalStorage();
@@ -5617,6 +5719,7 @@ function enterApp() {
     initFirebase();
     initChartSwipe();
     maybeSyncCompanion();
+    refreshCompanionCreds();
     // First-time onboarding wizard — runs only for users with no linked
     // accounts who haven't dismissed it. initFirebase loads LINKED_ACCOUNTS
     // async, so wait a beat before checking.
@@ -5659,10 +5762,11 @@ function maybeSyncCompanion() {
 
     // One-time auto-sync per session. User can re-sync via the resync button.
     if (sessionStorage.getItem('companion_synced') === '1') return;
-    if (!USER_ID) return;
-    const key = 'myfinance_' + USER_ID + '_2026';
-    fireCompanionDeepLink('financecompanion://save?user=' +
-        encodeURIComponent(USER_ID) + '&key=' + encodeURIComponent(key));
+    if (!USER_ID || !USER_API_KEY) return;
+    let link = 'financecompanion://save?user=' + encodeURIComponent(USER_ID) +
+        '&key=' + encodeURIComponent(USER_API_KEY);
+    if (COMPANION_FN_URL) link += '&url=' + encodeURIComponent(COMPANION_FN_URL);
+    fireCompanionDeepLink(link);
     sessionStorage.setItem('companion_synced', '1');
 }
 
@@ -5683,6 +5787,79 @@ function resyncCompanion() {
     sessionStorage.removeItem('companion_synced');
     localStorage.removeItem(lsKey('companion_listener_done'));
     maybeSyncCompanion();
+}
+
+// Populate the Settings → Companion credentials card. API key is masked on
+// screen but copied in full. Values are session globals so this only needs
+// to run once after login (called from enterApp).
+function refreshCompanionCreds() {
+    const u = document.getElementById('cc-user');
+    const k = document.getElementById('cc-key');
+    if (u) u.textContent = USER_ID || '—';
+    if (k) k.textContent = USER_API_KEY
+        ? (USER_API_KEY.slice(0, 6) + '••••••' + USER_API_KEY.slice(-4))
+        : '—';
+    const ar = document.getElementById('admin-usage-row');
+    if (ar) ar.style.display = isOwner() ? '' : 'none';
+}
+
+function copyCompanionField(which, btn) {
+    const val = which === 'user' ? (USER_ID || '') : (USER_API_KEY || '');
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(() => {
+        const old = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = old; }, 1400);
+    }).catch(() => {});
+}
+
+// Owner = the logged-in Firebase uid matches OWNER_UID. This is identity-based
+// (not a username string), so it can't be spoofed by editing localStorage.
+function isOwner() {
+    try {
+        return !!OWNER_UID && firebaseAuth && firebaseAuth.currentUser &&
+               firebaseAuth.currentUser.uid === OWNER_UID;
+    } catch (_) { return false; }
+}
+
+async function openAdminUsage() {
+    if (!isOwner() || !ADMIN_FN_URL) return;
+    const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    let ov = document.getElementById('admin-usage-ov');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'admin-usage-ov';
+        ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:600;overflow-y:auto;padding:24px;';
+        document.body.appendChild(ov);
+    }
+    ov.innerHTML = '<div style="max-width:480px;margin:0 auto;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+        '<div style="font-size:20px;font-weight:700;">Usage</div>' +
+        '<button type="button" onclick="document.getElementById(\'admin-usage-ov\').remove()" ' +
+        'style="font-size:13px;color:var(--blue);background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;">Close</button>' +
+        '</div><div id="admin-usage-body" style="font-size:13px;color:var(--text-2);">Loading…</div></div>';
+    try {
+        const token = await firebaseAuth.currentUser.getIdToken();
+        const resp = await fetch(ADMIN_FN_URL, { headers: { Authorization: 'Bearer ' + token } });
+        const data = await resp.json();
+        const body = document.getElementById('admin-usage-body');
+        if (!body) return;
+        if (!resp.ok) { body.textContent = 'Error ' + resp.status + ': ' + (data.error || ''); return; }
+        let html = '<div style="margin-bottom:12px;font-family:\'Space Mono\',monospace;">users ' +
+            data.usernames + ' · active ' + data.activeUsers + ' · txns ' + data.totalTxns + '</div>' +
+            '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+            '<tr style="text-align:left;color:var(--text-3);"><th style="padding:6px 4px;">user</th>' +
+            '<th>txns</th><th>banks</th><th>last</th></tr>';
+        (data.users || []).forEach(r => {
+            html += '<tr style="border-top:1px solid var(--border-light);">' +
+                '<td style="padding:6px 4px;">' + esc(r.username) + '</td><td>' + (r.txns | 0) +
+                '</td><td>' + (r.banks | 0) + '</td><td>' + esc(r.lastTxn || '-') + '</td></tr>';
+        });
+        body.innerHTML = html + '</table>';
+    } catch (e) {
+        const body = document.getElementById('admin-usage-body');
+        if (body) body.textContent = 'Failed: ' + (e.message || e);
+    }
 }
 
 /* ─── ONBOARDING WIZARD ─── */

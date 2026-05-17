@@ -41,12 +41,24 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="API key"
-            android:paddingBottom="16dp">
+            android:paddingBottom="8dp">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/edit_apikey"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textPassword" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Cloud function URL (optional — auto-set at sign-in)"
+            android:paddingBottom="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_endpoint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton

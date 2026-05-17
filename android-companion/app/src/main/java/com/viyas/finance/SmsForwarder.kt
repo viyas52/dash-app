@@ -7,7 +7,9 @@ import java.net.URL
 
 object SmsForwarder {
 
-    private const val ENDPOINT = "https://parsesms-2esp6326ba-el.a.run.app"
+    // Fallback only. The live endpoint is read from Prefs (set via the
+    // credential deep link at sign-in). Update this default at each cutover.
+    private const val DEFAULT_ENDPOINT = "https://asia-south1-my-finance-e7937.cloudfunctions.net/parseSms"
 
     data class Result(
         /** Short status string for the log/UI (e.g. "200: {...}", "error: timeout"). */
@@ -21,6 +23,7 @@ object SmsForwarder {
         val prefs = Prefs(ctx)
         val user = prefs.user
         val apiKey = prefs.apiKey
+        val endpoint = prefs.endpoint.ifBlank { DEFAULT_ENDPOINT }
         if (user.isBlank() || apiKey.isBlank()) return Result("skipped: missing creds", null)
 
         val body = JSONObject().apply {
@@ -29,7 +32,7 @@ object SmsForwarder {
         }.toString()
 
         return try {
-            val conn = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
+            val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 8000
                 readTimeout = 12000

@@ -1,13 +1,12 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
 const crypto = require("crypto");
 
 initializeApp();
 const db = getFirestore();
-
-// ── Fallback API key for backward compat (used if no per-user key configured) ──
-const DEFAULT_API_KEY = "myfinance_viyas_2026";
+const adminAuth = getAuth();
 
 // ── Date helpers ──
 const MONTHS = {
@@ -334,22 +333,49 @@ async function loadUserConfig(userId) {
   const linkedAccounts = acctData.linked_accounts || [];
   const selfNamesRx = selfData.names_regex ? new RegExp(selfData.names_regex, "i") : null;
   const selfAccounts = selfData.accounts || [];
-  const apiKey = profileData.api_key || DEFAULT_API_KEY;
+  const apiKey = profileData.api_key || null;
 
   return { acctBankMap, linkedAccounts, selfNamesRx, selfAccounts, apiKey };
 }
 
+// ── Coarse per-user rate limit (best-effort abuse cap). ──
+// Stopgap until Firebase App Check + Play Integrity is wired up. Trailing
+// 60s window, max 60 ingest calls/min per user. Fails open if the limiter
+// itself errors, so a limiter glitch never blocks legitimate ingestion.
+async function checkRateLimit(userId) {
+  const rlRef = db.doc(`users/${userId}/config/_rl`);
+  const now = Date.now();
+  const WINDOW_MS = 60000;
+  const MAX = 60;
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(rlRef);
+      const data = snap.exists ? snap.data() : {};
+      let windowStart = data.windowStart || 0;
+      let count = data.count || 0;
+      if (now - windowStart >= WINDOW_MS) {
+        windowStart = now;
+        count = 0;
+      }
+      count += 1;
+      tx.set(rlRef, { windowStart, count }, { merge: true });
+      return count <= MAX;
+    });
+  } catch (_) {
+    return true;
+  }
+}
+
 // ── HTTPS Cloud Function ──
-exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, res) => {
+exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asia-south1" }, async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   // ── User ID (required for multi-user routing) ──
   const userId = req.body.user || req.body.userId || req.query.user;
-  if (!userId) {
-    // Backward compat: if no user param, default to "viyas" (original single-user)
-    // Remove this fallback once all MacroDroid setups are updated
+  if (!userId || typeof userId !== "string") {
+    return res.status(400).json({ error: "Missing user" });
   }
-  const effectiveUser = userId || "viyas";
+  const effectiveUser = userId;
 
   // ── Load per-user config ──
   let userConfig;
@@ -360,12 +386,19 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
     return res.status(500).json({ error: "Failed to load user config" });
   }
 
-  // ── API key validation ──
-  const key = req.headers["x-api-key"] || req.query.key;
+  // ── API key validation (header only — never via query string) ──
+  if (!userConfig.apiKey) return res.status(401).json({ error: "User not provisioned" });
+  const key = req.headers["x-api-key"];
   if (key !== userConfig.apiKey) return res.status(401).json({ error: "Invalid API key" });
 
+  // ── Coarse per-user rate limit ──
+  if (!(await checkRateLimit(effectiveUser))) {
+    return res.status(429).json({ error: "Rate limit exceeded" });
+  }
+
   const sms = req.body.sms || req.body.message || "";
-  if (!sms) return res.status(400).json({ error: "No SMS text provided" });
+  if (!sms || typeof sms !== "string") return res.status(400).json({ error: "No SMS text provided" });
+  if (sms.length > 2048) return res.status(413).json({ error: "SMS too large" });
 
   // ── Parse SMS with per-user account mapping ──
   const acctToBank = (acct) => acctToBankDynamic(acct, userConfig.acctBankMap);
@@ -554,5 +587,65 @@ exports.parseSms = onRequest({ cors: true, region: "asia-south1" }, async (req, 
     }
     console.error("Firestore write failed:", err);
     return res.status(500).json({ error: "Firestore write failed" });
+  }
+});
+
+// ── Admin usage stats (owner-only). ──
+// Auth: Firebase ID token in `Authorization: Bearer <token>`; the token's uid
+// must equal OWNER_UID (set in functions/.env — gitignored — at cutover).
+// No query-string secrets; CORS limited to the PWA origin.
+exports.adminStats = onRequest({ cors: ["https://viyas52.github.io"], region: "asia-south1" }, async (req, res) => {
+  const OWNER_UID = process.env.OWNER_UID || "";
+  if (!OWNER_UID) return res.status(503).json({ error: "Not configured" });
+
+  const authz = req.headers.authorization || "";
+  const m = authz.match(/^Bearer (.+)$/i);
+  if (!m) return res.status(401).json({ error: "Missing token" });
+  let decoded;
+  try {
+    decoded = await adminAuth.verifyIdToken(m[1]);
+  } catch (_) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+  if (decoded.uid !== OWNER_UID) return res.status(403).json({ error: "Forbidden" });
+
+  try {
+    const unameSnap = await db.collection("usernames").get();
+    const authSnap = await db.collection("auth_users").get();
+    const usernames = unameSnap.docs.map(d => d.id);
+    const rows = [];
+    for (const u of usernames) {
+      const [txnAgg, ruleAgg, prof, acct] = await Promise.all([
+        db.collection(`users/${u}/transactions`).count().get().catch(() => null),
+        db.collection(`users/${u}/rules`).count().get().catch(() => null),
+        db.doc(`users/${u}/config/profile`).get().catch(() => null),
+        db.doc(`users/${u}/config/accounts`).get().catch(() => null),
+      ]);
+      const txns = txnAgg ? txnAgg.data().count : 0;
+      const rules = ruleAgg ? ruleAgg.data().count : 0;
+      const pf = prof && prof.exists ? prof.data() : {};
+      const linked = acct && acct.exists ? (acct.data().linked_accounts || []) : [];
+      let lastTxn = "-";
+      if (txns > 0) {
+        const recent = await db.collection(`users/${u}/transactions`).orderBy("created_at", "desc").limit(1).get().catch(() => null);
+        if (recent && !recent.empty) lastTxn = String(recent.docs[0].data().created_at || "").substring(0, 10);
+      }
+      rows.push({
+        username: u, name: pf.name || "-", email: pf.email || "-",
+        txns, rules, banks: linked.length,
+        created: String(pf.created_at || "").substring(0, 10) || "-",
+        lastTxn,
+      });
+    }
+    rows.sort((a, b) => b.txns - a.txns);
+    res.json({
+      usernames: usernames.length,
+      authUsers: authSnap.size,
+      activeUsers: rows.filter(r => r.txns > 0).length,
+      totalTxns: rows.reduce((s, r) => s + r.txns, 0),
+      users: rows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });

@@ -28,10 +28,12 @@ class MainActivity : AppCompatActivity() {
         val prefs = Prefs(this)
         b.editUser.setText(prefs.user)
         b.editApikey.setText(prefs.apiKey)
+        b.editEndpoint.setText(prefs.endpoint)
 
         b.btnSave.setOnClickListener {
             prefs.user = b.editUser.text.toString().trim()
             prefs.apiKey = b.editApikey.text.toString().trim()
+            prefs.endpoint = b.editEndpoint.text.toString().trim()
             toast("Saved")
         }
 
