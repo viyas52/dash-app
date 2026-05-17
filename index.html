@@ -4350,6 +4350,7 @@ function renderUncatCards() {
     const container = document.getElementById('uncat-cards');
     const pill = document.getElementById('uncat-pill');
     const done = document.getElementById('done-state');
+    const prevState = uncatState || {};
     uncatState = {};
 
     if (uncatEntries.length === 0) {
@@ -4363,8 +4364,11 @@ function renderUncatCards() {
     pill.textContent = uncatEntries.length;
 
     container.innerHTML = uncatEntries.map((e, i) => {
-        // Preserve existing state across re-renders (e.g. after picking a reimbursement)
-        const prev = uncatState[i];
+        // Preserve per-entry state across re-renders — match by entry id so
+        // reimbursement / category selections survive snapshot-driven
+        // re-renders and any list reordering.
+        let prev = prevState[i];
+        if (!prev || prev.id !== e.id) prev = Object.values(prevState).find(s => s && s.id === e.id);
         uncatState[i] = prev || { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null, selParent: null, reimburses_id: null, reimburses_summary: '' };
         const isCredit = e.type === 'credit';
         const isReimb = !!uncatState[i].reimburses_id;
