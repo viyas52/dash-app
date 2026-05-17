@@ -1617,6 +1617,13 @@
         <div class="notif-count" id="companion-banner-count" style="background:#22C55E;">→</div>
     </div>
 
+    <!-- Companion credential connect (auto-shown only while native lacks creds) -->
+    <div id="companion-connect" style="display:none;" class="notif-strip" onclick="connectCompanionNow()">
+        <div class="notif-dot" style="background:#007AFF;"></div>
+        <div class="notif-txt">🔗 Tap to connect SMS forwarding</div>
+        <div class="notif-count" style="background:#007AFF;">→</div>
+    </div>
+
     <!-- Suggested Account Banner (from cloud-function detected unlinked accounts) -->
     <div id="suggested-banner" style="display:none;" class="notif-strip" onclick="acceptTopSuggestedAccount()">
         <div class="notif-dot" style="background:var(--blue);"></div>
@@ -2067,6 +2074,10 @@
                 </div>
                 <div class="label setting-group-label">Companion credentials</div>
                 <div class="card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="cursor:pointer;" onclick="connectCompanionNow()">
+                        <div><div class="setting-label" style="color:var(--blue);">Connect to companion app</div><div class="setting-desc">One tap — sends these to the SMS forwarder</div></div>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--blue)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </div>
                     <div class="setting-row">
                         <div><div class="setting-label">Username</div><div class="setting-desc" id="cc-user">—</div></div>
                         <button type="button" onclick="copyCompanionField('user', this)" style="font-size:11px;font-weight:600;color:var(--blue);background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;">Copy</button>
@@ -5744,6 +5755,9 @@ function enterApp() {
 // When running inside the Finance Companion Android app, the URL has ?companion=1.
 // We auto-sync credentials to the native side via a custom URL scheme.
 window.isCompanion = new URLSearchParams(location.search).get('companion') === '1';
+// CompanionLauncherActivity appends &hasCreds=1 once the native app already
+// has user+key saved — our cross-launch "already synced" acknowledgement.
+window.companionHasCreds = new URLSearchParams(location.search).get('hasCreds') === '1';
 
 function fireCompanionDeepLink(url) {
     // Hidden iframe is the reliable way to trigger custom URL schemes without
@@ -5755,22 +5769,50 @@ function fireCompanionDeepLink(url) {
     setTimeout(() => { try { document.body.removeChild(f); } catch(e){} }, 1500);
 }
 
-function maybeSyncCompanion() {
-    if (!window.isCompanion) return;
-    const banner = document.getElementById('companion-banner');
-    // Only show the "enable forwarding" banner if user hasn't dismissed it
-    if (banner && lsGet('companion_listener_done') !== '1') {
-        banner.style.display = 'flex';
-    }
-
-    // One-time auto-sync per session. User can re-sync via the resync button.
-    if (sessionStorage.getItem('companion_synced') === '1') return;
-    if (!USER_ID || !USER_API_KEY) return;
+function companionCredLink() {
     let link = 'financecompanion://save?user=' + encodeURIComponent(USER_ID) +
         '&key=' + encodeURIComponent(USER_API_KEY);
     if (COMPANION_FN_URL) link += '&url=' + encodeURIComponent(COMPANION_FN_URL);
-    fireCompanionDeepLink(link);
-    sessionStorage.setItem('companion_synced', '1');
+    return link;
+}
+function hideCompanionConnect() {
+    const el = document.getElementById('companion-connect');
+    if (el) el.style.display = 'none';
+}
+// Reliable, gesture-driven credential handoff. A top-level scheme navigation
+// triggered by a real tap works inside the TWA where the silent iframe gets
+// blocked; the receiver activity is translucent + finishes instantly so the
+// PWA stays put. Optimistically hide the prompt (next launch re-shows it if
+// it truly didn't take, via ?hasCreds).
+function connectCompanionNow() {
+    if (!USER_ID || !USER_API_KEY) return;
+    const link = companionCredLink();
+    hideCompanionConnect();
+    window.location.href = link;
+}
+
+// Gets this user's credentials into the native companion with zero copy-paste.
+// Best-effort silent push + an unmissable one-tap connect strip shown only
+// while native still lacks creds (launcher reports ?hasCreds=1 once it has
+// them). Self-heals across app opens; re-runs after login / on refocus.
+function maybeSyncCompanion() {
+    if (!window.isCompanion) return;
+
+    // Notification-access banner — a separate concern from credential sync.
+    const lb = document.getElementById('companion-banner');
+    if (lb && lsGet('companion_listener_done') !== '1') lb.style.display = 'flex';
+
+    if (window.companionHasCreds) { hideCompanionConnect(); return; }
+    if (!USER_ID || !USER_API_KEY) return; // retried after login / on refocus
+
+    // Silent attempt once per session (helps where it works) — but only
+    // ?hasCreds=1 counts as actually done, so we keep the prompt up.
+    if (sessionStorage.getItem('companion_synced') !== '1') {
+        fireCompanionDeepLink(companionCredLink());
+        sessionStorage.setItem('companion_synced', '1');
+    }
+    const el = document.getElementById('companion-connect');
+    if (el) el.style.display = 'flex';
 }
 
 function enableCompanionListener() {
@@ -5789,8 +5831,14 @@ function openCompanionDiag() {
 function resyncCompanion() {
     sessionStorage.removeItem('companion_synced');
     localStorage.removeItem(lsKey('companion_listener_done'));
-    maybeSyncCompanion();
+    connectCompanionNow();
 }
+
+// Re-attempt the sync when the app regains focus — covers the user logging in
+// after opening the companion, or returning from the connect handoff.
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && window.isCompanion) maybeSyncCompanion();
+});
 
 // Populate the Settings → Companion credentials card. API key is masked on
 // screen but copied in full. Values are session globals so this only needs
