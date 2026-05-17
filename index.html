@@ -4660,20 +4660,22 @@ async function confirmUncat(i) {
         }
 
         const card = document.getElementById('ucard-' + i);
-        card.style.opacity = '0';
-        card.style.transform = 'translateX(-30px)';
-        card.style.maxHeight = card.offsetHeight + 'px';
-        card.style.overflow = 'hidden';
-        setTimeout(() => {
-            card.style.maxHeight = '0';
-            card.style.padding = '0';
-            card.style.marginBottom = '0';
-            card.style.borderWidth = '0';
-        }, 200);
+        if (card) {
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(-30px)';
+            card.style.maxHeight = card.offsetHeight + 'px';
+            card.style.overflow = 'hidden';
+            setTimeout(() => {
+                card.style.maxHeight = '0';
+                card.style.padding = '0';
+                card.style.marginBottom = '0';
+                card.style.borderWidth = '0';
+            }, 200);
+        }
 
         uncatEntries = uncatEntries.filter((_, idx) => idx !== i);
         const pill = document.getElementById('uncat-pill');
-        pill.textContent = uncatEntries.length;
+        if (pill) pill.textContent = uncatEntries.length;
         sndCoin(); hapCoin(); showToast('Saved as ' + s.sel);
 
         // Optimistically update the home-screen banner so it doesn't lag
@@ -4690,8 +4692,9 @@ async function confirmUncat(i) {
 
         if (uncatEntries.length === 0) {
             setTimeout(() => {
-                document.getElementById('done-state').style.display = 'block';
-                pill.style.display = 'none';
+                const ds = document.getElementById('done-state');
+                if (ds) ds.style.display = 'block';
+                if (pill) pill.style.display = 'none';
             }, 500);
         }
         loadMonth();
