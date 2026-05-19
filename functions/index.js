@@ -62,6 +62,49 @@ function cleanUpiId(raw) {
   return raw.trim();
 }
 
+// ── Counterparty → clean human name ──
+// "SRIVATHSAN KUMA. UPI:613898815848-ICICI Bank" → "SRIVATHSAN KUMA"
+// "Ms M Priyanka" → "M Priyanka"; "swiggy@okhdfcbank" → "swiggy"
+// So the same person reads the same in the note regardless of which
+// bank / UPI handle they used. Conservative: only cuts at clear ref tails.
+function cleanCounterparty(raw) {
+  if (!raw) return raw;
+  const orig = String(raw).trim();
+  let s = orig;
+  s = s.split(/\s+UPI[:\s]/i)[0];                 // " UPI:123" / " UPI 123" tail
+  s = s.split(/\s+(?:Ref|RRN|Txn)\b[:.\s-]/i)[0]; // " Ref ..." / " RRN ..." tail
+  s = s.split(/\s+A\/?c\b/i)[0];                   // " A/c ..." tail
+  s = s.replace(/@\S+/g, "");                      // upi handle domain
+  s = s.replace(/\s*-\s*[A-Za-z][\w .]*?\bBank\b.*$/i, ""); // "- ICICI Bank ..."
+  s = s.replace(/^(?:M\/s|Ms|Mr|Mrs|Dr)\.?\s+/i, "");       // leading honorific
+  s = s.replace(/[.,;:\s-]+$/g, "").replace(/\s{2,}/g, " ").trim();
+  return s || orig;
+}
+
+// Significant name tokens (drop honorifics, initials, punctuation).
+function nameTokens(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/\b(?:m\/s|ms|mr|mrs|dr)\b/g, " ")
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length >= 2); // single-letter initials carry no signal
+}
+
+// Strict self-name match: every significant token of the user's profile
+// name appears in the SMS counterparty, and BOTH sides have ≥2 significant
+// tokens. Matches "Ms M Priyanka" ↔ a 2-token registered name, but a
+// first-name-only collision (one shared token) never auto-classifies.
+function nameMatchesSelf(counterparty, profileName) {
+  const cp = nameTokens(cleanCounterparty(counterparty));
+  const pn = nameTokens(profileName);
+  if (pn.length < 2 || cp.length < 2) return false;
+  const cpSet = new Set(cp);
+  let hit = 0;
+  for (const t of pn) if (cpSet.has(t)) hit++;
+  return hit === pn.length && hit >= 2;
+}
+
 // ── Account number → bank id (dynamic, per-user) ──
 function acctToBankDynamic(acct, acctBankMap) {
   if (!acct || !acctBankMap) return null;
@@ -374,8 +417,11 @@ async function loadUserConfig(userId) {
   const apiKey = profileData.api_key || null;
   // LLM parser learning is on unless the user explicitly turned it off.
   const llmEnabled = profileData.llm_parser_enabled !== false;
+  // The user's own registered name — a self-transfer between their own
+  // accounts shows their own name as the SMS counterparty.
+  const profileName = (profileData.name || "").toString();
 
-  return { acctBankMap, linkedAccounts, selfNamesRx, selfAccounts, apiKey, llmEnabled };
+  return { acctBankMap, linkedAccounts, selfNamesRx, selfAccounts, apiKey, llmEnabled, profileName };
 }
 
 // ── Coarse per-user rate limit (best-effort abuse cap). ──
@@ -823,18 +869,60 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
     }
   }
 
+  // ── Clean the counterparty so the same person reads the same in the
+  //    note regardless of which bank / UPI handle they used ──
+  {
+    const r0 = parsed.recipient, s0 = parsed.source;
+    if (parsed.recipient) parsed.recipient = cleanCounterparty(parsed.recipient);
+    if (parsed.source)    parsed.source    = cleanCounterparty(parsed.source);
+    if (parsed.note && parsed.note === r0)      parsed.note = parsed.recipient;
+    else if (parsed.note && parsed.note === s0) parsed.note = parsed.source;
+    else if (parsed.note)                       parsed.note = cleanCounterparty(parsed.note);
+  }
+
+  // ── Self-transfer detection ──
+  //  (a) the SMS counterparty is the user's own registered name (strict), OR
+  //  (b) the same UPI ref already exists as the opposite-direction leg on
+  //      another of the user's own accounts — definitive, and tolerant of
+  //      the inter-bank SMS delay: whichever leg lands second links the
+  //      first and reclassifies it too, OR
+  //  (c) the legacy manual self_transfer config matches.
+  const _cp = parsed.type === "credit" ? parsed.source : parsed.recipient;
+  const _selfByName = nameMatchesSelf(_cp, userConfig.profileName);
+  let _refLeg = null;
+  if (parsed.upi_ref) {
+    try {
+      const opp = parsed.type === "debit" ? "credit" : "debit";
+      const snap = await db.collection(`users/${effectiveUser}/transactions`)
+        .where("upi_ref", "==", parsed.upi_ref)
+        .where("type", "==", opp)
+        .limit(1).get();
+      if (!snap.empty) _refLeg = snap.docs[0];
+    } catch (_) { /* composite index missing — name/manual signals still apply */ }
+  }
+
   // ── Auto-categorize pipeline ──
   // 1. Self-transfer (highest priority — structural)
-  if (isSelfTransfer(parsed, userConfig.selfNamesRx, userConfig.selfAccounts)) {
+  if (_selfByName || _refLeg ||
+      isSelfTransfer(parsed, userConfig.selfNamesRx, userConfig.selfAccounts)) {
     parsed.category = "Self Transfer";
     parsed.category_type = "transfer";
     {
-      const from = parsed.type === "debit" ? (parsed.bank || "").toUpperCase() : (parsed.bank_from || "").toUpperCase();
-      const to   = parsed.type === "debit" ? (parsed.bank_to || "").toUpperCase() : (parsed.bank || "").toUpperCase();
+      const otherBank = (_refLeg && (_refLeg.data().bank || "")) || "";
+      const from = parsed.type === "debit" ? (parsed.bank || "").toUpperCase() : (otherBank || parsed.bank_from || "").toUpperCase();
+      const to   = parsed.type === "debit" ? (otherBank || parsed.bank_to || "").toUpperCase() : (parsed.bank || "").toUpperCase();
       parsed.note = (from || "?") + " → " + (to || "?");
     }
     parsed.recipient = "";
     parsed.source    = "";
+    // Reclassify the earlier leg too so BOTH net out of spend/income.
+    if (_refLeg && _refLeg.data().category_type !== "transfer") {
+      try {
+        await _refLeg.ref.set(
+          { category: "Self Transfer", category_type: "transfer" },
+          { merge: true });
+      } catch (_) { /* best-effort; the visible leg is already correct */ }
+    }
   } else {
     // 2. User-defined rules (per-user subcollection)
     let autoTagged = false;
