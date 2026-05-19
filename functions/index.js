@@ -81,6 +81,21 @@ function cleanCounterparty(raw) {
   return s || orig;
 }
 
+// Short, stable display name for the note. Indian bank SMS truncate the
+// surname unpredictably ("SRIVATHSAN KUMAR" → "SRIVATHSAN KUMA"), so the
+// note shows the first real name word (skipping leading initials like the
+// "M" in "M Priyanka"), Title-cased. The full name is kept on
+// recipient/source for matching — only the note is shortened.
+function displayName(cleanName) {
+  if (!cleanName) return cleanName;
+  const toks = String(cleanName).trim().split(/\s+/);
+  let pick = toks.find((t) => t.replace(/[^A-Za-z]/g, "").length >= 3)
+          || toks[0] || String(cleanName);
+  pick = pick.replace(/[^A-Za-z]/g, "");
+  if (!pick) return String(cleanName).trim();
+  return pick.charAt(0).toUpperCase() + pick.slice(1).toLowerCase();
+}
+
 // Significant name tokens (drop honorifics, initials, punctuation).
 function nameTokens(s) {
   return String(s || "")
@@ -875,9 +890,15 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
     const r0 = parsed.recipient, s0 = parsed.source;
     if (parsed.recipient) parsed.recipient = cleanCounterparty(parsed.recipient);
     if (parsed.source)    parsed.source    = cleanCounterparty(parsed.source);
-    if (parsed.note && parsed.note === r0)      parsed.note = parsed.recipient;
-    else if (parsed.note && parsed.note === s0) parsed.note = parsed.source;
-    else if (parsed.note)                       parsed.note = cleanCounterparty(parsed.note);
+    // recipient/source keep the FULL clean name (matching/rules). The note —
+    // what the user reads — becomes the stable first name so the same person
+    // looks identical even when the bank truncates their surname.
+    const cpFull = parsed.type === "credit" ? parsed.source : parsed.recipient;
+    if (parsed.note && (parsed.note === r0 || parsed.note === s0)) {
+      parsed.note = displayName(cpFull) || parsed.note;
+    } else if (parsed.note) {
+      parsed.note = cleanCounterparty(parsed.note);
+    }
   }
 
   // ── Self-transfer detection ──
