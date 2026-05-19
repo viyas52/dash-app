@@ -710,6 +710,8 @@
         .fab:hover { transform: scale(1.06); }
         .fab:active { transform: scale(0.95); }
         .fab svg { width: 22px; height: 22px; }
+        /* While the add-modal is morphing open, the FAB visually "becomes" it */
+        .fab.modal-open { transform: scale(0.25); opacity: 0; pointer-events: none; }
 
         /* ─── GEAR BUTTON ─── */
         .gear-btn {
@@ -850,21 +852,29 @@
         /* ─── MODAL ─── */
         .modal-overlay {
             position: fixed; inset: 0;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
             z-index: 150; display: none;
-            align-items: flex-end; justify-content: center;
+            align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; transition: opacity 0.22s ease;
         }
         .modal-overlay.active { display: flex; }
+        .modal-overlay.shown { opacity: 1; }
         .modal {
             background: var(--bg-card);
-            border-radius: 20px 20px 0 0;
-            width: 100%; max-width: 480px;
-            max-height: 85vh; overflow-y: auto;
-            padding: 24px 20px 40px;
-            animation: slideUp 0.3s ease;
+            border-radius: 22px;
+            width: 100%; max-width: 420px;
+            max-height: min(86vh, 760px); overflow-y: auto;
+            padding: 22px 20px 24px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.28), 0 2px 10px rgba(0,0,0,0.12);
+            transform-origin: center center;
+            transition: transform 0.36s cubic-bezier(0.22,0.7,0.3,1), opacity 0.26s ease;
+            will-change: transform, opacity;
         }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        /* Morph start state — JS sets the exact translate/scale from the FAB rect */
+        .modal-overlay:not(.shown) .modal { opacity: 0; }
         .modal-head {
             display: flex; justify-content: space-between;
             align-items: center; margin-bottom: 20px;
@@ -978,10 +988,10 @@
         .bank-chip.active { border-width: 2px; }
         /* colour set inline when active */
 
-        /* Modal type row */
-        .type-row { display: flex; gap: 6px; }
+        /* Modal type row — wraps to 3+2 so all five fit on narrow screens */
+        .type-row { display: flex; flex-wrap: wrap; gap: 6px; }
         .type-box {
-            flex: 1; padding: 9px 4px; border-radius: 10px;
+            flex: 1 1 28%; padding: 9px 4px; border-radius: 10px;
             border: 1px solid var(--border); background: transparent;
             font-size: 11px; font-weight: 600; color: var(--text-3);
             font-family: 'DM Sans', sans-serif; cursor: pointer;
@@ -1827,17 +1837,29 @@
             <label>Type</label>
             <input type="hidden" id="add-type" value="debit">
             <div class="type-row">
-                <button class="type-box active" data-val="debit"      onclick="setModalType('debit',this)">Expense</button>
-                <button class="type-box"         data-val="credit"    onclick="setModalType('credit',this)">Income</button>
-                <button class="type-box"         data-val="investment" onclick="setModalType('investment',this)">Invest</button>
-                <button class="type-box"         data-val="transfer"  onclick="setModalType('transfer',this)">Transfer</button>
+                <button class="type-box active" data-val="debit"        onclick="setModalType('debit',this)">Expense</button>
+                <button class="type-box"         data-val="credit"       onclick="setModalType('credit',this)">Income</button>
+                <button class="type-box"         data-val="investment"   onclick="setModalType('investment',this)">Invest</button>
+                <button class="type-box"         data-val="transfer"     onclick="setModalType('transfer',this)">Self Transfer</button>
+                <button class="type-box"         data-val="reimbursement" onclick="setModalType('reimbursement',this)">Reimburse</button>
             </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="cat-field-wrap">
             <label>Category <span id="modal-cat-selected" style="color:var(--text-1);text-transform:none;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;"></span></label>
             <input type="hidden" id="add-category">
             <input type="hidden" id="add-sub-category">
             <div id="modal-cat-grid" class="cat-grid" style="padding:0;"></div>
+        </div>
+        <!-- Reimbursement: link to the original expense (shown only for Reimburse type) -->
+        <div class="form-group" id="reimb-link-wrap" style="display:none;">
+            <label>Original expense</label>
+            <input type="hidden" id="add-reimburses-id" value="">
+            <button type="button" id="reimb-link-btn" onclick="pickReimbExpense()"
+                style="width:100%;display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px dashed var(--border);background:transparent;border-radius:10px;cursor:pointer;color:var(--text-2);font-family:'DM Sans',sans-serif;font-size:13px;text-align:left;">
+                <span style="font-size:15px;">🔄</span>
+                <span id="reimb-link-label" style="flex:1;">Link the expense this refunds</span>
+                <span style="color:var(--text-3);font-size:12px;">Choose ›</span>
+            </button>
         </div>
         <div class="form-group">
             <label>Note</label>
@@ -2887,8 +2909,7 @@ window.addEventListener('popstate', () => {
         const addModalOpen = document.getElementById('add-modal')?.classList.contains('active');
 
         if (addModalOpen) {
-            document.getElementById('add-modal').classList.remove('active');
-            document.body.style.overflow = '';
+            _closeAddModalFx();
         } else if (obOpen) {
             obSkip();
         } else if (catEditorOpen) {
@@ -3925,6 +3946,12 @@ function updateFormCats(preserveSel) {
         document.getElementById('add-sub-category').value = '';
         document.getElementById('modal-cat-selected').textContent = '';
     }
+    // Self Transfer has exactly one category — auto-pick it so the user
+    // never has to tap a one-item grid.
+    if (type === 'transfer' && !preserveSel) {
+        _modalCatState = { expanded: null, cat: 'Self Transfer', sub: null };
+        document.getElementById('add-category').value = 'Self Transfer';
+    }
     renderModalCatGrid(cats);
 }
 
@@ -4015,6 +4042,108 @@ function setModalType(val, btn) {
     document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b === btn));
     updateFormCats();
     updateBankFieldsForType();
+    applyTypeUI();
+}
+
+// Module state for the manual "Reimbursement" type (the linked expense).
+let _manualReimb = { id: '', summary: '' };
+let _addFabRect = null;
+
+// Show/hide modal sections based on the selected type:
+//  - reimbursement → hide category grid, show "link original expense"
+//  - everything else → show category grid, hide the reimb linker
+function applyTypeUI() {
+    const t = document.getElementById('add-type').value;
+    const isReimb = t === 'reimbursement';
+    const catWrap = document.getElementById('cat-field-wrap');
+    const reWrap  = document.getElementById('reimb-link-wrap');
+    const bankLbl = document.getElementById('bank-field-label');
+    if (catWrap) catWrap.style.display = isReimb ? 'none' : '';
+    if (reWrap)  reWrap.style.display  = isReimb ? '' : 'none';
+    if (isReimb && bankLbl) bankLbl.textContent = 'Refunded to account';
+    if (!isReimb) {
+        // leaving reimbursement → drop any linked expense so it can't leak
+        _manualReimb = { id: '', summary: '' };
+        const idEl = document.getElementById('add-reimburses-id');
+        if (idEl) idEl.value = '';
+        const lbl = document.getElementById('reimb-link-label');
+        const btn = document.getElementById('reimb-link-btn');
+        if (lbl) lbl.textContent = 'Link the expense this refunds';
+        if (btn) btn.style.borderStyle = 'dashed';
+    }
+}
+
+function pickReimbExpense() {
+    sndTap(); hapTap();
+    _openExpensePicker((id, summary) => {
+        _manualReimb = { id, summary };
+        const idEl = document.getElementById('add-reimburses-id');
+        if (idEl) idEl.value = id;
+        const lbl = document.getElementById('reimb-link-label');
+        const btn = document.getElementById('reimb-link-btn');
+        if (lbl) lbl.textContent = summary;
+        if (btn) btn.style.borderStyle = 'solid';
+    });
+}
+
+// ── Add-modal morph: the FAB visually grows into the centered card ──
+function _openAddModalFx() {
+    const ov = document.getElementById('add-modal');
+    const modal = ov.querySelector('.modal');
+    const fab = document.getElementById('fab-btn');
+    // Measure the FAB at full size — strip a stale modal-open from any
+    // interrupted prior cycle so the morph origin is never the scaled box.
+    if (fab) fab.classList.remove('modal-open');
+    _addFabRect = fab ? fab.getBoundingClientRect() : null;
+    ov.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    modal.scrollTop = 0;
+    const m = modal.getBoundingClientRect();
+    const f = _addFabRect || { left: m.left + m.width - 46, top: m.top + m.height - 46, width: 52, height: 52 };
+    // Guard: if the modal isn't laid out yet (width 0) skip the morph maths
+    // and just fade in — never emit an invalid transform.
+    if (m.width > 0 && f.width > 0) {
+        const scale = Math.max(0.06, f.width / m.width);
+        const dx = (f.left + f.width / 2) - (m.left + m.width / 2);
+        const dy = (f.top + f.height / 2) - (m.top + m.height / 2);
+        modal.style.transition = 'none';
+        modal.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    }
+    if (fab) fab.classList.add('modal-open');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        modal.style.transition = '';
+        modal.style.transform = '';
+        ov.classList.add('shown');
+    }));
+}
+
+function _closeAddModalFx(after) {
+    const ov = document.getElementById('add-modal');
+    if (!ov || !ov.classList.contains('active')) { if (after) after(); return; }
+    const modal = ov.querySelector('.modal');
+    const fab = document.getElementById('fab-btn');
+    const m = modal.getBoundingClientRect();
+    const f = _addFabRect || (fab ? fab.getBoundingClientRect() : null);
+    let done = false;
+    const finish = () => {
+        if (done) return; done = true;
+        ov.classList.remove('active', 'shown');
+        modal.style.transition = '';
+        modal.style.transform = '';
+        document.body.style.overflow = '';
+        if (fab) fab.classList.remove('modal-open');
+        if (after) after();
+    };
+    if (f && m.width > 0 && f.width > 0) {
+        const scale = Math.max(0.06, f.width / m.width);
+        const dx = (f.left + f.width / 2) - (m.left + m.width / 2);
+        const dy = (f.top + f.height / 2) - (m.top + m.height / 2);
+        modal.style.transition = '';
+        modal.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    }
+    ov.classList.remove('shown');
+    modal.addEventListener('transitionend', finish, { once: true });
+    setTimeout(finish, 420);
 }
 
 function openAddModal() {
@@ -4034,8 +4163,8 @@ function openAddModal() {
     document.querySelectorAll('.type-box').forEach(b => b.classList.toggle('active', b.dataset.val === 'debit'));
     updateFormCats();
     updateBankFieldsForType();
-    document.getElementById('add-modal').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    applyTypeUI();
+    _openAddModalFx();
     _pushBackTrap('add-modal');
 }
 
@@ -4056,6 +4185,7 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
     document.getElementById('add-amount').value = amount;
     let typeOpt;
     if (catType === 'transfer') typeOpt = 'transfer';
+    else if (catType === 'reimbursement') typeOpt = 'reimbursement';
     else if (catType === 'investment') typeOpt = 'investment';
     else if (type === 'credit') typeOpt = 'credit';
     else typeOpt = 'debit';
@@ -4076,8 +4206,20 @@ function editEntry(id, date, category, note, amount, type, catType, sub_category
     document.getElementById('add-bank').value = bank || 'icici';
     document.getElementById('add-bank-to').value = '';
     updateBankFieldsForType();
-    document.getElementById('add-modal').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    applyTypeUI();
+    if (typeOpt === 'reimbursement') {
+        const _e = (window._allCategorized || []).find(x => x.id === id);
+        const _rid = (_e && _e.reimburses_id) || '';
+        const idEl = document.getElementById('add-reimburses-id');
+        if (idEl) idEl.value = _rid;
+        if (_rid) {
+            const lbl = document.getElementById('reimb-link-label');
+            const btn = document.getElementById('reimb-link-btn');
+            if (lbl) lbl.textContent = note || 'Linked expense';
+            if (btn) btn.style.borderStyle = 'solid';
+        }
+    }
+    _openAddModalFx();
 }
 
 function reverseBalance(txn) {
@@ -4190,8 +4332,7 @@ async function deleteFromModal() {
 
 function closeAddModal(e) {
     if (e && e.target !== document.getElementById('add-modal')) return;
-    document.getElementById('add-modal').classList.remove('active');
-    document.body.style.overflow = '';
+    _closeAddModalFx();
 }
 
 function renderModalBankChips(targetEl, hiddenId, excludeId) {
@@ -4248,16 +4389,20 @@ async function addEntry() {
     const sub_category = document.getElementById('add-sub-category').value || null;
     const note = document.getElementById('add-note').value.trim();
     const bank = document.getElementById('add-bank').value || null;
+    const isReimb = typeVal === 'reimbursement';
+    const reimbId = document.getElementById('add-reimburses-id')?.value || '';
     if (!date || !amount || amount <= 0) { showToast("Fill in date and amount"); return; }
-    if (!category) { showToast("Pick a category"); return; }
+    if (isReimb && !reimbId) { showToast("Pick the expense this refunds"); return; }
+    if (!isReimb && !category) { showToast("Pick a category"); return; }
 
-    const category_type = typeVal === 'credit' ? 'income'
+    const category_type = isReimb ? 'reimbursement'
+                       : typeVal === 'credit' ? 'income'
                        : typeVal === 'investment' ? 'investment'
                        : typeVal === 'transfer' ? 'transfer'
                        : 'spending';
 
     const now = new Date().toISOString();
-    const baseNote = note || (sub_category ? category + ' · ' + sub_category : category);
+    const baseNote = note || (isReimb ? 'Reimbursement' : (sub_category ? category + ' · ' + sub_category : category));
 
     try {
         const { collection, addDoc } = window.fb;
@@ -4300,7 +4445,7 @@ async function addEntry() {
                 lsSet('bal_upd_' + bankTo, now);
             }
         } else {
-            const type = typeVal === 'credit' ? 'credit' : 'debit';
+            const type = (typeVal === 'credit' || isReimb) ? 'credit' : 'debit';
 
             // Update account balance
             if (bank) {
@@ -4311,10 +4456,14 @@ async function addEntry() {
             }
 
             await addDoc(collection(db, txnCol()), {
-                date, amount, type, category, sub_category, category_type,
+                date, amount, type,
+                category: isReimb ? 'Reimbursement' : category,
+                sub_category: isReimb ? null : sub_category,
+                category_type,
                 bank: bank || null,
                 note: baseNote,
-                recipient: '', upi_ref: '', created_at: now
+                recipient: '', upi_ref: '', created_at: now,
+                ...(isReimb ? { reimburses_id: reimbId } : {})
             });
         }
 
@@ -4558,6 +4707,19 @@ function clearReimbursement(i) {
 }
 
 function openReimbursementPicker(uncatIdx) {
+    // Thin wrapper: the uncat flow stores the pick on uncatState[idx].
+    _openExpensePicker((id, summary) => {
+        if (!uncatState[uncatIdx]) return;
+        uncatState[uncatIdx].reimburses_id = id;
+        uncatState[uncatIdx].reimburses_summary = summary;
+        renderUncatCards();
+    });
+}
+
+// Shared expense picker. Calls onPick(id, summary, entry) with the chosen
+// spending expense. Used by the uncat reimbursement flow and the manual
+// "Reimbursement" type in the add modal.
+function _openExpensePicker(onPick) {
     // Build list of recent spending expenses to choose from (deduped between current + history)
     const seen = new Set();
     const all = [];
@@ -4618,11 +4780,10 @@ function openReimbursementPicker(uncatIdx) {
             item.onclick = () => {
                 const id = item.dataset.id;
                 const ent = all.find(x => x.id === id);
-                if (!ent || !uncatState[uncatIdx]) return;
-                uncatState[uncatIdx].reimburses_id = id;
-                uncatState[uncatIdx].reimburses_summary = (ent.note || ent.category || '?') + ' · -₹' + fmt(ent.amount || 0);
+                if (!ent) return;
+                const summary = (ent.note || ent.category || '?') + ' · -₹' + fmt(ent.amount || 0);
                 o.remove();
-                renderUncatCards();
+                onPick(id, summary, ent);
             };
         });
     };
