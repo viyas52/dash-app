@@ -439,6 +439,7 @@ STEP 3 — Induce a template regex that matches THIS sms and every future sms of
 - Keep it LINEAR — no nested or adjacent unbounded quantifiers (no (a+)+, .*.*, (.*)* ), no backreferences. Prefer specific character classes over .* .
 - date_format: one of "DD-MM-YY","DD-MM-YYYY","DD/MM/YY","DD/MM/YYYY","DD.MM.YY","DD.MM.YYYY","DD-MON-YY","DD-MON-YYYY","YYYY-MM-DD","YYYYMMDD" describing the captured date group, or null if no date group. MON = 3-letter month name.
 - type: "debit" or "credit" (fixed for this template).
+- CRITICAL: the regex MUST contain, as a fixed literal, the exact direction word this SMS uses for the user's own account ("debited","credited","spent","received","withdrawn","deposited", etc.). A debit and a credit SMS from the same bank are otherwise near-identical, so a template missing this literal will wrongly match the opposite direction. The regex must NOT match the same bank's opposite-direction SMS. (See "debited"/"credited" in the examples below.)
 
 EXAMPLE A
 SMS: "Dear Customer, Rs.450.00 debited from A/c XX9012 on 14-05-26 to swiggy@okhdfcbank UPI Ref 451237812345. Avl Bal Rs.12,300.50 -ABC Bank"
@@ -579,11 +580,33 @@ function buildParsedFromExtraction(ext, sms, via) {
   };
 }
 
+// Direction discriminator. A debit and a credit SMS from the same bank are
+// near-identical except for one verb, so a single-direction learned template
+// can otherwise hijack the opposite direction (then that direction never gets
+// its own template learned). Returns "debit"/"credit" only when the SMS is
+// unambiguous; null (both or neither keyword, e.g. "X debited; payee
+// credited") never blocks — the prompt forces new templates to anchor on the
+// verb, so this guard mainly protects against legacy loosely-anchored ones.
+const DEBIT_WORDS  = /\b(debited|spent|withdrawn|withdrawl|deducted|purchased?)\b/i;
+const CREDIT_WORDS = /\b(credited|received|deposited|reversed|refunded)\b/i;
+function smsDirection(sms) {
+  const dr = DEBIT_WORDS.test(sms);
+  const cr = CREDIT_WORDS.test(sms);
+  if (dr && !cr) return "debit";
+  if (cr && !dr) return "credit";
+  return null;
+}
+
 // Try this user's previously-learned templates. Pure regex, no API call.
 function matchLearnedTemplates(sms, templateDocs) {
+  const smsDir = smsDirection(sms);
   for (const t of templateDocs) {
     const d = t.data || {};
     if (!d.regex || !isSafeRegex(d.regex)) continue;
+    const tType = d.type === "credit" ? "credit" : "debit";
+    // Don't let a template parse an SMS that clearly states the opposite
+    // direction — let it fall through so the correct template is learned.
+    if (smsDir && smsDir !== tType) continue;
     let re, m;
     try { re = new RegExp(d.regex, "i"); } catch (_) { continue; }
     try { m = sms.match(re); } catch (_) { continue; }
@@ -597,7 +620,7 @@ function matchLearnedTemplates(sms, templateDocs) {
     const balRaw = gv(g.balance_after);
     const ext = {
       amount,
-      type: d.type === "credit" ? "credit" : "debit",
+      type: tType,
       date: g.date ? normalizeLearnedDate(gv(g.date), d.date_format) : todayDate(),
       account_last4: gv(g.account_last4),
       counterparty: gv(g.counterparty),
