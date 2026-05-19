@@ -14,6 +14,11 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+        /* No visible scrollbars anywhere — page, modals, sheets, lists —
+           while keeping scroll fully functional (touch + wheel). */
+        * { scrollbar-width: none; -ms-overflow-style: none; }
+        *::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
         /* Kill the long-press blue/grey highlight + select bubble on
            tappable surfaces. Inputs/textareas keep normal selection
            behaviour (overridden below).                                 */
