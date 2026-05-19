@@ -3666,6 +3666,11 @@ function computeInsights(curEntries) {
 
     const all = window._allHistoryEntries || [];
 
+    // Net reimbursements out of spending so insight text matches the
+    // headline numbers (Home hero / Stats breakdown use the same map).
+    const reimbMap = window._reimbursementsByExpense || {};
+    const spendNet = e => Math.max(0, (e.amount || 0) - (reimbMap[e.id] || 0));
+
     // Current and previous month strings
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - monthOffset);
     const curMon  = d.toISOString().substring(0, 7);
@@ -3675,7 +3680,7 @@ function computeInsights(curEntries) {
     const bucket = (entries, mon) => {
         const t = {};
         entries.filter(e => e.date && e.date.startsWith(mon) && e.category_type === 'spending' && e.category)
-               .forEach(e => { const c = resolveParentCat(e.category); t[c] = (t[c]||0) + (e.amount||0); });
+               .forEach(e => { const c = resolveParentCat(e.category); t[c] = (t[c]||0) + spendNet(e); });
         return t;
     };
     const curTotals  = bucket(curEntries, curMon);
@@ -3686,9 +3691,9 @@ function computeInsights(curEntries) {
 
     // Net saved change
     const curIncome  = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
-    const curSpend   = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+    const curSpend   = curEntries.filter(e=>e.date&&e.date.startsWith(curMon)&&e.category_type==='spending').reduce((s,e)=>s+spendNet(e),0);
     const prevIncome = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
-    const prevSpend  = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+    const prevSpend  = all.filter(e=>e.date&&e.date.startsWith(prevMon)&&e.category_type==='spending').reduce((s,e)=>s+spendNet(e),0);
     const curSaved = curIncome - curSpend, prevSaved = prevIncome - prevSpend;
     if (prevSaved !== 0 && curIncome > 0) {
         const diff = curSaved - prevSaved;
@@ -3728,7 +3733,7 @@ function computeInsights(curEntries) {
     // whenever the user has any data, so the ticker never silently disappears.
     {
         const thisMonthAll = curEntries.filter(e => e.date && e.date.startsWith(curMon));
-        const totalSpend = thisMonthAll.filter(e => e.category_type === 'spending').reduce((s,e) => s + (e.amount||0), 0);
+        const totalSpend = thisMonthAll.filter(e => e.category_type === 'spending').reduce((s,e) => s + spendNet(e), 0);
         const totalTxns  = thisMonthAll.length;
         if (totalSpend > 0 && lines.length < 5) {
             lines.push('"You\'ve spent ' + fmtAmt(totalSpend) + ' across ' + totalTxns + ' transactions this month 📊"');
@@ -5385,8 +5390,11 @@ function toggleFinSummary() {
 
 function updateFinSummary(entries) {
     entries = entries || [];
+    // Net reimbursements out of spending so the Stats summary agrees with
+    // the Home hero and the category breakdown (same map, same maths).
+    const reimbMap = window._reimbursementsByExpense || {};
     const income  = entries.filter(e=>e.category_type==='income').reduce((s,e)=>s+(e.amount||0),0);
-    const expense = entries.filter(e=>e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+    const expense = entries.filter(e=>e.category_type==='spending').reduce((s,e)=>s + Math.max(0, (e.amount||0) - (reimbMap[e.id]||0)), 0);
     const invest  = entries.filter(e=>e.category_type==='investment').reduce((s,e)=>s+(e.amount||0),0);
     const net = income - expense - invest;
 
