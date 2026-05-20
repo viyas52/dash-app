@@ -3771,7 +3771,18 @@ function updateDashboard(entries) {
 
     entries.forEach(e => {
         if (!e.category || !e.category_type) {
-            uncatEntries.push(e); return;
+            uncatEntries.push(e);
+            // Preview-include uncat txns in the home stats so the Spent /
+            // Income numbers reflect ALL money moved this month, not just
+            // the categorized portion. Once the user picks a category, the
+            // txn is re-counted with proper rules (e.g. transfer excluded,
+            // reimbursement netting the original expense). Most uncats are
+            // spending so this approximates the true spend closely; the
+            // occasional transfer-or-investment that's still uncat will
+            // overcount slightly until categorized.
+            if (e.type === 'debit') totalExpense += e.amount || 0;
+            else if (e.type === 'credit') totalIncome += e.amount || 0;
+            return;
         }
         if (e.category_type === 'reimbursement') return; // refund link — handled below via reimbByExpense
         if (e.category_type === 'income') totalIncome += e.amount || 0;
