@@ -4182,11 +4182,11 @@ function _applyCatWheelTransforms(items, wheel) {
 
 function _mountCatWheel(wrap, list, ctx) {
     // ctx = { initialName, onCommitIdx, onUncommit }
-    // Scrolling alone does NOT commit — it only updates visuals and fires
-    // the tick sound on center change. The user explicitly commits by
-    // tapping any wheel item (which also scrolls it to center). Spinning
-    // after a commit clears the commit and fires onUncommit so sub-pills
-    // can be hidden until the user taps again.
+    // Scrolling alone does NOT commit — it only updates visuals + tick sound.
+    // The user explicitly commits by tapping a wheel item, which smooth-
+    // scrolls it to center; the commit fires once the scroll has settled at
+    // the target. Spinning after a commit clears the commit and fires
+    // onUncommit so sub-pills can be hidden until the next tap.
     const wheel = wrap.querySelector('.cat-wheel');
     if (!wheel) return;
     const items = Array.from(wrap.querySelectorAll('.cat-wheel-item'));
@@ -4203,9 +4203,8 @@ function _mountCatWheel(wrap, list, ctx) {
     wheel.scrollTop = initialIdx * ITEM_H;
     let lastIdx = initialIdx;
     let rafPending = false;
-    let committedIdx = null;          // null = not committed
-    let commitTimer = null;
-    let suppressUncommitUntil = 0;    // timestamp; programmatic-scroll guard
+    let committedIdx = null;         // null = not committed
+    let pendingTapIdx = null;        // idx being committed via tap (null when idle)
 
     requestAnimationFrame(() => _applyCatWheelTransforms(items, wheel));
 
@@ -4224,8 +4223,11 @@ function _mountCatWheel(wrap, list, ctx) {
     };
 
     const onScroll = () => {
-        // Programmatic smooth-scroll (from a tap) should not uncommit.
-        if (committedIdx !== null && performance.now() >= suppressUncommitUntil) {
+        // While a tap-triggered smooth-scroll is in flight, the scroll is
+        // programmatic — don't uncommit. Once the scroll settles (handled
+        // by the polling tick below), pendingTapIdx clears and normal
+        // user-scroll uncommit resumes.
+        if (pendingTapIdx === null && committedIdx !== null) {
             uncommit();
         }
         if (!rafPending) {
@@ -4237,6 +4239,11 @@ function _mountCatWheel(wrap, list, ctx) {
                     lastIdx = idx;
                     if (window._soundsEnabled !== false) sndWheelTick();
                     hapTick();
+                    // Live-update the indicator's accent CSS var so if the
+                    // wheel is currently committed (e.g. transitioning via
+                    // a tap), the ring smoothly tracks the centered item's
+                    // color. Has no visible effect when uncommitted.
+                    wrap.style.setProperty('--committed-accent', list[idx].color);
                 }
             });
         }
@@ -4245,20 +4252,43 @@ function _mountCatWheel(wrap, list, ctx) {
 
     items.forEach((el, idx) => {
         el.addEventListener('click', () => {
-            if (commitTimer) clearTimeout(commitTimer);
-            // Clear any prior commit immediately so the visual ring resets
-            // while the smooth-scroll animates to the new item.
-            if (committedIdx !== null) uncommit();
-            // Suppress scroll-driven uncommit during the smooth-scroll the
-            // tap is about to trigger (~250ms is plenty for short hops).
-            suppressUncommitUntil = performance.now() + 350;
-            wheel.scrollTo({ top: idx * ITEM_H, behavior: 'smooth' });
-            // Commit after the smooth-scroll has settled visually so the
-            // sub-pills appear under an item that's actually at center.
-            commitTimer = setTimeout(() => {
-                commitTimer = null;
-                commit(idx);
-            }, 220);
+            const target = idx * ITEM_H;
+            // If already exactly here AND already committed to it, no-op.
+            if (committedIdx === idx && Math.abs(wheel.scrollTop - target) < 2) {
+                return;
+            }
+            pendingTapIdx = idx;
+            wheel.scrollTo({ top: target, behavior: 'smooth' });
+            // Poll scrollTop until the smooth-scroll settles (or fails over).
+            // Adaptive to actual scroll duration on any device — no magic
+            // timeouts that race with slower phones.
+            let attempts = 0;
+            let lastDist = null;
+            const tick = () => {
+                if (pendingTapIdx !== idx) return;  // superseded by another tap
+                attempts++;
+                const dist = Math.abs(wheel.scrollTop - target);
+                // User scrolled AWAY from the target during the smooth-scroll
+                // (distance is growing) — abandon this commit attempt.
+                if (lastDist !== null && dist > lastDist + 6) {
+                    pendingTapIdx = null;
+                    if (committedIdx !== null) uncommit();
+                    return;
+                }
+                lastDist = dist;
+                if (dist < 2) {
+                    pendingTapIdx = null;
+                    commit(idx);
+                    return;
+                }
+                if (attempts > 60) {  // ~1s failsafe
+                    pendingTapIdx = null;
+                    commit(idx);
+                    return;
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
         });
     });
 
