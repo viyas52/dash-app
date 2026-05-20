@@ -4959,9 +4959,22 @@ function renderUncatCards() {
         // re-renders and any list reordering.
         let prev = prevState[i];
         if (!prev || prev.id !== e.id) prev = Object.values(prevState).find(s => s && s.id === e.id);
-        uncatState[i] = prev || { id: e.id, type: e.type === 'credit' ? 'income' : 'spending', sel: null, expanded: null, selParent: null, reimburses_id: null, reimburses_summary: '' };
+        const defaultType = e.type === 'credit' ? 'income' : 'spending';
+        uncatState[i] = prev || { id: e.id, type: defaultType, sel: null, expanded: null, selParent: null, reimburses_id: null, reimburses_summary: '' };
+        // Migrate legacy state: if reimb was linked under old flow (type stayed
+        // 'income'), surface it as the explicit reimbursement type now.
+        if (uncatState[i].reimburses_id && uncatState[i].type !== 'reimbursement') {
+            uncatState[i].type = 'reimbursement';
+        }
         const isCredit = e.type === 'credit';
-        const isReimb = !!uncatState[i].reimburses_id;
+        const curType = uncatState[i].type;
+        const isReimb = curType === 'reimbursement';
+        const hasReimbLink = !!uncatState[i].reimburses_id;
+        // Available types mirror the manual-add modal: Spending/Income +
+        // Investment + Self Transfer for everyone, plus Reimburse for credits.
+        const types = isCredit
+            ? [['income', 'Income'], ['investment', 'Investment'], ['transfer', 'Transfer'], ['reimbursement', 'Reimburse']]
+            : [['spending', 'Spending'], ['investment', 'Investment'], ['transfer', 'Transfer']];
         return '<div class="uncat-card" id="ucard-' + i + '">' +
             '<div class="uncat-header"><div class="uncat-top"><div>' +
             '<div class="uncat-name">' + esc(e.note || e.recipient || 'Unknown') + '</div>' +
@@ -4976,10 +4989,17 @@ function renderUncatCards() {
             'placeholder="Note" style="flex:1;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-1);font-family:\'DM Sans\',sans-serif;outline:none;">' +
             '</div>' +
             '</div>' +
-            // Reimbursement option (credit only) — link this credit back to an expense
-            (isCredit ?
-                '<div style="padding:10px 18px 0;">' +
-                    (isReimb
+            // Type toggle — same set of options as the manual-add modal
+            '<div class="type-toggle">' +
+            types.map(function(t) {
+                return '<button class="type-btn' + (curType === t[0] ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'' + t[0] + '\')">' + t[1] + '</button>';
+            }).join('') +
+            '</div>' +
+            // Body switches on the selected type. Reimbursement = link an earlier
+            // expense; everything else = the category wheel.
+            (isReimb
+                ? '<div style="padding:10px 18px 0;">' +
+                    (hasReimbLink
                         ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--orange);background:#FF950018;border-radius:10px;">' +
                             '<span style="font-size:16px;">🔄</span>' +
                             '<div style="flex:1;font-size:12px;color:var(--text-1);">Reimbursing: ' + esc(uncatState[i].reimburses_summary || '?') + '</div>' +
@@ -4987,29 +5007,24 @@ function renderUncatCards() {
                           '</div>'
                         : '<button onclick="openReimbursementPicker(' + i + ')" style="width:100%;display:flex;align-items:center;gap:8px;padding:11px 14px;border:1px dashed var(--border);background:transparent;border-radius:10px;cursor:pointer;color:var(--text-2);font-family:\'DM Sans\',sans-serif;font-size:12px;">' +
                             '<span style="font-size:14px;">🔄</span>' +
-                            '<span>Reimbursement for an earlier expense</span>' +
+                            '<span>Pick the expense this refunds</span>' +
                           '</button>'
                     ) +
-                '</div>' : '') +
-            // Type + categories (hidden when reimbursement is selected)
-            (isReimb ? '' :
-                '<div class="type-toggle">' +
-                '<button class="type-btn' + (uncatState[i].type === 'spending' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'spending\')">Spending</button>' +
-                '<button class="type-btn' + (uncatState[i].type === 'investment' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'investment\')">Investment</button>' +
-                '<button class="type-btn' + (uncatState[i].type === 'income' ? ' active' : '') + '" onclick="switchUncatType(' + i + ',\'income\')">Income</button>' +
-                '</div>' +
-                '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>') +
+                  '</div>'
+                : '<div class="cat-grid" id="ucats-' + i + '">' + renderCatChips(i) + '</div>'
+            ) +
             '<div style="display:flex;align-items:center;gap:8px;padding:10px 18px 4px;">' +
             (isReimb ? '' : '<button class="rule-pill" id="uremember-' + i + '" onclick="toggleRulePill(this)">Save rule</button>') +
-            '<button class="confirm-btn' + (isReimb ? ' ready' : '') + '" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">' + (isReimb ? 'Confirm reimbursement' : 'Confirm') + '</button>' +
+            '<button class="confirm-btn' + (isReimb && hasReimbLink ? ' ready' : '') + '" style="margin-left:auto;" id="ubtn-' + i + '" onclick="confirmUncat(' + i + ')">' + (isReimb ? 'Confirm reimbursement' : 'Confirm') + '</button>' +
             '</div>' +
             '</div>';
     }).join('');
 
-    // Mount the 3D wheel for each (non-reimbursement) uncat card. Reimbursement
-    // mode hides the cat picker entirely so the wheel won't be in the DOM.
+    // Mount the 3D wheel for every non-reimbursement uncat card. Reimbursement
+    // mode swaps the wheel out for the expense linker so the wheel won't be in
+    // the DOM for those cards.
     uncatEntries.forEach((_, i) => {
-        if (uncatState[i] && uncatState[i].reimburses_id) return;
+        if (uncatState[i] && uncatState[i].type === 'reimbursement') return;
         mountUncatWheel(i);
     });
 }
@@ -5108,19 +5123,31 @@ function togglePersonMode(i, btn) {
 }
 
 function switchUncatType(i, type) {
-    uncatState[i].type = type;
-    uncatState[i].sel = null;
-    uncatState[i].expanded = null;
-    uncatState[i].selParent = null;
-    const card = document.getElementById('ucard-' + i);
-    card.querySelectorAll('.type-btn').forEach(b => {
-        b.classList.toggle('active', b.textContent.toLowerCase().startsWith(type));
-    });
-    document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
-    const btn = document.getElementById('ubtn-' + i);
-    btn.classList.remove('ready'); btn.textContent = 'CONFIRM';
-    // Remount the 3D wheel for the new category list.
-    mountUncatWheel(i);
+    const st = uncatState[i];
+    if (!st) return;
+    if (st.type === type) return;
+    sndTap(); hapTap();
+    st.type = type;
+    st.sel = null;
+    st.expanded = null;
+    st.selParent = null;
+    // Switching AWAY from reimbursement drops any linked expense — user
+    // changed their mind about classifying it as a refund.
+    if (type !== 'reimbursement') {
+        st.reimburses_id = null;
+        st.reimburses_summary = '';
+    }
+    // Self Transfer is the only option in the transfer wheel — pre-select it
+    // so the wheel auto-commits on mount and the user doesn't have to tap a
+    // one-item wheel.
+    if (type === 'transfer') {
+        st.sel = 'Self Transfer';
+    }
+    // The card's body structure changes (wheel ↔ reimbursement linker)
+    // depending on type, so a full re-render is simpler than patching just
+    // the category panel. uncatState is preserved across the re-render via
+    // prevState restoration.
+    renderUncatCards();
 }
 
 function pickUncat(i, name) {
@@ -5158,17 +5185,26 @@ function normalizeKey(s) {
 /* ─── REIMBURSEMENT LINKING ─── */
 function clearReimbursement(i) {
     if (!uncatState[i]) return;
+    const entry = uncatEntries[i];
     uncatState[i].reimburses_id = null;
     uncatState[i].reimburses_summary = '';
+    // Revert type to the txn's natural default so the wheel comes back; user
+    // unlinking means they no longer want the reimbursement classification.
+    uncatState[i].type = (entry && entry.type === 'credit') ? 'income' : 'spending';
+    uncatState[i].sel = null;
+    uncatState[i].selParent = null;
+    uncatState[i].expanded = null;
     renderUncatCards();
 }
 
 function openReimbursementPicker(uncatIdx) {
-    // Thin wrapper: the uncat flow stores the pick on uncatState[idx].
+    // Thin wrapper: the uncat flow stores the pick on uncatState[idx] and
+    // forces the type to reimbursement so the body stays on the linker view.
     _openExpensePicker((id, summary) => {
         if (!uncatState[uncatIdx]) return;
         uncatState[uncatIdx].reimburses_id = id;
         uncatState[uncatIdx].reimburses_summary = summary;
+        uncatState[uncatIdx].type = 'reimbursement';
         renderUncatCards();
     });
 }
@@ -5251,6 +5287,13 @@ function _openExpensePicker(onPick) {
 
 async function confirmUncat(i) {
     const s = uncatState[i];
+    if (!s) return;
+    // If user switched to Reimburse but never picked an expense, surface a
+    // clear prompt instead of silently no-op'ing through the category path.
+    if (s.type === 'reimbursement' && !s.reimburses_id) {
+        showToast('Pick the expense this refunds first');
+        return;
+    }
     // Reimbursement path: short-circuit, no category grid needed
     if (s && s.reimburses_id) {
         const entry = uncatEntries[i];
