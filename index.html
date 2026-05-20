@@ -4251,9 +4251,25 @@ function _mountCatWheel(wrap, list, ctx) {
     };
 
     const commit = (idx) => {
+        // Force scrollTop to the EXACT snap point. iOS Safari's smooth-scroll
+        // often lands 1-3px short of the target and scroll-snap doesn't
+        // always pull it in for programmatic scrolls — leaving the centered
+        // item's layout center a few pixels off from the indicator's center.
+        // The result is text that LOOKS off-center even though my closest-
+        // idx logic is correctly snapping the item to identity transform.
+        // (This is the "tap again fixes it" behaviour the user reported —
+        // the second tap nudged scrollTop by the missing few pixels.)
+        // Setting scrollTop here puts everything at the true snap point.
+        const target = idx * ITEM_H;
+        if (Math.abs(wheel.scrollTop - target) > 0) {
+            wheel.scrollTop = target;
+        }
         committedIdx = idx;
         wrap.classList.add('committed');
         wrap.style.setProperty('--committed-accent', list[idx].color);
+        // Recompute transforms now that scrollTop is exactly at target so the
+        // centered item snaps to identity with no residual offset.
+        _applyCatWheelTransforms(items, wheel);
         if (ctx.onCommitIdx) ctx.onCommitIdx(idx);
     };
 
@@ -4330,11 +4346,16 @@ function _mountCatWheel(wrap, list, ctx) {
                     if (committedIdx !== null) uncommit();
                     return;
                 }
-                // Stable = scrollTop EXACTLY at target AND unchanged since
-                // the previous frame. Tightened from <1.5px to ==target so
-                // any post-snap fluctuation can't sneak past the stability
-                // check.
-                if (dist < 0.5 && cur === prevTop) stableFrames++;
+                // Stable = scrollTop unchanged since the previous frame AND
+                // within a few px of target. Threshold is 3px (not 0.5)
+                // because iOS Safari's smooth-scroll regularly lands 1-3px
+                // short of the target without firing a final scroll-snap
+                // pull on programmatic scrolls. commit() unconditionally
+                // forces scrollTop = target before applying transforms, so
+                // any residual offset is corrected there — we just need to
+                // get to commit promptly rather than waiting out the 1s
+                // failsafe.
+                if (dist < 3 && cur === prevTop) stableFrames++;
                 else stableFrames = 0;
                 prevTop = cur;
                 if (stableFrames >= 2) {
