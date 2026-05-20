@@ -4178,23 +4178,27 @@ function _applyCatWheelTransforms(items, wheel) {
     // Compute each item's distance from the wheel's vertical center, then
     // apply translateZ + rotateX + scale + opacity for the cylinder look.
     // Returns the index of the item closest to center.
-    const wRect = wheel.getBoundingClientRect();
-    const cy = wRect.top + wRect.height / 2;
+    //
+    // Uses offsetTop / clientHeight (LAYOUT positions) instead of
+    // getBoundingClientRect. The items themselves have CSS transforms
+    // applied, and getBoundingClientRect reflects those transforms — so
+    // using it for distance creates a feedback loop where last frame's
+    // transform skews this frame's "distance from center" calculation
+    // (most visible as a tiny residual tilt/scale on the centered item).
+    // offsetTop is unaffected by transforms.
+    const center = wheel.scrollTop + wheel.clientHeight / 2;
     let closestIdx = 0, closestAbs = Infinity;
-    // First pass — find which item is closest to dead-center.
     const data = items.map((el, idx) => {
-        const r = el.getBoundingClientRect();
-        const itemCenter = r.top + r.height / 2;
-        const dist = itemCenter - cy;
+        const itemCenter = el.offsetTop + el.offsetHeight / 2;
+        const dist = itemCenter - center;
         const abs = Math.abs(dist);
         if (abs < closestAbs) { closestAbs = abs; closestIdx = idx; }
         return { el, idx, dist, abs };
     });
-    // Second pass — write transforms. The closest-to-center item snaps to
-    // exact identity (no subpixel tilt or sub-1.0 scale), so the text reads
-    // perfectly aligned at rest. Other items get the cylinder math.
     data.forEach(d => {
         if (d.idx === closestIdx) {
+            // Closest item: identity transform, full opacity. No subpixel
+            // tilt or scale — text reads perfectly aligned at rest.
             d.el.style.transform = 'translateZ(0) rotateX(0deg) scale(1)';
             d.el.style.opacity = '1';
             d.el.classList.add('is-centered');
@@ -4322,11 +4326,19 @@ function _mountCatWheel(wrap, list, ctx) {
                 prevTop = cur;
                 if (stableFrames >= 2) {
                     pendingTapIdx = null;
+                    // Force one final transform pass with the now-stable
+                    // scrollTop. Without this, the most recent transforms are
+                    // from the last in-motion frame and the centered item can
+                    // be marked is-centered with a stale closestIdx (the user
+                    // sees a different item highlighted, or their tapped item
+                    // shows a tiny residual tilt until the next interaction).
+                    _applyCatWheelTransforms(items, wheel);
                     commit(idx);
                     return;
                 }
                 if (attempts > 60) {  // ~1s failsafe
                     pendingTapIdx = null;
+                    _applyCatWheelTransforms(items, wheel);
                     commit(idx);
                     return;
                 }
@@ -4364,6 +4376,10 @@ function _catWheelHtml(list) {
 }
 
 function _renderCatSubs(subsEl, cat, sel, selParent, onPick) {
+    // Defensive: if the subs container was removed (e.g. the card or modal
+    // was re-rendered between scroll-settle and this callback), skip silently
+    // rather than throwing on subsEl.innerHTML.
+    if (!subsEl) return;
     if (!cat || !cat.subs || !cat.subs.length) {
         subsEl.innerHTML = '';
         return;
