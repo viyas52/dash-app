@@ -1033,6 +1033,51 @@
         .cat-btn .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
         .cat-label { font-size: 9px; font-weight: 600; color: var(--text-2); text-align: center; letter-spacing: 0.03em; line-height: 1.2; }
 
+        /* ── Inline vertical category list (new picker for uncat + manual-add) ── */
+        .cat-list { display: flex; flex-direction: column; gap: 6px; }
+        .cat-group {
+            border: 1px solid var(--border); border-radius: 12px;
+            background: var(--bg-tinted); overflow: hidden;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .cat-group.active { border-width: 1.5px; }
+        .cat-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .cat-row:active { background: rgba(0,0,0,0.04); }
+        .cat-row-icon {
+            width: 22px; height: 22px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .cat-row-icon svg { width: 22px; height: 22px; }
+        .cat-row-label {
+            flex: 1; font-size: 13px; font-weight: 500;
+            color: var(--text-1); font-family: 'DM Sans', sans-serif;
+            letter-spacing: -0.005em;
+        }
+        .cat-row-chev {
+            width: 14px; height: 14px; flex-shrink: 0;
+            color: var(--text-3);
+            transition: transform 0.18s ease;
+        }
+        .cat-group.active .cat-row-chev { transform: rotate(90deg); }
+        .cat-row-subs {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            padding: 0 14px 12px;
+            animation: subSlideIn 0.18s ease;
+        }
+        .cat-row-sub-pill {
+            padding: 6px 13px; border-radius: 20px; border: 1px solid;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-card);
+            transition: all 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .cat-row-sub-pill:active { transform: scale(0.95); }
+
         /* ── Sub-category panel ── */
         .sub-panel {
             margin: 6px 18px 0; border-radius: var(--radius-sm); overflow: hidden;
@@ -4017,29 +4062,43 @@ function renderSubPanel(exp) {
 
 function renderModalCatGrid(cats) {
     const st = _modalCatState;
-    let html = '<div class="cat-grid-inner">';
-    html += cats.map(c => {
-        const isSel = st.cat === c.name;
-        const isExp = st.expanded === c.name;
-        const borderCol = (isSel || isExp) ? c.color : 'var(--border)';
-        const bgCol = (isSel || isExp) && c.bg ? c.bg : 'var(--bg-tinted)';
-        const txtCol = (isSel || isExp) ? c.color : 'var(--text-2)';
+    let html = '<div class="cat-list">';
+    cats.forEach(c => {
+        const hasSubs = !!(c.subs && c.subs.length > 0);
+        const isSelfPick = !hasSubs && st.cat === c.name;
+        const isExpanded = st.expanded === c.name;
+        const isParentOfSel = hasSubs && st.cat === c.name && st.sub && c.subs.includes(st.sub);
+        const showSubs = hasSubs && (isExpanded || isParentOfSel);
+        const active = isSelfPick || showSubs;
+        const accent = c.color;
+        const groupStyle = active
+            ? 'border-color:' + accent + ';background:' + (c.bg || (accent + '14')) + ';'
+            : '';
+        const labelColor = active ? accent : 'var(--text-1)';
+        const iconColor = active ? accent : 'var(--text-3)';
         const icon = getCatIcon(c.name);
-        return '<div class="cat-btn" style="border-color:' + borderCol + ';background:' + bgCol + '" ' +
-            'onclick="modalPickCat(\'' + c.name + '\')">' +
-            '<div style="width:20px;height:20px;color:' + ((isSel || isExp) ? c.color : '#888') + '">' + icon + '</div>' +
-            '<div class="cat-label" style="color:' + txtCol + '">' + c.name + '</div></div>';
-    }).join('');
-    html += '</div>';
-
-    if (st.expanded) {
-        const type = document.getElementById('add-type').value;
-        const cats2 = type === 'credit' ? INCOME_CATS : type === 'investment' ? INVEST_CATS : type === 'transfer' ? TRANSFER_CATS : SPENDING_CATS;
-        const exp = cats2.find(c => c.name === st.expanded);
-        if (exp && exp.subs && exp.subs.length > 0) {
-            html += renderSubPanel(exp);
+        const safeName = c.name.replace(/'/g, "\\'");
+        html += '<div class="cat-group' + (active ? ' active' : '') + '" style="' + groupStyle + '">' +
+            '<div class="cat-row" onclick="modalPickCat(\'' + safeName + '\')">' +
+            '<div class="cat-row-icon" style="color:' + iconColor + '">' + icon + '</div>' +
+            '<div class="cat-row-label" style="color:' + labelColor + '">' + c.name + '</div>' +
+            '<svg class="cat-row-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:' + (active ? accent : 'var(--text-3)') + '"><path d="M9 6l6 6-6 6"/></svg>' +
+            '</div>';
+        if (showSubs) {
+            html += '<div class="cat-row-subs">' +
+                c.subs.map(s => {
+                    const safeSub = s.replace(/'/g, "\\'");
+                    const isSub = st.sub === s && st.cat === c.name;
+                    return '<div class="cat-row-sub-pill" style="border-color:' + (isSub ? accent : accent + '55') +
+                        ';background:' + (isSub ? accent : 'var(--bg-card)') +
+                        ';color:' + (isSub ? '#fff' : accent) +
+                        '" onclick="event.stopPropagation();modalPickSub(\'' + safeSub + '\')">' + s + '</div>';
+                }).join('') +
+            '</div>';
         }
-    }
+        html += '</div>';
+    });
+    html += '</div>';
     document.getElementById('modal-cat-grid').innerHTML = html;
 }
 
@@ -4651,35 +4710,43 @@ function renderUncatCards() {
 function renderCatChips(i) {
     const list = ALL_CATS[uncatState[i].type] || SPENDING_CATS;
     const st = uncatState[i];
-    let html = '<div class="cat-grid-inner">';
-    html += list.map(c => {
-        const isSel = st.sel === c.name || (st.expanded === c.name);
-        const borderCol = isSel ? c.color : 'var(--border)';
-        const bgCol = isSel && c.bg ? c.bg : 'var(--bg-tinted)';
-        const txtCol = isSel ? c.color : 'var(--text-2)';
+    let html = '<div class="cat-list">';
+    list.forEach(c => {
+        const hasSubs = !!(c.subs && c.subs.length > 0);
+        const isSelfPick = !hasSubs && st.sel === c.name;
+        const isExpanded = st.expanded === c.name;
+        const isParentOfSel = hasSubs && st.selParent === c.name && c.subs.includes(st.sel);
+        const showSubs = hasSubs && (isExpanded || isParentOfSel);
+        const active = isSelfPick || showSubs;
+        const accent = c.color;
+        const groupStyle = active
+            ? 'border-color:' + accent + ';background:' + (c.bg || (accent + '14')) + ';'
+            : '';
+        const labelColor = active ? accent : 'var(--text-1)';
+        const iconColor = active ? accent : 'var(--text-3)';
         const icon = getCatIcon(c.name);
-        const borderW = isSel ? '2px' : '1px';
-        return '<div class="cat-btn" style="border-color:' + borderCol + ';border-width:' + borderW + ';background:' + bgCol + ';position:relative;" ' +
-            'onclick="pickUncat(' + i + ',\'' + c.name + '\')">' +
-            (isSel ? '<div style="position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:' + c.color + ';"></div>' : '') +
-            '<div style="width:20px;height:20px;color:' + (isSel ? c.color : '#888') + '">' + icon + '</div>' +
-            '<div class="cat-label" style="color:' + txtCol + '">' + c.name + '</div></div>';
-    }).join('');
+        const safeName = c.name.replace(/'/g, "\\'");
+        html += '<div class="cat-group' + (active ? ' active' : '') + '" style="' + groupStyle + '">' +
+            '<div class="cat-row" onclick="pickUncat(' + i + ",'" + safeName + "'" + ')">' +
+            '<div class="cat-row-icon" style="color:' + iconColor + '">' + icon + '</div>' +
+            '<div class="cat-row-label" style="color:' + labelColor + '">' + c.name + '</div>' +
+            '<svg class="cat-row-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:' + (active ? accent : 'var(--text-3)') + '"><path d="M9 6l6 6-6 6"/></svg>' +
+            '</div>';
+        if (showSubs) {
+            html += '<div class="cat-row-subs">' +
+                c.subs.map(s => {
+                    const safeSub = s.replace(/'/g, "\\'");
+                    const isSub = st.sel === s && st.selParent === c.name;
+                    return '<div class="cat-row-sub-pill" style="border-color:' + (isSub ? accent : accent + '55') +
+                        ';background:' + (isSub ? accent : 'var(--bg-card)') +
+                        ';color:' + (isSub ? '#fff' : accent) +
+                        '" onclick="event.stopPropagation();pickUncatSub(' + i + ",'" + safeSub + "','" + safeName + "'" + ')">' + s + '</div>';
+                }).join('') +
+            '</div>';
+        }
+        html += '</div>';
+    });
     html += '</div>';
-    const exp = list.find(c => c.name === st.expanded);
-    if (exp && exp.subs && exp.subs.length > 0) {
-        html += '<div class="sub-pills" style="background:' + (exp.bg || '#F5F3EE') + ';border:1px solid ' + exp.color + '44">' +
-            '<div class="sub-pills-label" style="color:' + exp.color + '">' + exp.name.toUpperCase() + ' ·</div>' +
-            '<div class="sub-pills-row">' +
-            exp.subs.map(s => {
-                const isSub = st.sel === s;
-                return '<div class="sub-pill" style="border-color:' + (isSub ? exp.color : exp.color + '55') +
-                    ';background:' + (isSub ? exp.color : '#fff') +
-                    ';color:' + (isSub ? '#fff' : exp.color) +
-                    '" onclick="pickUncatSub(' + i + ',\'' + s + '\',\'' + exp.name + '\')">' + s + '</div>';
-            }).join('') +
-            '</div></div>';
-    }
     return html;
 }
 
