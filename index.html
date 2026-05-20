@@ -1689,6 +1689,10 @@
                 </button>
             </div>
 
+            <div id="forgot-pw-row" style="text-align:right;margin-top:-6px;margin-bottom:14px;">
+                <a onclick="authForgotPassword()" style="font-size:12px;color:var(--blue);cursor:pointer;text-decoration:none;">Forgot password?</a>
+            </div>
+
             <div class="auth-error" id="auth-error"></div>
 
             <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">Log In</button>
@@ -2131,6 +2135,16 @@
                             <div class="setting-label">Email</div>
                             <div class="setting-desc" id="settings-email-display"></div>
                         </div>
+                    </div>
+                </div>
+                <!-- Change password — shown only for email/password users (Google users have no app-side password). -->
+                <div class="card" style="margin-bottom:12px;display:none;" id="change-pw-card">
+                    <div class="setting-row" style="cursor:pointer;border-bottom:none;" onclick="openChangePasswordModal()">
+                        <div>
+                            <div class="setting-label" style="color:var(--blue);">Change password</div>
+                            <div class="setting-desc">Update the password for this account</div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--blue)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </div>
                 </div>
                 <div class="card" style="margin-bottom:12px;">
@@ -3392,6 +3406,13 @@ function openSettings() {
     if (emailEl && firebaseAuth && firebaseAuth.currentUser) {
         emailEl.textContent = firebaseAuth.currentUser.email || '';
     }
+    // Show 'Change password' only for users who signed in via email+password.
+    // Google-sign-in users have no app-side password to change.
+    const changePwCard = document.getElementById('change-pw-card');
+    if (changePwCard && firebaseAuth && firebaseAuth.currentUser) {
+        const hasPw = (firebaseAuth.currentUser.providerData || []).some(p => p.providerId === 'password');
+        changePwCard.style.display = hasPw ? '' : 'none';
+    }
     // Show companion row only when running inside the Android wrapper
     const companionRow = document.getElementById('row-companion');
     if (companionRow) companionRow.style.display = window.isCompanion ? '' : 'none';
@@ -3557,14 +3578,16 @@ async function initFirebaseCore() {
     const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch }
         = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-            signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile }
+            signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile,
+            sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider }
         = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
     firebaseAuth = getAuth(firebaseApp);
     window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch };
     window.fbAuth = { signInWithEmailAndPassword, createUserWithEmailAndPassword,
-                      signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile };
+                      signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile,
+                      sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider };
 }
 
 async function initFirebase() {
@@ -6207,6 +6230,9 @@ function toggleAuthMode() {
         : 'Don\'t have an account? <a onclick="toggleAuthMode()">Sign up</a>';
     document.getElementById('auth-password').placeholder = _authMode === 'signup' ? 'At least 6 characters' : 'Your password';
     document.getElementById('auth-password').autocomplete = _authMode === 'signup' ? 'new-password' : 'current-password';
+    // Hide "Forgot password?" in signup mode — there's nothing to reset yet.
+    const fpRow = document.getElementById('forgot-pw-row');
+    if (fpRow) fpRow.style.display = _authMode === 'signup' ? 'none' : '';
     hideAuthError();
 }
 
@@ -6226,8 +6252,95 @@ function showAuthError(msg) {
     const el = document.getElementById('auth-error');
     el.textContent = msg;
     el.style.display = 'block';
+    el.style.color = '';   // reset (forgot-password success overrides to green)
 }
 function hideAuthError() { document.getElementById('auth-error').style.display = 'none'; }
+
+// "Forgot password?" on the login screen → emails a Firebase reset link
+// to whatever address is in the email field.
+async function authForgotPassword() {
+    const email = (document.getElementById('auth-email').value || '').trim();
+    if (!email || !email.includes('@')) {
+        showAuthError('Type your email above first, then tap Forgot password');
+        document.getElementById('auth-email').focus();
+        return;
+    }
+    try { await initFirebaseCore(); } catch(e) {}
+    try {
+        await window.fbAuth.sendPasswordResetEmail(firebaseAuth, email);
+        const el = document.getElementById('auth-error');
+        el.textContent = 'Reset link sent — check your email (incl. spam)';
+        el.style.color = 'var(--green)';
+        el.style.display = 'block';
+    } catch (err) {
+        const msg = err.code === 'auth/user-not-found' ? 'No account with that email'
+                  : err.code === 'auth/invalid-email' ? 'Invalid email address'
+                  : err.code === 'auth/too-many-requests' ? 'Too many tries — try again later'
+                  : (err.message || 'Failed to send reset link');
+        showAuthError(msg);
+    }
+}
+
+// "Change password" in Settings → Account. Reauthenticates first with the
+// CURRENT password (Firebase requires a recent credential for password
+// updates), then calls updatePassword with the new one.
+function openChangePasswordModal() {
+    const user = firebaseAuth && firebaseAuth.currentUser;
+    if (!user || !user.email) { showToast('Not signed in'); return; }
+    const o = document.createElement('div');
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0;';
+    o.innerHTML =
+        '<div style="background:var(--bg-card);border-radius:24px 24px 0 0;padding:24px 20px 28px;max-width:480px;width:100%;">' +
+            '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>' +
+            '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">Change password</div>' +
+            '<div style="font-size:12px;color:var(--text-3);margin-bottom:18px;">' + esc(user.email) + '</div>' +
+            '<div class="label" style="margin-bottom:6px;">Current password</div>' +
+            '<input class="cp-curr" type="password" autocomplete="current-password" style="width:100%;font-size:14px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text-1);margin-bottom:14px;font-family:\'DM Sans\',sans-serif;outline:none;">' +
+            '<div class="label" style="margin-bottom:6px;">New password</div>' +
+            '<input class="cp-new" type="password" autocomplete="new-password" placeholder="At least 6 characters" style="width:100%;font-size:14px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text-1);margin-bottom:14px;font-family:\'DM Sans\',sans-serif;outline:none;">' +
+            '<div class="label" style="margin-bottom:6px;">Confirm new password</div>' +
+            '<input class="cp-conf" type="password" autocomplete="new-password" style="width:100%;font-size:14px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text-1);margin-bottom:8px;font-family:\'DM Sans\',sans-serif;outline:none;">' +
+            '<div class="cp-err" style="color:var(--red);font-size:12px;min-height:18px;margin-bottom:8px;"></div>' +
+            '<div style="display:flex;gap:8px;">' +
+                '<button class="cp-cancel" style="flex:1;font-size:14px;padding:13px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Cancel</button>' +
+                '<button class="cp-save" style="flex:2;font-size:14px;padding:13px;border-radius:12px;border:none;background:var(--text-1);color:var(--bg);cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;">Update password</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(o);
+    const close = () => o.remove();
+    o.querySelector('.cp-cancel').onclick = close;
+    o.onclick = (e) => { if (e.target === o) close(); };
+    o.querySelector('.cp-save').onclick = async () => {
+        const curr = o.querySelector('.cp-curr').value;
+        const next = o.querySelector('.cp-new').value;
+        const conf = o.querySelector('.cp-conf').value;
+        const errEl = o.querySelector('.cp-err');
+        errEl.textContent = '';
+        if (!curr || !next) { errEl.textContent = 'Fill in all three fields'; return; }
+        if (next.length < 6) { errEl.textContent = 'New password must be at least 6 characters'; return; }
+        if (next !== conf)   { errEl.textContent = "New passwords don't match"; return; }
+        if (next === curr)   { errEl.textContent = 'New password must be different from the current one'; return; }
+        const saveBtn = o.querySelector('.cp-save');
+        saveBtn.disabled = true; saveBtn.textContent = 'Updating…';
+        try {
+            const cred = window.fbAuth.EmailAuthProvider.credential(user.email, curr);
+            await window.fbAuth.reauthenticateWithCredential(user, cred);
+            await window.fbAuth.updatePassword(user, next);
+            close();
+            sndConfirm(); hapConfirm();
+            showToast('Password updated');
+        } catch (err) {
+            const msg = err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? 'Current password is wrong'
+                      : err.code === 'auth/weak-password' ? 'New password is too weak'
+                      : err.code === 'auth/too-many-requests' ? 'Too many tries — try again later'
+                      : err.code === 'auth/requires-recent-login' ? 'Please log out and log back in, then try again'
+                      : (err.message || 'Failed to update password');
+            errEl.textContent = msg;
+            saveBtn.disabled = false; saveBtn.textContent = 'Update password';
+        }
+    };
+    setTimeout(() => o.querySelector('.cp-curr').focus(), 80);
+}
 
 // Cryptographically-random per-user SMS-ingest key (256-bit hex). Replaces
 // the old guessable `myfinance_<username>_2026` scheme.
