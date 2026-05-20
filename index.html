@@ -4239,7 +4239,10 @@ function _mountCatWheel(wrap, list, ctx) {
     let lastIdx = initialIdx;
     let rafPending = false;
     let committedIdx = null;         // null = not committed
-    let pendingTapIdx = null;        // idx being committed via tap (null when idle)
+    // Programmatic-scroll guard: when commit() sets wheel.scrollTop, that
+    // fires a scroll event which would otherwise immediately uncommit the
+    // commit we just made. This flag suppresses one onScroll cycle.
+    let suppressNextScroll = false;
 
     requestAnimationFrame(() => _applyCatWheelTransforms(items, wheel));
 
@@ -4251,41 +4254,46 @@ function _mountCatWheel(wrap, list, ctx) {
     };
 
     const commit = (idx) => {
-        // Force scrollTop to the EXACT snap point. iOS Safari's smooth-scroll
-        // often lands 1-3px short of the target and scroll-snap doesn't
-        // always pull it in for programmatic scrolls — leaving the centered
-        // item's layout center a few pixels off from the indicator's center.
-        // The result is text that LOOKS off-center even though my closest-
-        // idx logic is correctly snapping the item to identity transform.
-        // (This is the "tap again fixes it" behaviour the user reported —
-        // the second tap nudged scrollTop by the missing few pixels.)
-        // Setting scrollTop here puts everything at the true snap point.
+        // Force wheel.scrollTop to the exact snap point — the centered
+        // item's layout center is then exactly at the indicator's center.
+        // Suppress the scroll event this triggers so onScroll doesn't
+        // immediately uncommit us.
         const target = idx * ITEM_H;
-        if (Math.abs(wheel.scrollTop - target) > 0) {
-            wheel.scrollTop = target;
-        }
+        const setScrollTop = () => {
+            if (Math.abs(wheel.scrollTop - target) > 0) {
+                suppressNextScroll = true;
+                wheel.scrollTop = target;
+            }
+        };
+        setScrollTop();
         committedIdx = idx;
         wrap.classList.add('committed');
         wrap.style.setProperty('--committed-accent', list[idx].color);
-        // Recompute transforms now that scrollTop is exactly at target so the
-        // centered item snaps to identity with no residual offset.
         _applyCatWheelTransforms(items, wheel);
         if (ctx.onCommitIdx) ctx.onCommitIdx(idx);
+        // Sub-pills rendering in onCommitIdx changes the layout BELOW the
+        // wheel. On some browsers, scroll-snap-type: y mandatory re-evaluates
+        // after layout shift and can pull scrollTop to a DIFFERENT snap point
+        // than the one we just set (e.g. one item past target). Re-apply
+        // scrollTop after the layout has settled so the wheel always lands
+        // visually at the same snap point as the committed state.
+        requestAnimationFrame(setScrollTop);
+        setTimeout(setScrollTop, 50);  // belt-and-suspenders for hidden tabs
     };
 
     const onScroll = () => {
-        // While a tap-triggered smooth-scroll is in flight, the scroll is
-        // programmatic — don't uncommit. Once the scroll settles (handled
-        // by the polling tick below), pendingTapIdx clears and normal
-        // user-scroll uncommit resumes.
-        //
-        // ALSO: rubber-band overscroll at the top/bottom of the wheel on
-        // iOS can fire scroll events as the wheel snaps back to a valid
-        // position. Those aren't a user "scrolling away" — they're a
-        // bounce. Tolerate small fluctuations near the committed item's
-        // snap point and only uncommit when scrollTop is clearly off
-        // (>= one item's height of slack).
-        if (pendingTapIdx === null && committedIdx !== null) {
+        // Suppress one scroll event after a commit-triggered scrollTop
+        // assignment — otherwise we'd immediately uncommit our own commit.
+        if (suppressNextScroll) {
+            suppressNextScroll = false;
+            return;
+        }
+        // User drag on the wheel. Uncommit if scrollTop has moved far
+        // enough from the committed snap point to make a different item
+        // the closest one. Rubber-band overscroll at the wheel's ends
+        // stays within ~one item, so a 60% threshold lets bounce through
+        // without uncommitting while still firing on a real drag.
+        if (committedIdx !== null) {
             const committedTarget = committedIdx * ITEM_H;
             if (Math.abs(wheel.scrollTop - committedTarget) > ITEM_H * 0.6) {
                 uncommit();
@@ -4300,10 +4308,6 @@ function _mountCatWheel(wrap, list, ctx) {
                     lastIdx = idx;
                     if (window._soundsEnabled !== false) sndWheelTick();
                     hapTick();
-                    // Live-update the indicator's accent CSS var so if the
-                    // wheel is currently committed (e.g. transitioning via
-                    // a tap), the ring smoothly tracks the centered item's
-                    // color. Has no visible effect when uncommitted.
                     wrap.style.setProperty('--committed-accent', list[idx].color);
                 }
             });
@@ -4314,71 +4318,17 @@ function _mountCatWheel(wrap, list, ctx) {
     items.forEach((el, idx) => {
         el.addEventListener('click', () => {
             const target = idx * ITEM_H;
-            // If already exactly here AND already committed to it, no-op.
-            if (committedIdx === idx && Math.abs(wheel.scrollTop - target) < 2) {
-                return;
-            }
-            pendingTapIdx = idx;
-            wheel.scrollTo({ top: target, behavior: 'smooth' });
-            // Poll scrollTop until the smooth-scroll AND any subsequent
-            // scroll-snap-mandatory pull have BOTH settled. Committing too
-            // early means the snap fires another scroll event right after
-            // our commit, pendingTapIdx is already cleared, so onScroll
-            // sees a "user scroll" and uncommits us — sub-pills flicker on
-            // then off. Requiring 2 consecutive stable frames absorbs the
-            // snap.
-            let attempts = 0;
-            let stableFrames = 0;
-            let prevTop = -1;
-            let minDist = Infinity;
-            const tick = () => {
-                if (pendingTapIdx !== idx) return;  // superseded by another tap
-                attempts++;
-                const cur = wheel.scrollTop;
-                const dist = Math.abs(cur - target);
-                if (dist < minDist) minDist = dist;
-                // Abort only if we GOT close to target and then moved way
-                // away from it — that's a genuine user drag mid-animation.
-                // iOS rubber-band overscroll at the wheel ends keeps dist
-                // within ~one item; only a real user drag goes further.
-                if (minDist < 5 && dist > ITEM_H * 0.75) {
-                    pendingTapIdx = null;
-                    if (committedIdx !== null) uncommit();
-                    return;
-                }
-                // Stable = scrollTop unchanged since the previous frame AND
-                // within a few px of target. Threshold is 3px (not 0.5)
-                // because iOS Safari's smooth-scroll regularly lands 1-3px
-                // short of the target without firing a final scroll-snap
-                // pull on programmatic scrolls. commit() unconditionally
-                // forces scrollTop = target before applying transforms, so
-                // any residual offset is corrected there — we just need to
-                // get to commit promptly rather than waiting out the 1s
-                // failsafe.
-                if (dist < 3 && cur === prevTop) stableFrames++;
-                else stableFrames = 0;
-                prevTop = cur;
-                if (stableFrames >= 2) {
-                    pendingTapIdx = null;
-                    // Force one final transform pass with the now-stable
-                    // scrollTop. Without this, the most recent transforms are
-                    // from the last in-motion frame and the centered item can
-                    // be marked is-centered with a stale closestIdx (the user
-                    // sees a different item highlighted, or their tapped item
-                    // shows a tiny residual tilt until the next interaction).
-                    _applyCatWheelTransforms(items, wheel);
-                    commit(idx);
-                    return;
-                }
-                if (attempts > 60) {  // ~1s failsafe
-                    pendingTapIdx = null;
-                    _applyCatWheelTransforms(items, wheel);
-                    commit(idx);
-                    return;
-                }
-                requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
+            // No-op if already committed to this exact item at exactly the
+            // snap position (avoids redundant re-commit + re-render).
+            if (committedIdx === idx && wheel.scrollTop === target) return;
+            // Synchronous commit on tap — the previous poll-based approach
+            // was fragile (relied on rAF firing while in focus, iOS smooth-
+            // scroll landing exactly on target, etc.) and caused the
+            // sub-pills to show the PREVIOUSLY-committed cat's content while
+            // the wheel visually centered on the new tap — the exact bug
+            // in the user's video. commit() forces wheel.scrollTop to
+            // exact target so visuals and state are always in sync.
+            commit(idx);
         });
     });
 
