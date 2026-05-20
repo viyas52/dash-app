@@ -1116,10 +1116,16 @@
             text-align: center; font-family: 'Space Mono', monospace;
             font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
             color: var(--text-3); cursor: pointer;
-            border: none; background: transparent; transition: all 0.15s;
+            border: 1px solid var(--border); background: var(--bg-tinted);
+            border-radius: 12px; transition: all 0.15s;
         }
-        .confirm-btn.ready { color: var(--text-1); background: var(--border-light); border-radius: 10px; }
-        .confirm-btn.done { color: var(--green); }
+        .confirm-btn.ready {
+            color: var(--bg); background: var(--text-1);
+            border-color: var(--text-1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .confirm-btn.ready:active { transform: scale(0.985); }
+        .confirm-btn.done { color: var(--green); background: var(--bg-tinted); border-color: var(--green); }
 
         .done-state { text-align: center; padding: 48px 20px; display: none; }
         .done-ico {
@@ -2389,7 +2395,28 @@ function loadLinkedAccounts() {
 let _balanceCache = {};
 let _balanceCacheKey = '';
 function invalidateBalanceCache() { _balanceCacheKey = ''; _balanceCache = {}; }
-function computeLiveBalance(bankId) {
+// Tolerant txn-to-linked-account match. The server stores e.bank as a short
+// key ("icici", "hdfc") but LINKED_ACCOUNTS[i].id is the user-side id
+// ("icici1234" for suggested-add, "icicibank" for manual-add) — strict equality
+// misses for users whose linked-account id format differs from the parser's
+// bank key. Last4 of the account number is the actually-unique identifier, so
+// fall back to that when e.bank doesn't match a.id directly. Also accept the
+// case where one is a prefix of the other (covers "icici" vs "icici1234").
+function txnMatchesAccount(e, a) {
+    if (!e || !a) return false;
+    const eb = String(e.bank || '').toLowerCase();
+    const ai = String(a.id || '').toLowerCase();
+    if (eb && ai && eb === ai) return true;
+    if (eb && ai && (ai.startsWith(eb) || eb.startsWith(ai))) return true;
+    const ea = String(e.account || '').replace(/\D/g, '').slice(-4);
+    const aa = String(a.last4 || '').replace(/\D/g, '').slice(-4);
+    if (ea && aa && ea === aa) return true;
+    return false;
+}
+function computeLiveBalance(a) {
+    // Accept either an account object or a legacy bankId string for safety.
+    const acct = (typeof a === 'string') ? { id: a, last4: '' } : a;
+    const bankId = acct.id;
     // Cache key based on currentEntries length + bank balances
     const cacheKey = (currentEntries || []).length + '_' + (lsGet('bal_' + bankId) || '') + '_' + (lsGet('bal_upd_' + bankId) || '');
     if (_balanceCache[bankId] !== undefined && _balanceCacheKey === cacheKey) return _balanceCache[bankId];
@@ -2402,7 +2429,7 @@ function computeLiveBalance(bankId) {
     const seen = new Set();
     let delta = 0;
     (currentEntries || []).forEach(e => {
-        if (e.bank !== bankId) return;
+        if (!txnMatchesAccount(e, acct)) return;
         if (!e.created_at || e.created_at <= since) return;
         const key = e.dedup_key || e.id || (e.type + e.amount + e.created_at);
         if (seen.has(key)) return;
@@ -2416,7 +2443,7 @@ function computeLiveBalance(bankId) {
 }
 
 function renderAcctCard(a) {
-    const bal    = computeLiveBalance(a.id);
+    const bal    = computeLiveBalance(a);
     const updAt  = lsGet('bal_upd_' + a.id);
     const isOpen = _acctExpanded === a.id;
     const isEdit = _acctEditing  === a.id;
@@ -3814,7 +3841,12 @@ function setAcctFilter(bank, btn) {
 }
 function applyAcctFilter() {
     const all = window._allCategorized || [];
-    let filtered = _acctFilter === 'all' ? all : all.filter(e => e.bank === _acctFilter);
+    const activeAcct = LINKED_ACCOUNTS.find(a => a.id === _acctFilter);
+    let filtered = _acctFilter === 'all'
+        ? all
+        : (activeAcct
+            ? all.filter(e => txnMatchesAccount(e, activeAcct))
+            : all.filter(e => e.bank === _acctFilter));
     // Apply category filter from the spending-badges row
     if (_catFilter !== 'all') {
         filtered = filtered.filter(e => resolveParentCat(e.category) === _catFilter);
