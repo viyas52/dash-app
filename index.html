@@ -75,9 +75,9 @@
             --danger-soft: #3A1A1A;
             --border: #333;
             --border-light: #2A2A2A;
-            --text-1: #F5F2EC;     /* primary — slightly brighter, near-white */
-            --text-2: #D5D5D5;     /* was #BBB — bumped for better readability */
-            --text-3: #999;        /* was #777 — bumped for hints/placeholders */
+            --text-1: #FAFAF7;     /* primary — near-pure white in dark mode */
+            --text-2: #ECECEC;     /* secondary — clearly white-leaning */
+            --text-3: #B8B8B8;     /* hints / placeholders — still subdued but legible */
         }
         /* In dark mode the curated cat colors (e.g. #1565C0 Transport, #6A1B9A
            Apparel) sit too dark on var(--bg-card) backgrounds — pills lose
@@ -1073,53 +1073,23 @@
             padding: 0 14px 12px;
             animation: subSlideIn 0.18s ease;
         }
-        /* Sub-category chips — bigger 2-col tiles with a 3D "key" feel.
-           Soft shadow at rest, recessed inset shadow when selected.
-           Color comes from --sub-accent set inline by JS per pill. */
+        /* Sub-category pills — rounded chips, sized a touch bigger than the
+           original (8/16 pad, 13px font, 1.5px border) for easier tapping. */
         .cat-row-sub-pill {
-            padding: 11px 12px;
-            border-radius: 14px;
-            border: 1.5px solid color-mix(in srgb,
-                var(--sub-accent, var(--border)) 32%, transparent);
-            background: var(--bg-card);
-            color: var(--sub-accent, var(--text-1));
+            padding: 8px 16px;
+            border-radius: 22px;
+            border: 1.5px solid;
             font-size: 13px;
             font-weight: 600;
-            text-align: center;
             cursor: pointer;
             font-family: 'DM Sans', sans-serif;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05),
-                        0 1px 2px rgba(0,0,0,0.04);
-            transition: transform 0.12s ease,
-                        box-shadow 0.15s ease,
-                        background 0.15s ease,
-                        color 0.15s ease,
-                        border-color 0.15s ease;
+            background: var(--bg-card);
+            transition: transform 0.12s, background 0.12s,
+                        color 0.12s, border-color 0.12s;
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            min-width: 0;
             line-height: 1.2;
         }
-        .cat-row-sub-pill:active {
-            transform: translateY(1.5px) scale(0.99);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.06),
-                        inset 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .cat-row-sub-pill.selected {
-            color: #fff;
-            background: var(--sub-accent, var(--text-1));
-            border-color: var(--sub-accent, var(--text-1));
-            box-shadow: 0 1px 2px rgba(0,0,0,0.10),
-                        inset 0 1px 3px rgba(0,0,0,0.18);
-        }
-        [data-theme="dark"] .cat-row-sub-pill {
-            box-shadow: 0 2px 6px rgba(0,0,0,0.35),
-                        0 1px 2px rgba(0,0,0,0.25);
-        }
-        [data-theme="dark"] .cat-row-sub-pill.selected {
-            box-shadow: 0 1px 2px rgba(0,0,0,0.40),
-                        inset 0 1px 3px rgba(0,0,0,0.35);
-        }
+        .cat-row-sub-pill:active { transform: scale(0.95); }
 
         /* ── 3D cylinder wheel category picker ── */
         .cat-wheel-wrap {
@@ -1207,17 +1177,10 @@
                 var(--committed-accent, transparent) 12%, transparent);
         }
         .cat-wheel-subs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            display: flex; flex-wrap: wrap; gap: 7px;
             padding: 12px 18px 0;
         }
         .cat-wheel-subs:empty { padding: 0; }
-        /* If there's an odd number of subs the lone last chip spans the full
-           width — keeps the column balance from looking lopsided. */
-        .cat-wheel-subs > .cat-row-sub-pill:last-child:nth-child(odd) {
-            grid-column: 1 / -1;
-        }
 
         /* ── Sub-category panel ── */
         .sub-panel {
@@ -3771,18 +3734,7 @@ function updateDashboard(entries) {
 
     entries.forEach(e => {
         if (!e.category || !e.category_type) {
-            uncatEntries.push(e);
-            // Preview-include uncat txns in the home stats so the Spent /
-            // Income numbers reflect ALL money moved this month, not just
-            // the categorized portion. Once the user picks a category, the
-            // txn is re-counted with proper rules (e.g. transfer excluded,
-            // reimbursement netting the original expense). Most uncats are
-            // spending so this approximates the true spend closely; the
-            // occasional transfer-or-investment that's still uncat will
-            // overcount slightly until categorized.
-            if (e.type === 'debit') totalExpense += e.amount || 0;
-            else if (e.type === 'credit') totalIncome += e.amount || 0;
-            return;
+            uncatEntries.push(e); return;
         }
         if (e.category_type === 'reimbursement') return; // refund link — handled below via reimbByExpense
         if (e.category_type === 'income') totalIncome += e.amount || 0;
@@ -4389,14 +4341,11 @@ function _renderCatSubs(subsEl, cat, sel, selParent, onPick) {
         return;
     }
     const accent = cat.color;
-    // CSS-variable driven — the chip style is in the stylesheet (.cat-row-sub-pill
-    // and .cat-row-sub-pill.selected), and the per-cat accent is wired through
-    // --sub-accent. Cleaner than inline color/bg/border per pill.
     subsEl.innerHTML = cat.subs.map((s, idx) => {
         const isSub = sel === s && selParent === cat.name;
-        return '<div class="cat-row-sub-pill' + (isSub ? ' selected' : '') + '" ' +
-            'data-sub-idx="' + idx + '" style="--sub-accent:' + accent + '">' +
-            s + '</div>';
+        return '<div class="cat-row-sub-pill" data-sub-idx="' + idx + '" style="border-color:' + (isSub ? accent : accent + '55') +
+            ';background:' + (isSub ? accent : 'var(--bg-card)') +
+            ';color:' + (isSub ? '#fff' : accent) + '">' + s + '</div>';
     }).join('');
     subsEl.querySelectorAll('.cat-row-sub-pill').forEach(el => {
         el.addEventListener('click', (e) => {
