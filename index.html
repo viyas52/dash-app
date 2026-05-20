@@ -1151,6 +1151,15 @@
         .cat-wheel-item.is-centered .cat-row-icon {
             color: var(--accent, var(--text-3));
         }
+        /* Committed state — the user has tapped to lock in the centered cat.
+           The indicator ring picks up the accent color and a soft accent tint
+           inside the band; reverts on the next scroll. */
+        .cat-wheel-wrap.committed .cat-wheel-indicator {
+            border-color: var(--committed-accent, var(--border));
+            border-width: 1.5px;
+            background: color-mix(in srgb,
+                var(--committed-accent, transparent) 12%, transparent);
+        }
         .cat-wheel-subs {
             display: flex; flex-wrap: wrap; gap: 6px;
             padding: 10px 18px 0;
@@ -4172,7 +4181,12 @@ function _applyCatWheelTransforms(items, wheel) {
 }
 
 function _mountCatWheel(wrap, list, ctx) {
-    // ctx = { initialName, onTickIdx, onSettleIdx }
+    // ctx = { initialName, onCommitIdx, onUncommit }
+    // Scrolling alone does NOT commit — it only updates visuals and fires
+    // the tick sound on center change. The user explicitly commits by
+    // tapping any wheel item (which also scrolls it to center). Spinning
+    // after a commit clears the commit and fires onUncommit so sub-pills
+    // can be hidden until the user taps again.
     const wheel = wrap.querySelector('.cat-wheel');
     if (!wheel) return;
     const items = Array.from(wrap.querySelectorAll('.cat-wheel-item'));
@@ -4189,12 +4203,31 @@ function _mountCatWheel(wrap, list, ctx) {
     wheel.scrollTop = initialIdx * ITEM_H;
     let lastIdx = initialIdx;
     let rafPending = false;
-    let settleT = null;
+    let committedIdx = null;          // null = not committed
+    let commitTimer = null;
+    let suppressUncommitUntil = 0;    // timestamp; programmatic-scroll guard
 
-    // First-paint transforms (let the browser commit scrollTop first).
     requestAnimationFrame(() => _applyCatWheelTransforms(items, wheel));
 
+    const uncommit = () => {
+        if (committedIdx === null) return;
+        committedIdx = null;
+        wrap.classList.remove('committed');
+        if (ctx.onUncommit) ctx.onUncommit();
+    };
+
+    const commit = (idx) => {
+        committedIdx = idx;
+        wrap.classList.add('committed');
+        wrap.style.setProperty('--committed-accent', list[idx].color);
+        if (ctx.onCommitIdx) ctx.onCommitIdx(idx);
+    };
+
     const onScroll = () => {
+        // Programmatic smooth-scroll (from a tap) should not uncommit.
+        if (committedIdx !== null && performance.now() >= suppressUncommitUntil) {
+            uncommit();
+        }
         if (!rafPending) {
             rafPending = true;
             requestAnimationFrame(() => {
@@ -4204,28 +4237,37 @@ function _mountCatWheel(wrap, list, ctx) {
                     lastIdx = idx;
                     if (window._soundsEnabled !== false) sndWheelTick();
                     hapTick();
-                    if (ctx.onTickIdx) ctx.onTickIdx(idx);
                 }
             });
         }
-        if (settleT) clearTimeout(settleT);
-        settleT = setTimeout(() => {
-            if (ctx.onSettleIdx) ctx.onSettleIdx(lastIdx);
-        }, 140);
     };
     wheel.addEventListener('scroll', onScroll, { passive: true });
 
     items.forEach((el, idx) => {
         el.addEventListener('click', () => {
+            if (commitTimer) clearTimeout(commitTimer);
+            // Clear any prior commit immediately so the visual ring resets
+            // while the smooth-scroll animates to the new item.
+            if (committedIdx !== null) uncommit();
+            // Suppress scroll-driven uncommit during the smooth-scroll the
+            // tap is about to trigger (~250ms is plenty for short hops).
+            suppressUncommitUntil = performance.now() + 350;
             wheel.scrollTo({ top: idx * ITEM_H, behavior: 'smooth' });
+            // Commit after the smooth-scroll has settled visually so the
+            // sub-pills appear under an item that's actually at center.
+            commitTimer = setTimeout(() => {
+                commitTimer = null;
+                commit(idx);
+            }, 220);
         });
     });
 
-    // Fire initial settle after DOM commit so callers can render the
-    // sub-pill row for the initially-centered cat.
-    queueMicrotask(() => {
-        if (ctx.onSettleIdx) ctx.onSettleIdx(initialIdx);
-    });
+    // If the wheel mounted with a pre-existing selection (restored across
+    // re-renders, e.g. user picked Lunch under Food and the card re-renders),
+    // auto-commit to that parent so sub-pills + Confirm reflect the state.
+    if (ctx.initialName) {
+        queueMicrotask(() => commit(initialIdx));
+    }
 }
 
 function _catWheelHtml(list) {
@@ -4277,11 +4319,23 @@ function renderModalCatGrid(cats) {
     const initialName = st.sub || st.cat || null;
     _mountCatWheel(wrap, cats, {
         initialName,
-        onSettleIdx: (idx) => _onModalWheelSettle(idx, cats)
+        onCommitIdx: (idx) => _onModalWheelCommit(idx, cats),
+        onUncommit:  ()    => _onModalWheelUncommit()
     });
 }
 
-function _onModalWheelSettle(idx, cats) {
+function _onModalWheelUncommit() {
+    const st = _modalCatState;
+    st.cat = null; st.sub = null; st.expanded = null;
+    document.getElementById('add-category').value = '';
+    document.getElementById('add-sub-category').value = '';
+    const selLabel = document.getElementById('modal-cat-selected');
+    if (selLabel) selLabel.textContent = '';
+    const subsEl = document.getElementById('modal-cat-subs');
+    if (subsEl) subsEl.innerHTML = '';
+}
+
+function _onModalWheelCommit(idx, cats) {
     const c = cats[idx];
     if (!c) return;
     const st = _modalCatState;
@@ -4945,11 +4999,27 @@ function mountUncatWheel(i) {
     const initialName = st.sel || st.selParent || null;
     _mountCatWheel(wrap, list, {
         initialName,
-        onSettleIdx: (idx) => _onUncatWheelSettle(i, idx, list)
+        onCommitIdx: (idx) => _onUncatWheelCommit(i, idx, list),
+        onUncommit:  ()    => _onUncatWheelUncommit(i)
     });
 }
 
-function _onUncatWheelSettle(i, idx, list) {
+function _onUncatWheelUncommit(i) {
+    const st = uncatState[i];
+    if (!st) return;
+    st.sel = null;
+    st.selParent = null;
+    st.expanded = null;
+    const subsEl = document.getElementById('usubs-' + i);
+    if (subsEl) subsEl.innerHTML = '';
+    const btn = document.getElementById('ubtn-' + i);
+    if (btn) {
+        btn.classList.remove('ready');
+        btn.textContent = 'CONFIRM';
+    }
+}
+
+function _onUncatWheelCommit(i, idx, list) {
     const c = list[idx];
     if (!c) return;
     const st = uncatState[i];
