@@ -1149,7 +1149,6 @@
             flex-shrink: 0;
             color: var(--text-3);
             transition: color 0.15s;
-            line-height: 1;
         }
         .cat-wheel-item .cat-row-icon svg { width: 22px; height: 22px; display: block; }
         .cat-wheel-item .cat-row-label {
@@ -1158,7 +1157,11 @@
             font-family: 'DM Sans', sans-serif;
             flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             letter-spacing: -0.005em;
-            line-height: 1;
+            /* Line-height matches the full item height so the label's line-box
+               is the same as the row. Inside that big line-box the font's own
+               metrics handle vertical centering — much more reliable than
+               flex-centering a 14px line-box whose glyphs sit a touch high. */
+            line-height: 44px;
             transition: color 0.15s;
         }
         .cat-wheel-item.is-centered .cat-row-label {
