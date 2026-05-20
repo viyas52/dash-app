@@ -1079,17 +1079,22 @@
         .cat-row-sub-pill:active { transform: scale(0.95); }
 
         /* ── 3D cylinder wheel category picker ── */
-        .cat-wheel-wrap { position: relative; margin: 0; }
+        .cat-wheel-wrap {
+            position: relative; margin: 0;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--bg-tinted);
+            overflow: hidden;
+        }
         .cat-wheel-indicator {
-            position: absolute; left: 0; right: 0;
+            position: absolute; left: 8px; right: 8px;
             top: 50%; height: 44px;
             transform: translateY(-50%);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
             pointer-events: none;
             z-index: 1;
-            background: linear-gradient(to bottom,
-                rgba(127,127,127,0.04), rgba(127,127,127,0.08), rgba(127,127,127,0.04));
+            background: transparent;
         }
         .cat-wheel {
             height: 220px;
