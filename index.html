@@ -1097,7 +1097,7 @@
             background: transparent;
         }
         .cat-wheel {
-            height: 220px;
+            height: 176px;
             overflow-y: auto;
             overflow-x: hidden;
             scroll-snap-type: y mandatory;
@@ -1115,7 +1115,7 @@
                 transparent 0%, #000 22%, #000 78%, transparent 100%);
         }
         .cat-wheel::-webkit-scrollbar { display: none; }
-        .cat-wheel-spacer { height: 88px; pointer-events: none; }
+        .cat-wheel-spacer { height: 66px; pointer-events: none; }
         .cat-wheel-item {
             height: 44px;
             scroll-snap-align: center;
@@ -1125,6 +1125,7 @@
             cursor: pointer;
             will-change: transform, opacity;
             transform-style: preserve-3d;
+            transform-origin: center center;
             -webkit-tap-highlight-color: transparent;
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
@@ -1135,15 +1136,17 @@
             flex-shrink: 0;
             color: var(--text-3);
             transition: color 0.15s;
+            line-height: 1;
         }
-        .cat-wheel-item .cat-row-icon svg { width: 22px; height: 22px; }
+        .cat-wheel-item .cat-row-icon svg { width: 22px; height: 22px; display: block; }
         .cat-wheel-item .cat-row-label {
             font-size: 14px; font-weight: 500;
             color: var(--text-2);
             font-family: 'DM Sans', sans-serif;
             flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             letter-spacing: -0.005em;
-            transition: color 0.15s, font-weight 0.15s;
+            line-height: 1;
+            transition: color 0.15s;
         }
         .cat-wheel-item.is-centered .cat-row-label {
             font-weight: 700; color: var(--accent, var(--text-1));
