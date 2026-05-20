@@ -75,10 +75,15 @@
             --danger-soft: #3A1A1A;
             --border: #333;
             --border-light: #2A2A2A;
-            --text-1: #F0EDE8;
-            --text-2: #BBB;
-            --text-3: #777;
+            --text-1: #F5F2EC;     /* primary — slightly brighter, near-white */
+            --text-2: #D5D5D5;     /* was #BBB — bumped for better readability */
+            --text-3: #999;        /* was #777 — bumped for hints/placeholders */
         }
+        /* In dark mode the curated cat colors (e.g. #1565C0 Transport, #6A1B9A
+           Apparel) sit too dark on var(--bg-card) backgrounds — pills lose
+           legibility. Lift them with a brightness/saturation tweak so the
+           accent reads cleanly without changing the brand palette. */
+        [data-theme="dark"] .cat-row-sub-pill { filter: brightness(1.25) saturate(1.05); }
         [data-theme="dark"] .month-arrow { border-color: #444; }
         [data-theme="dark"] .bottom-nav { border-top-color: #333; }
         [data-theme="dark"] .donut-track { stroke: #333; }
