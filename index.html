@@ -1046,7 +1046,7 @@
             padding: 12px 14px; cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        .cat-row:active { background: rgba(0,0,0,0.04); }
+        .cat-row:active { background: var(--border); }
         .cat-row-icon {
             width: 22px; height: 22px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
@@ -4071,8 +4071,11 @@ function renderModalCatGrid(cats) {
         const showSubs = hasSubs && (isExpanded || isParentOfSel);
         const active = isSelfPick || showSubs;
         const accent = c.color;
+        // Use the accent color as a low-alpha overlay (not c.bg's hardcoded
+        // light pastel) so the active tint blends with the underlying card
+        // background in both light and dark mode.
         const groupStyle = active
-            ? 'border-color:' + accent + ';background:' + (c.bg || (accent + '14')) + ';'
+            ? 'border-color:' + accent + ';background:' + accent + '22;'
             : '';
         const labelColor = active ? accent : 'var(--text-1)';
         const iconColor = active ? accent : 'var(--text-3)';
@@ -4719,8 +4722,11 @@ function renderCatChips(i) {
         const showSubs = hasSubs && (isExpanded || isParentOfSel);
         const active = isSelfPick || showSubs;
         const accent = c.color;
+        // Use the accent color as a low-alpha overlay (not c.bg's hardcoded
+        // light pastel) so the active tint blends with the underlying card
+        // background in both light and dark mode.
         const groupStyle = active
-            ? 'border-color:' + accent + ';background:' + (c.bg || (accent + '14')) + ';'
+            ? 'border-color:' + accent + ';background:' + accent + '22;'
             : '';
         const labelColor = active ? accent : 'var(--text-1)';
         const iconColor = active ? accent : 'var(--text-3)';
