@@ -1078,6 +1078,80 @@
         }
         .cat-row-sub-pill:active { transform: scale(0.95); }
 
+        /* ── 3D cylinder wheel category picker ── */
+        .cat-wheel-wrap { position: relative; margin: 0; }
+        .cat-wheel-indicator {
+            position: absolute; left: 0; right: 0;
+            top: 50%; height: 44px;
+            transform: translateY(-50%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            pointer-events: none;
+            z-index: 1;
+            background: linear-gradient(to bottom,
+                rgba(127,127,127,0.04), rgba(127,127,127,0.08), rgba(127,127,127,0.04));
+        }
+        .cat-wheel {
+            height: 220px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-snap-type: y mandatory;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            perspective: 700px;
+            perspective-origin: center center;
+            position: relative;
+            z-index: 0;
+            mask-image: linear-gradient(to bottom,
+                transparent 0%, #000 22%, #000 78%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom,
+                transparent 0%, #000 22%, #000 78%, transparent 100%);
+        }
+        .cat-wheel::-webkit-scrollbar { display: none; }
+        .cat-wheel-spacer { height: 88px; pointer-events: none; }
+        .cat-wheel-item {
+            height: 44px;
+            scroll-snap-align: center;
+            scroll-snap-stop: always;
+            display: flex; align-items: center; gap: 12px;
+            padding: 0 16px;
+            cursor: pointer;
+            will-change: transform, opacity;
+            transform-style: preserve-3d;
+            -webkit-tap-highlight-color: transparent;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .cat-wheel-item .cat-row-icon {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            color: var(--text-3);
+            transition: color 0.15s;
+        }
+        .cat-wheel-item .cat-row-icon svg { width: 22px; height: 22px; }
+        .cat-wheel-item .cat-row-label {
+            font-size: 14px; font-weight: 500;
+            color: var(--text-2);
+            font-family: 'DM Sans', sans-serif;
+            flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            letter-spacing: -0.005em;
+            transition: color 0.15s, font-weight 0.15s;
+        }
+        .cat-wheel-item.is-centered .cat-row-label {
+            font-weight: 700; color: var(--accent, var(--text-1));
+        }
+        .cat-wheel-item.is-centered .cat-row-icon {
+            color: var(--accent, var(--text-3));
+        }
+        .cat-wheel-subs {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            padding: 10px 18px 0;
+        }
+        .cat-wheel-subs:empty { padding: 0; }
+
         /* ── Sub-category panel ── */
         .sub-panel {
             margin: 6px 18px 0; border-radius: var(--radius-sm); overflow: hidden;
@@ -3080,6 +3154,7 @@ function _tone(freq, dur = 50, type = 'square', gain = 0.05) {
 // Specific game sounds — each crafted to feel low and pleasant
 function sndClick()   { _tone(1100, 22, 'square',   0.035); }   // soft tap
 function sndTap()     { _tone(880,  30, 'square',   0.04);  }   // pill / chip
+function sndWheelTick(){_tone(1500, 14, 'square',   0.018); }   // crisp tick for wheel scroll
 function sndPage()    { _tone(660,  35, 'triangle', 0.04);  }   // page change
 function sndToggle(on){ _tone(on ? 880 : 520, 35, 'square', 0.04); }
 function sndConfirm() {
@@ -4060,49 +4135,179 @@ function renderSubPanel(exp) {
         inner + '</div>';
 }
 
-function renderModalCatGrid(cats) {
-    const st = _modalCatState;
-    let html = '<div class="cat-list">';
-    cats.forEach(c => {
-        const hasSubs = !!(c.subs && c.subs.length > 0);
-        const isSelfPick = !hasSubs && st.cat === c.name;
-        const isExpanded = st.expanded === c.name;
-        const isParentOfSel = hasSubs && st.cat === c.name && st.sub && c.subs.includes(st.sub);
-        const showSubs = hasSubs && (isExpanded || isParentOfSel);
-        const active = isSelfPick || showSubs;
-        const accent = c.color;
-        // Use the accent color as a low-alpha overlay (not c.bg's hardcoded
-        // light pastel) so the active tint blends with the underlying card
-        // background in both light and dark mode.
-        const groupStyle = active
-            ? 'border-color:' + accent + ';background:' + accent + '22;'
-            : '';
-        const labelColor = active ? accent : 'var(--text-1)';
-        const iconColor = active ? accent : 'var(--text-3)';
-        const icon = getCatIcon(c.name);
-        const safeName = c.name.replace(/'/g, "\\'");
-        html += '<div class="cat-group' + (active ? ' active' : '') + '" style="' + groupStyle + '">' +
-            '<div class="cat-row" onclick="modalPickCat(\'' + safeName + '\')">' +
-            '<div class="cat-row-icon" style="color:' + iconColor + '">' + icon + '</div>' +
-            '<div class="cat-row-label" style="color:' + labelColor + '">' + c.name + '</div>' +
-            '<svg class="cat-row-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:' + (active ? accent : 'var(--text-3)') + '"><path d="M9 6l6 6-6 6"/></svg>' +
-            '</div>';
-        if (showSubs) {
-            html += '<div class="cat-row-subs">' +
-                c.subs.map(s => {
-                    const safeSub = s.replace(/'/g, "\\'");
-                    const isSub = st.sub === s && st.cat === c.name;
-                    return '<div class="cat-row-sub-pill" style="border-color:' + (isSub ? accent : accent + '55') +
-                        ';background:' + (isSub ? accent : 'var(--bg-card)') +
-                        ';color:' + (isSub ? '#fff' : accent) +
-                        '" onclick="event.stopPropagation();modalPickSub(\'' + safeSub + '\')">' + s + '</div>';
-                }).join('') +
-            '</div>';
-        }
-        html += '</div>';
+/* ─── 3D CYLINDER WHEEL CATEGORY PICKER ───
+   Shared between the uncat card and the manual-add modal. The wheel
+   shows one parent category at center (with depth + tilt + fade for items
+   above/below), and any sub-categories for the centered cat appear as
+   tappable pills in a separate container below the wheel. */
+
+function _applyCatWheelTransforms(items, wheel) {
+    // Compute each item's distance from the wheel's vertical center, then
+    // apply translateZ + rotateX + scale + opacity for the cylinder look.
+    // Returns the index of the item closest to center.
+    const wRect = wheel.getBoundingClientRect();
+    const cy = wRect.top + wRect.height / 2;
+    let closestIdx = 0, closestAbs = Infinity;
+    items.forEach((el, idx) => {
+        const r = el.getBoundingClientRect();
+        const itemCenter = r.top + r.height / 2;
+        const dist = itemCenter - cy;        // signed: + below, - above
+        const abs = Math.abs(dist);
+        // Tilt — top edge of item recedes when above center, comes forward when below.
+        const angle = Math.max(-50, Math.min(50, dist / 3));
+        const opacity = Math.max(0.22, 1 - abs / 90);
+        const scale = Math.max(0.82, 1 - abs / 520);
+        const tz = -abs / 4;
+        el.style.transform = 'translateZ(' + tz.toFixed(1) + 'px) rotateX(' + angle.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
+        el.style.opacity = opacity.toFixed(2);
+        if (abs < closestAbs) { closestAbs = abs; closestIdx = idx; }
     });
-    html += '</div>';
-    document.getElementById('modal-cat-grid').innerHTML = html;
+    items.forEach((el, idx) => el.classList.toggle('is-centered', idx === closestIdx));
+    return closestIdx;
+}
+
+function _mountCatWheel(wrap, list, ctx) {
+    // ctx = { initialName, onTickIdx, onSettleIdx }
+    const wheel = wrap.querySelector('.cat-wheel');
+    if (!wheel) return;
+    const items = Array.from(wrap.querySelectorAll('.cat-wheel-item'));
+    if (!items.length) return;
+    const ITEM_H = 44;
+    let initialIdx = 0;
+    if (ctx.initialName) {
+        const idx = list.findIndex(c =>
+            c.name === ctx.initialName ||
+            (c.subs && c.subs.includes(ctx.initialName)));
+        if (idx >= 0) initialIdx = idx;
+    }
+    // Set scroll silently BEFORE listener — no tick on initial position.
+    wheel.scrollTop = initialIdx * ITEM_H;
+    let lastIdx = initialIdx;
+    let rafPending = false;
+    let settleT = null;
+
+    // First-paint transforms (let the browser commit scrollTop first).
+    requestAnimationFrame(() => _applyCatWheelTransforms(items, wheel));
+
+    const onScroll = () => {
+        if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+                rafPending = false;
+                const idx = _applyCatWheelTransforms(items, wheel);
+                if (idx !== lastIdx) {
+                    lastIdx = idx;
+                    if (window._soundsEnabled !== false) sndWheelTick();
+                    hapTick();
+                    if (ctx.onTickIdx) ctx.onTickIdx(idx);
+                }
+            });
+        }
+        if (settleT) clearTimeout(settleT);
+        settleT = setTimeout(() => {
+            if (ctx.onSettleIdx) ctx.onSettleIdx(lastIdx);
+        }, 140);
+    };
+    wheel.addEventListener('scroll', onScroll, { passive: true });
+
+    items.forEach((el, idx) => {
+        el.addEventListener('click', () => {
+            wheel.scrollTo({ top: idx * ITEM_H, behavior: 'smooth' });
+        });
+    });
+
+    // Fire initial settle after DOM commit so callers can render the
+    // sub-pill row for the initially-centered cat.
+    queueMicrotask(() => {
+        if (ctx.onSettleIdx) ctx.onSettleIdx(initialIdx);
+    });
+}
+
+function _catWheelHtml(list) {
+    let html = '<div class="cat-wheel-wrap">';
+    html += '<div class="cat-wheel-indicator"></div>';
+    html += '<div class="cat-wheel">';
+    html += '<div class="cat-wheel-spacer"></div>';
+    list.forEach((c, idx) => {
+        const icon = getCatIcon(c.name);
+        const escName = (c.name || '').replace(/"/g, '&quot;');
+        html += '<div class="cat-wheel-item" data-idx="' + idx + '" style="--accent:' + c.color + '">' +
+            '<div class="cat-row-icon">' + icon + '</div>' +
+            '<div class="cat-row-label">' + escName + '</div>' +
+            '</div>';
+    });
+    html += '<div class="cat-wheel-spacer"></div>';
+    html += '</div>'; // .cat-wheel
+    html += '</div>'; // .cat-wheel-wrap
+    return html;
+}
+
+function _renderCatSubs(subsEl, cat, sel, selParent, onPick) {
+    if (!cat || !cat.subs || !cat.subs.length) {
+        subsEl.innerHTML = '';
+        return;
+    }
+    const accent = cat.color;
+    subsEl.innerHTML = cat.subs.map((s, idx) => {
+        const isSub = sel === s && selParent === cat.name;
+        return '<div class="cat-row-sub-pill" data-sub-idx="' + idx + '" style="border-color:' + (isSub ? accent : accent + '55') +
+            ';background:' + (isSub ? accent : 'var(--bg-card)') +
+            ';color:' + (isSub ? '#fff' : accent) + '">' + s + '</div>';
+    }).join('');
+    subsEl.querySelectorAll('.cat-row-sub-pill').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = +el.dataset.subIdx;
+            onPick(cat.subs[idx], cat.name);
+        });
+    });
+}
+
+function renderModalCatGrid(cats) {
+    document.getElementById('modal-cat-grid').innerHTML =
+        _catWheelHtml(cats) + '<div id="modal-cat-subs" class="cat-wheel-subs"></div>';
+    const wrap = document.querySelector('#modal-cat-grid .cat-wheel-wrap');
+    if (!wrap) return;
+    const st = _modalCatState;
+    const initialName = st.sub || st.cat || null;
+    _mountCatWheel(wrap, cats, {
+        initialName,
+        onSettleIdx: (idx) => _onModalWheelSettle(idx, cats)
+    });
+}
+
+function _onModalWheelSettle(idx, cats) {
+    const c = cats[idx];
+    if (!c) return;
+    const st = _modalCatState;
+    const subsEl = document.getElementById('modal-cat-subs');
+    const selLabel = document.getElementById('modal-cat-selected');
+    if (c.subs && c.subs.length) {
+        // If we already have a sub pick under THIS parent, keep it; otherwise clear.
+        const keepSub = st.cat === c.name && st.sub && c.subs.includes(st.sub);
+        if (!keepSub) { st.cat = null; st.sub = null; }
+        st.expanded = c.name;
+        document.getElementById('add-category').value = keepSub ? c.name : '';
+        document.getElementById('add-sub-category').value = keepSub ? st.sub : '';
+        if (selLabel) selLabel.textContent = keepSub ? ('· ' + c.name + ' / ' + st.sub) : '';
+        const onSubPick = (sub, parentName) => {
+            sndTap(); hapTap();
+            st.cat = parentName;
+            st.sub = sub;
+            document.getElementById('add-category').value = parentName;
+            document.getElementById('add-sub-category').value = sub;
+            if (selLabel) selLabel.textContent = '· ' + parentName + ' / ' + sub;
+            _renderCatSubs(subsEl, c, sub, parentName, onSubPick);
+        };
+        _renderCatSubs(subsEl, c, st.sub, st.cat, onSubPick);
+    } else {
+        // Parent has no subs — centering = picking.
+        st.cat = c.name; st.sub = null; st.expanded = null;
+        document.getElementById('add-category').value = c.name;
+        document.getElementById('add-sub-category').value = '';
+        if (selLabel) selLabel.textContent = '· ' + c.name;
+        if (subsEl) subsEl.innerHTML = '';
+    }
 }
 
 function modalPickCat(name) {
@@ -4708,52 +4913,79 @@ function renderUncatCards() {
             '</div>' +
             '</div>';
     }).join('');
+
+    // Mount the 3D wheel for each (non-reimbursement) uncat card. Reimbursement
+    // mode hides the cat picker entirely so the wheel won't be in the DOM.
+    uncatEntries.forEach((_, i) => {
+        if (uncatState[i] && uncatState[i].reimburses_id) return;
+        mountUncatWheel(i);
+    });
 }
 
 function renderCatChips(i) {
+    // Emit the wheel HTML + an empty sub-pill container. The caller MUST
+    // call mountUncatWheel(i) after this HTML is committed to the DOM
+    // (i.e. after the parent's innerHTML assignment) so the scroll listener
+    // attaches and the initial centered item drives the sub-pill render.
+    const list = ALL_CATS[uncatState[i].type] || SPENDING_CATS;
+    return _catWheelHtml(list) +
+        '<div id="usubs-' + i + '" class="cat-wheel-subs"></div>';
+}
+
+function mountUncatWheel(i) {
+    const wrap = document.querySelector('#ucats-' + i + ' .cat-wheel-wrap');
+    if (!wrap) return;
     const list = ALL_CATS[uncatState[i].type] || SPENDING_CATS;
     const st = uncatState[i];
-    let html = '<div class="cat-list">';
-    list.forEach(c => {
-        const hasSubs = !!(c.subs && c.subs.length > 0);
-        const isSelfPick = !hasSubs && st.sel === c.name;
-        const isExpanded = st.expanded === c.name;
-        const isParentOfSel = hasSubs && st.selParent === c.name && c.subs.includes(st.sel);
-        const showSubs = hasSubs && (isExpanded || isParentOfSel);
-        const active = isSelfPick || showSubs;
-        const accent = c.color;
-        // Use the accent color as a low-alpha overlay (not c.bg's hardcoded
-        // light pastel) so the active tint blends with the underlying card
-        // background in both light and dark mode.
-        const groupStyle = active
-            ? 'border-color:' + accent + ';background:' + accent + '22;'
-            : '';
-        const labelColor = active ? accent : 'var(--text-1)';
-        const iconColor = active ? accent : 'var(--text-3)';
-        const icon = getCatIcon(c.name);
-        const safeName = c.name.replace(/'/g, "\\'");
-        html += '<div class="cat-group' + (active ? ' active' : '') + '" style="' + groupStyle + '">' +
-            '<div class="cat-row" onclick="pickUncat(' + i + ",'" + safeName + "'" + ')">' +
-            '<div class="cat-row-icon" style="color:' + iconColor + '">' + icon + '</div>' +
-            '<div class="cat-row-label" style="color:' + labelColor + '">' + c.name + '</div>' +
-            '<svg class="cat-row-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:' + (active ? accent : 'var(--text-3)') + '"><path d="M9 6l6 6-6 6"/></svg>' +
-            '</div>';
-        if (showSubs) {
-            html += '<div class="cat-row-subs">' +
-                c.subs.map(s => {
-                    const safeSub = s.replace(/'/g, "\\'");
-                    const isSub = st.sel === s && st.selParent === c.name;
-                    return '<div class="cat-row-sub-pill" style="border-color:' + (isSub ? accent : accent + '55') +
-                        ';background:' + (isSub ? accent : 'var(--bg-card)') +
-                        ';color:' + (isSub ? '#fff' : accent) +
-                        '" onclick="event.stopPropagation();pickUncatSub(' + i + ",'" + safeSub + "','" + safeName + "'" + ')">' + s + '</div>';
-                }).join('') +
-            '</div>';
-        }
-        html += '</div>';
+    const initialName = st.sel || st.selParent || null;
+    _mountCatWheel(wrap, list, {
+        initialName,
+        onSettleIdx: (idx) => _onUncatWheelSettle(i, idx, list)
     });
-    html += '</div>';
-    return html;
+}
+
+function _onUncatWheelSettle(i, idx, list) {
+    const c = list[idx];
+    if (!c) return;
+    const st = uncatState[i];
+    const subsEl = document.getElementById('usubs-' + i);
+    const btn = document.getElementById('ubtn-' + i);
+    if (c.subs && c.subs.length) {
+        // If a sub under THIS parent was previously picked, keep it.
+        const keepSub = st.selParent === c.name && st.sel && c.subs.includes(st.sel);
+        if (!keepSub) { st.sel = null; st.selParent = null; }
+        st.expanded = c.name;
+        const onSubPick = (sub, parentName) => {
+            sndTap(); hapTap();
+            st.sel = sub;
+            st.selParent = parentName;
+            _renderCatSubs(subsEl, c, sub, parentName, onSubPick);
+            if (btn) {
+                btn.classList.add('ready');
+                btn.textContent = 'CONFIRM — ' + parentName.toUpperCase() + ' · ' + sub.toUpperCase();
+            }
+        };
+        _renderCatSubs(subsEl, c, st.sel, st.selParent, onSubPick);
+        if (btn) {
+            if (keepSub) {
+                btn.classList.add('ready');
+                btn.textContent = 'CONFIRM — ' + c.name.toUpperCase() + ' · ' + st.sel.toUpperCase();
+            } else {
+                btn.classList.remove('ready');
+                btn.textContent = 'Pick a ' + c.name.toLowerCase() + ' option';
+            }
+        }
+    } else {
+        // No subs — centering counts as the pick.
+        st.sel = c.name;
+        st.selParent = null;
+        st.expanded = null;
+        if (subsEl) subsEl.innerHTML = '';
+        if (btn) {
+            btn.classList.add('ready');
+            btn.textContent = 'CONFIRM — ' + c.name.toUpperCase();
+        }
+    }
 }
 
 function toggleRulePill(btn) {
@@ -4779,6 +5011,8 @@ function switchUncatType(i, type) {
     document.getElementById('ucats-' + i).innerHTML = renderCatChips(i);
     const btn = document.getElementById('ubtn-' + i);
     btn.classList.remove('ready'); btn.textContent = 'CONFIRM';
+    // Remount the 3D wheel for the new category list.
+    mountUncatWheel(i);
 }
 
 function pickUncat(i, name) {
