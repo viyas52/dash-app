@@ -3700,6 +3700,41 @@ async function loadMonth() {
 // Finds transactions newer than the last-saved balance timestamp, applies
 // their delta, then persists the new base + timestamp. Works across months
 // because we compare created_at strings (ISO, so lexicographic = chronological).
+// ── Reimbursement netting helpers (used by hero, breakdowns, and charts) ──
+// _reimbursementsByExpense covers only the CURRENT month — fine for the
+// hero. But the analytics line chart spans 7 days / 4 weeks / 6 months /
+// 5 years, so an expense in April with a refund in May would otherwise
+// double-count. We maintain a separate global map across all loaded history.
+function _rebuildGlobalReimbMap() {
+    const map = {};
+    const sources = [
+        window._allHistoryEntries || [],
+        window._currentEntries || (typeof currentEntries !== 'undefined' ? currentEntries : []) || []
+    ];
+    // Dedupe by id while accumulating refunds.
+    const seenIds = new Set();
+    sources.forEach(arr => {
+        arr.forEach(e => {
+            if (!e || !e.id || seenIds.has(e.id)) return;
+            seenIds.add(e.id);
+            if (e.category_type === 'reimbursement' && e.reimburses_id) {
+                map[e.reimburses_id] = (map[e.reimburses_id] || 0) + (e.amount || 0);
+            }
+        });
+    });
+    window._globalReimbMap = map;
+    return map;
+}
+
+// Spending amount with any linked reimbursements subtracted. Use this
+// EVERYWHERE chart code aggregates spending totals so the analytics tab
+// matches the hero.
+function _spendNet(e) {
+    if (!e || e.category_type !== 'spending') return e?.amount || 0;
+    const map = window._globalReimbMap || window._reimbursementsByExpense || {};
+    return Math.max(0, (e.amount || 0) - (map[e.id] || 0));
+}
+
 function rollForwardBalances(entries) {
     // Auto-seed from balance_after on NEFT credits (first-time only)
     entries.forEach(e => {
@@ -3761,6 +3796,9 @@ function updateDashboard(entries) {
         }
     });
     window._reimbursementsByExpense = reimbByExpense;
+    // Also rebuild the GLOBAL refund map so charts that span multiple
+    // months (weekly/monthly/annual) can net out reimbursements too.
+    _rebuildGlobalReimbMap();
 
     entries.forEach(e => {
         if (!e.category || !e.category_type) {
@@ -4061,7 +4099,7 @@ function renderTxnList(entries, expanded) {
 
     let html = sortedDates.map(date => {
         const dayEntries = groups[date];
-        const daySpent  = dayEntries.filter(e => e.category_type === 'spending').reduce((s,e) => s + (e.amount||0), 0);
+        const daySpent  = dayEntries.filter(e => e.category_type === 'spending').reduce((s,e) => s + _spendNet(e), 0);
         const dayIncome = dayEntries.filter(e => e.category_type === 'income').reduce((s,e) => s + (e.amount||0), 0);
         const daySummary = [
             daySpent  > 0 ? '<span style="color:#FF3B30;">-₹' + fmt(daySpent)  + '</span>' : '',
@@ -5695,7 +5733,7 @@ function buildChartForPeriod() {
             const d = new Date(now); d.setDate(now.getDate()-i);
             const key = d.toISOString().split('T')[0];
             const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0,2);
-            const total = merged.filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+(e.amount||0),0);
+            const total = merged.filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+_spendNet(e),0);
             points.push(total);
             labels.push(dayLabel);
             if (total > maxVal) { maxVal = total; activeIdx = 6 - i; }
@@ -5712,7 +5750,7 @@ function buildChartForPeriod() {
             const start = new Date(end); start.setDate(end.getDate() - 6);
             const s = start.toISOString().split('T')[0];
             const e2 = end.toISOString().split('T')[0];
-            const total = merged.filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+(e.amount||0),0);
+            const total = merged.filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+_spendNet(e),0);
             const lbl = start.getDate() + ' ' + start.toLocaleDateString('en-IN',{month:'short'});
             labels.push(lbl);
             points.push(total);
@@ -5730,7 +5768,7 @@ function buildChartForPeriod() {
         const all = window._allHistoryEntries || [];
         for (let i = 4; i >= 0; i--) {
             const yr = curYear - i;
-            const total = all.filter(e=>e.date&&e.date.startsWith(yr+'')&&e.category_type==='spending').reduce((s,e)=>s+(e.amount||0),0);
+            const total = all.filter(e=>e.date&&e.date.startsWith(yr+'')&&e.category_type==='spending').reduce((s,e)=>s+_spendNet(e),0);
             points.push(total);
             labels.push(String(yr).slice(2));
         }
@@ -6106,6 +6144,9 @@ async function loadHistory() {
         }
         const all = []; snap.forEach(d => all.push({ id: d.id, ...d.data() }));
         window._allHistoryEntries = all;
+        // Rebuild the global refund map now that history is loaded so charts
+        // net reimbursements across all loaded months, not just the current.
+        _rebuildGlobalReimbMap();
         buildChartForPeriod();
     } catch(err) { console.error("History failed:", err); }
 }
@@ -6119,7 +6160,7 @@ function buildLineChartFromHistory(months) {
         const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
         const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
         const entries = months[key] || [];
-        const expense = entries.filter(e => e.category_type==='spending').reduce((s,e) => s+(e.amount||0), 0);
+        const expense = entries.filter(e => e.category_type==='spending').reduce((s,e) => s+_spendNet(e), 0);
         points.push(expense);
         labels.push(d.toLocaleDateString('en-IN', { month: 'short' }));
         if (key === curKey) activeIdx = 5 - i;
