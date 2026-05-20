@@ -4262,8 +4262,18 @@ function _mountCatWheel(wrap, list, ctx) {
         // programmatic — don't uncommit. Once the scroll settles (handled
         // by the polling tick below), pendingTapIdx clears and normal
         // user-scroll uncommit resumes.
+        //
+        // ALSO: rubber-band overscroll at the top/bottom of the wheel on
+        // iOS can fire scroll events as the wheel snaps back to a valid
+        // position. Those aren't a user "scrolling away" — they're a
+        // bounce. Tolerate small fluctuations near the committed item's
+        // snap point and only uncommit when scrollTop is clearly off
+        // (>= one item's height of slack).
         if (pendingTapIdx === null && committedIdx !== null) {
-            uncommit();
+            const committedTarget = committedIdx * ITEM_H;
+            if (Math.abs(wheel.scrollTop - committedTarget) > ITEM_H * 0.6) {
+                uncommit();
+            }
         }
         if (!rafPending) {
             rafPending = true;
@@ -4302,26 +4312,29 @@ function _mountCatWheel(wrap, list, ctx) {
             // then off. Requiring 2 consecutive stable frames absorbs the
             // snap.
             let attempts = 0;
-            let lastDist = null;
             let stableFrames = 0;
             let prevTop = -1;
+            let minDist = Infinity;
             const tick = () => {
                 if (pendingTapIdx !== idx) return;  // superseded by another tap
                 attempts++;
                 const cur = wheel.scrollTop;
                 const dist = Math.abs(cur - target);
-                // User scrolled AWAY from the target during the smooth-scroll
-                // (distance is growing) — abandon this commit attempt.
-                if (lastDist !== null && dist > lastDist + 6) {
+                if (dist < minDist) minDist = dist;
+                // Abort only if we GOT close to target and then moved way
+                // away from it — that's a genuine user drag mid-animation.
+                // iOS rubber-band overscroll at the wheel ends keeps dist
+                // within ~one item; only a real user drag goes further.
+                if (minDist < 5 && dist > ITEM_H * 0.75) {
                     pendingTapIdx = null;
                     if (committedIdx !== null) uncommit();
                     return;
                 }
-                lastDist = dist;
-                // Stable = within 1.5px of target AND scrollTop unchanged
-                // since the previous frame. Two such frames in a row means
-                // the snap has truly finished.
-                if (dist < 1.5 && cur === prevTop) stableFrames++;
+                // Stable = scrollTop EXACTLY at target AND unchanged since
+                // the previous frame. Tightened from <1.5px to ==target so
+                // any post-snap fluctuation can't sneak past the stability
+                // check.
+                if (dist < 0.5 && cur === prevTop) stableFrames++;
                 else stableFrames = 0;
                 prevTop = cur;
                 if (stableFrames >= 2) {
