@@ -1073,15 +1073,53 @@
             padding: 0 14px 12px;
             animation: subSlideIn 0.18s ease;
         }
+        /* Sub-category chips — bigger 2-col tiles with a 3D "key" feel.
+           Soft shadow at rest, recessed inset shadow when selected.
+           Color comes from --sub-accent set inline by JS per pill. */
         .cat-row-sub-pill {
-            padding: 6px 13px; border-radius: 20px; border: 1px solid;
-            font-size: 12px; font-weight: 500; cursor: pointer;
-            font-family: 'DM Sans', sans-serif;
+            padding: 11px 12px;
+            border-radius: 14px;
+            border: 1.5px solid color-mix(in srgb,
+                var(--sub-accent, var(--border)) 32%, transparent);
             background: var(--bg-card);
-            transition: all 0.12s;
+            color: var(--sub-accent, var(--text-1));
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05),
+                        0 1px 2px rgba(0,0,0,0.04);
+            transition: transform 0.12s ease,
+                        box-shadow 0.15s ease,
+                        background 0.15s ease,
+                        color 0.15s ease,
+                        border-color 0.15s ease;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            min-width: 0;
+            line-height: 1.2;
         }
-        .cat-row-sub-pill:active { transform: scale(0.95); }
+        .cat-row-sub-pill:active {
+            transform: translateY(1.5px) scale(0.99);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06),
+                        inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .cat-row-sub-pill.selected {
+            color: #fff;
+            background: var(--sub-accent, var(--text-1));
+            border-color: var(--sub-accent, var(--text-1));
+            box-shadow: 0 1px 2px rgba(0,0,0,0.10),
+                        inset 0 1px 3px rgba(0,0,0,0.18);
+        }
+        [data-theme="dark"] .cat-row-sub-pill {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35),
+                        0 1px 2px rgba(0,0,0,0.25);
+        }
+        [data-theme="dark"] .cat-row-sub-pill.selected {
+            box-shadow: 0 1px 2px rgba(0,0,0,0.40),
+                        inset 0 1px 3px rgba(0,0,0,0.35);
+        }
 
         /* ── 3D cylinder wheel category picker ── */
         .cat-wheel-wrap {
@@ -1169,10 +1207,17 @@
                 var(--committed-accent, transparent) 12%, transparent);
         }
         .cat-wheel-subs {
-            display: flex; flex-wrap: wrap; gap: 6px;
-            padding: 10px 18px 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 12px 18px 0;
         }
         .cat-wheel-subs:empty { padding: 0; }
+        /* If there's an odd number of subs the lone last chip spans the full
+           width — keeps the column balance from looking lopsided. */
+        .cat-wheel-subs > .cat-row-sub-pill:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
 
         /* ── Sub-category panel ── */
         .sub-panel {
@@ -4333,11 +4378,14 @@ function _renderCatSubs(subsEl, cat, sel, selParent, onPick) {
         return;
     }
     const accent = cat.color;
+    // CSS-variable driven — the chip style is in the stylesheet (.cat-row-sub-pill
+    // and .cat-row-sub-pill.selected), and the per-cat accent is wired through
+    // --sub-accent. Cleaner than inline color/bg/border per pill.
     subsEl.innerHTML = cat.subs.map((s, idx) => {
         const isSub = sel === s && selParent === cat.name;
-        return '<div class="cat-row-sub-pill" data-sub-idx="' + idx + '" style="border-color:' + (isSub ? accent : accent + '55') +
-            ';background:' + (isSub ? accent : 'var(--bg-card)') +
-            ';color:' + (isSub ? '#fff' : accent) + '">' + s + '</div>';
+        return '<div class="cat-row-sub-pill' + (isSub ? ' selected' : '') + '" ' +
+            'data-sub-idx="' + idx + '" style="--sub-accent:' + accent + '">' +
+            s + '</div>';
     }).join('');
     subsEl.querySelectorAll('.cat-row-sub-pill').forEach(el => {
         el.addEventListener('click', (e) => {
