@@ -2234,7 +2234,7 @@
             <div class="settings-page" id="sp-companion" style="display:none;">
                 <div class="card" style="margin-bottom:12px;">
                     <div class="setting-row">
-                        <div><div class="setting-label">SMS Auto-import</div><div class="setting-desc">Finance Companion → Cloud Function</div></div>
+                        <div><div class="setting-label">SMS Auto-import</div><div class="setting-desc">My Finance app → Cloud Function</div></div>
                         <div style="display:flex;align-items:center;gap:6px;">
                             <div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div>
                             <span style="font-size:11px;color:var(--green);font-weight:500;">Active</span>
@@ -2251,6 +2251,10 @@
                     <div class="setting-row" style="cursor:pointer;" onclick="obShow()">
                         <div><div class="setting-label">Re-run setup walkthrough</div><div class="setting-desc">Show the welcome wizard again</div></div>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="setting-row" style="cursor:pointer;" onclick="window.open('https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk', '_blank')">
+                        <div><div class="setting-label" style="color:var(--blue);">Update Android app</div><div class="setting-desc">Get the latest APK · installs over the existing version (no uninstall)</div></div>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--blue)"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </div>
                     <div class="setting-row" style="border-bottom:none;">
                         <div><div class="setting-label">Cloud Function</div><div class="setting-desc">asia-south1 · parseSms</div></div>
@@ -2382,7 +2386,7 @@
         <!-- Step 3: Companion app -->
         <div class="ob-step" id="ob-step-3" style="display:none;flex:1;flex-direction:column;justify-content:flex-start;padding-top:8px;">
             <div style="font-size:42px;text-align:center;margin-bottom:14px;">📱</div>
-            <div style="font-size:22px;font-weight:700;text-align:center;letter-spacing:-0.02em;margin-bottom:8px;">Install Finance Companion</div>
+            <div style="font-size:22px;font-weight:700;text-align:center;letter-spacing:-0.02em;margin-bottom:8px;">Install on Android</div>
             <div style="font-size:12px;color:var(--text-3);text-align:center;line-height:1.55;margin-bottom:18px;">A tiny Android app that forwards bank SMS so your transactions appear here automatically. Open-source, only reads bank SMS.</div>
 
             <a class="ob-cta" href="https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk" target="_blank" style="text-decoration:none;display:block;text-align:center;">⬇ Download APK</a>
@@ -2411,7 +2415,7 @@
                     <div class="ob-step-n">3</div>
                     <div>
                         <div class="ob-step-t">Allow restricted settings (Android 13+)</div>
-                        <div class="ob-step-d">Open <strong>Android Settings → Apps → Finance Companion</strong> → tap the <strong>⋮ (3 dots top-right)</strong> → <strong>"Allow restricted settings"</strong>. Without this, the notification toggle below stays greyed out.</div>
+                        <div class="ob-step-d">Open <strong>Android Settings → Apps → My Finance</strong> → tap the <strong>⋮ (3 dots top-right)</strong> → <strong>"Allow restricted settings"</strong>. Without this, the notification toggle below stays greyed out.</div>
                     </div>
                 </div>
 
@@ -2419,7 +2423,7 @@
                     <div class="ob-step-n">4</div>
                     <div>
                         <div class="ob-step-t">Enable notification access</div>
-                        <div class="ob-step-d"><strong>Android Settings → Apps → Special access → Notification access</strong> → find <strong>Finance Companion</strong> → toggle <strong>ON</strong> → confirm "Allow". This is what lets the app see your bank SMS notifications.</div>
+                        <div class="ob-step-d"><strong>Android Settings → Apps → Special access → Notification access</strong> → find <strong>My Finance</strong> → toggle <strong>ON</strong> → confirm "Allow". This is what lets the app see your bank SMS notifications.</div>
                     </div>
                 </div>
 
@@ -6503,7 +6507,7 @@ function enterApp() {
 }
 
 /* ─── COMPANION APP (Android wrapper) ─── */
-// When running inside the Finance Companion Android app, the URL has ?companion=1.
+// When running inside the My Finance Android app (TWA), the URL has ?companion=1.
 // We auto-sync credentials to the native side via a custom URL scheme.
 window.isCompanion = new URLSearchParams(location.search).get('companion') === '1';
 // CompanionLauncherActivity appends &hasCreds=1 once the native app already
