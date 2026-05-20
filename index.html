@@ -4178,21 +4178,33 @@ function _applyCatWheelTransforms(items, wheel) {
     const wRect = wheel.getBoundingClientRect();
     const cy = wRect.top + wRect.height / 2;
     let closestIdx = 0, closestAbs = Infinity;
-    items.forEach((el, idx) => {
+    // First pass — find which item is closest to dead-center.
+    const data = items.map((el, idx) => {
         const r = el.getBoundingClientRect();
         const itemCenter = r.top + r.height / 2;
-        const dist = itemCenter - cy;        // signed: + below, - above
+        const dist = itemCenter - cy;
         const abs = Math.abs(dist);
-        // Tilt — top edge of item recedes when above center, comes forward when below.
-        const angle = Math.max(-50, Math.min(50, dist / 3));
-        const opacity = Math.max(0.22, 1 - abs / 90);
-        const scale = Math.max(0.82, 1 - abs / 520);
-        const tz = -abs / 4;
-        el.style.transform = 'translateZ(' + tz.toFixed(1) + 'px) rotateX(' + angle.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
-        el.style.opacity = opacity.toFixed(2);
         if (abs < closestAbs) { closestAbs = abs; closestIdx = idx; }
+        return { el, idx, dist, abs };
     });
-    items.forEach((el, idx) => el.classList.toggle('is-centered', idx === closestIdx));
+    // Second pass — write transforms. The closest-to-center item snaps to
+    // exact identity (no subpixel tilt or sub-1.0 scale), so the text reads
+    // perfectly aligned at rest. Other items get the cylinder math.
+    data.forEach(d => {
+        if (d.idx === closestIdx) {
+            d.el.style.transform = 'translateZ(0) rotateX(0deg) scale(1)';
+            d.el.style.opacity = '1';
+            d.el.classList.add('is-centered');
+            return;
+        }
+        const angle = Math.max(-50, Math.min(50, d.dist / 3));
+        const opacity = Math.max(0.22, 1 - d.abs / 90);
+        const scale = Math.max(0.82, 1 - d.abs / 520);
+        const tz = -d.abs / 4;
+        d.el.style.transform = 'translateZ(' + tz.toFixed(1) + 'px) rotateX(' + angle.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
+        d.el.style.opacity = opacity.toFixed(2);
+        d.el.classList.remove('is-centered');
+    });
     return closestIdx;
 }
 
@@ -4275,15 +4287,22 @@ function _mountCatWheel(wrap, list, ctx) {
             }
             pendingTapIdx = idx;
             wheel.scrollTo({ top: target, behavior: 'smooth' });
-            // Poll scrollTop until the smooth-scroll settles (or fails over).
-            // Adaptive to actual scroll duration on any device — no magic
-            // timeouts that race with slower phones.
+            // Poll scrollTop until the smooth-scroll AND any subsequent
+            // scroll-snap-mandatory pull have BOTH settled. Committing too
+            // early means the snap fires another scroll event right after
+            // our commit, pendingTapIdx is already cleared, so onScroll
+            // sees a "user scroll" and uncommits us — sub-pills flicker on
+            // then off. Requiring 2 consecutive stable frames absorbs the
+            // snap.
             let attempts = 0;
             let lastDist = null;
+            let stableFrames = 0;
+            let prevTop = -1;
             const tick = () => {
                 if (pendingTapIdx !== idx) return;  // superseded by another tap
                 attempts++;
-                const dist = Math.abs(wheel.scrollTop - target);
+                const cur = wheel.scrollTop;
+                const dist = Math.abs(cur - target);
                 // User scrolled AWAY from the target during the smooth-scroll
                 // (distance is growing) — abandon this commit attempt.
                 if (lastDist !== null && dist > lastDist + 6) {
@@ -4292,7 +4311,13 @@ function _mountCatWheel(wrap, list, ctx) {
                     return;
                 }
                 lastDist = dist;
-                if (dist < 2) {
+                // Stable = within 1.5px of target AND scrollTop unchanged
+                // since the previous frame. Two such frames in a row means
+                // the snap has truly finished.
+                if (dist < 1.5 && cur === prevTop) stableFrames++;
+                else stableFrames = 0;
+                prevTop = cur;
+                if (stableFrames >= 2) {
                     pendingTapIdx = null;
                     commit(idx);
                     return;
