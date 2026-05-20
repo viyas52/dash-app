@@ -11,8 +11,8 @@ android {
         applicationId = "com.viyas.finance"
         minSdk = 24
         targetSdk = 34
-        versionCode = 10
-        versionName = "2.8"
+        versionCode = 11
+        versionName = "3.0"
     }
 
     // Use a stable debug keystore checked into the repo so every CI build
