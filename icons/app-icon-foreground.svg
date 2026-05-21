@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Android adaptive-icon FOREGROUND layer — donut + wallet only, no
+       background, scaled to 0.84 about centre so all content sits inside
+       the adaptive-icon safe zone (the OS mask clips the outer ~33%). -->
+  <g transform="translate(256 256) scale(0.84) translate(-256 -256)">
+    <circle cx="256" cy="256" r="148" fill="none" stroke="#FF9500" stroke-opacity="0.18" stroke-width="34"/>
+    <circle cx="256" cy="256" r="148" fill="none" stroke="#FF9500" stroke-width="34"
+            stroke-linecap="round"
+            stroke-dasharray="700 230"
+            transform="rotate(-90 256 256)"/>
+    <rect x="244" y="184" width="86" height="32" rx="6" fill="#FF9500"/>
+    <rect x="176" y="200" width="160" height="116" rx="18" fill="#FFFFFF"/>
+    <line x1="180" y1="252" x2="332" y2="252" stroke="#171717" stroke-opacity="0.12" stroke-width="3"/>
+    <circle cx="308" cy="258" r="10" fill="#FF9500"/>
+  </g>
+</svg>

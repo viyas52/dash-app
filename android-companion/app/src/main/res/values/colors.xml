@@ -2,4 +2,6 @@
 <resources>
     <color name="colorPrimary">#EDEBE6</color>
     <color name="navigationBarColor">#EDEBE6</color>
+    <!-- App icon adaptive-background — dark squircle behind the donut+wallet -->
+    <color name="ic_launcher_background">#171717</color>
 </resources>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- My Finance app icon — E1: budget donut + wallet with a card.
+       Full icon (dark squircle baked in) — used for the PWA + favicon
+       + legacy Android launcher icon. -->
+  <rect x="0" y="0" width="512" height="512" rx="115" fill="#171717"/>
+  <!-- Budget ring -->
+  <circle cx="256" cy="256" r="148" fill="none" stroke="#FF9500" stroke-opacity="0.18" stroke-width="34"/>
+  <circle cx="256" cy="256" r="148" fill="none" stroke="#FF9500" stroke-width="34"
+          stroke-linecap="round"
+          stroke-dasharray="700 230"
+          transform="rotate(-90 256 256)"/>
+  <!-- Card peeking out the top -->
+  <rect x="244" y="184" width="86" height="32" rx="6" fill="#FF9500"/>
+  <!-- Wallet body -->
+  <rect x="176" y="200" width="160" height="116" rx="18" fill="#FFFFFF"/>
+  <!-- Fold line + clasp -->
+  <line x1="180" y1="252" x2="332" y2="252" stroke="#171717" stroke-opacity="0.12" stroke-width="3"/>
+  <circle cx="308" cy="258" r="10" fill="#FF9500"/>
+</svg>
