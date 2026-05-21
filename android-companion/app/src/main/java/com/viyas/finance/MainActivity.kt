@@ -1,11 +1,16 @@
 package com.viyas.finance
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.viyas.finance.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +77,52 @@ class MainActivity : AppCompatActivity() {
         b.textListenerStatus.text = if (isListenerEnabled())
             "Status: enabled ✓" else "Status: NOT enabled — tap below to grant access."
         refreshLogs()
+        requestSmsPermissionIfNeeded()
+    }
+
+    // ---- SMS runtime permission ----
+
+    private fun requestSmsPermissionIfNeeded() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+            == PackageManager.PERMISSION_GRANTED) return
+
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECEIVE_SMS)) {
+            AlertDialog.Builder(this)
+                .setTitle("SMS Permission Needed")
+                .setMessage(
+                    "This app reads bank transaction SMS directly to capture " +
+                    "transactions even when other apps (like Truecaller) intercept " +
+                    "notifications. No personal messages are stored or forwarded."
+                )
+                .setPositiveButton("Grant") { _, _ ->
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.RECEIVE_SMS),
+                        RC_SMS
+                    )
+                }
+                .setNegativeButton("Not now", null)
+                .show()
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECEIVE_SMS),
+                RC_SMS
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == RC_SMS) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                toast("SMS permission granted")
+            } else {
+                toast("SMS permission denied — notification listener will still work")
+            }
+        }
     }
 
     private fun isListenerEnabled(): Boolean {
@@ -119,5 +170,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(msg: String) {
         android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        private const val RC_SMS = 1001
     }
 }

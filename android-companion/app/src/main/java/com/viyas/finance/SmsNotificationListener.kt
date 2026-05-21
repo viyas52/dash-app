@@ -21,8 +21,6 @@ import org.json.JSONObject
 class SmsNotificationListener : NotificationListenerService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val recentHashes = ArrayDeque<Int>()
-    private val maxRecent = 60
 
     // Messaging-app packages (default SMS apps across OEMs). Anything from
     // these is *considered* — final forward decision is made by the body-keyword
@@ -133,14 +131,9 @@ class SmsNotificationListener : NotificationListenerService() {
             } ?: title
             val composed = if (header.isNotBlank()) "$header: $body" else body
 
-            // De-dupe (notification updates fire repeatedly). Don't log dupes
-            // — keeps the diagnostics view clean.
-            val h = composed.hashCode()
-            synchronized(recentHashes) {
-                if (h in recentHashes) return
-                recentHashes.addFirst(h)
-                while (recentHashes.size > maxRecent) recentHashes.removeLast()
-            }
+            // De-dupe: shared with SmsBroadcastReceiver so the same SMS
+            // caught by both paths is only forwarded once.
+            if (!SmsDedup.tryAcquire(composed)) return
 
             scope.launch {
                 val result = SmsForwarder.post(applicationContext, composed)
