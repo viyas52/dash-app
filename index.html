@@ -1808,6 +1808,7 @@
     <div id="suggested-banner" style="display:none;" class="notif-strip" onclick="acceptTopSuggestedAccount()">
         <div class="notif-dot" style="background:var(--blue);"></div>
         <div class="notif-txt" id="suggested-banner-txt">⚡ New bank detected — tap to link</div>
+        <button onclick="dismissTopSuggestedAccount(event)" style="background:none;border:none;padding:6px 8px;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;flex-shrink:0;" aria-label="Dismiss">&times;</button>
         <div class="notif-count" id="suggested-banner-count" style="background:var(--blue);">+</div>
     </div>
 
@@ -3578,7 +3579,7 @@ let firebaseApp = null, firebaseAuth = null;
 async function initFirebaseCore() {
     if (firebaseApp) return;
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch }
+    const { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch, arrayUnion }
         = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
             signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile,
@@ -3587,7 +3588,7 @@ async function initFirebaseCore() {
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
     firebaseAuth = getAuth(firebaseApp);
-    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch };
+    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, getDoc, setDoc, query, orderBy, where, onSnapshot, writeBatch, arrayUnion };
     window.fbAuth = { signInWithEmailAndPassword, createUserWithEmailAndPassword,
                       signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile,
                       sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider };
@@ -4079,7 +4080,7 @@ function applyAcctFilter() {
         const suffix = _catFilter !== 'all' ? ' · ' + _catFilter : '';
         label.textContent = filtered.length + ' transactions' + suffix;
     }
-    if (filtered.length === 0) { container.style.display = 'none'; noMsg.style.display = 'block'; }
+    if (filtered.length === 0) { container.style.display = 'none'; noMsg.style.display = 'block'; const mw = document.getElementById('show-more-wrap'); if (mw) mw.innerHTML = ''; }
     else { noMsg.style.display = 'none'; container.style.display = 'block'; renderTxnList(filtered, window._txnExpanded || false); }
 }
 
@@ -7044,30 +7045,52 @@ function updateUsernamePreview() {
 /* ─── SUGGESTED ACCOUNTS — one-tap link from "saw a bank SMS we couldn't track" ─── */
 let _suggestedUnsub = null;
 let _suggestedTop = null;
+let _dismissedAccounts = []; // [{bank, last4}, ...] — loaded once, updated on dismiss
+
+async function _loadDismissedAccounts() {
+    if (!firebaseReady || !USER_ID) return;
+    try {
+        const { doc, getDoc } = window.fb;
+        const snap = await getDoc(doc(db, 'users', USER_ID, 'config', 'dismissed_accounts'));
+        _dismissedAccounts = (snap.exists() && snap.data().list) ? snap.data().list : [];
+    } catch (_) { _dismissedAccounts = []; }
+}
+
+function _isDismissed(bank, last4) {
+    const b = (bank || '').toLowerCase();
+    const t = String(last4 || '').replace(/\D/g, '').slice(-4);
+    return _dismissedAccounts.some(d =>
+        (d.bank || '').toLowerCase() === b && String(d.last4 || '') === t
+    );
+}
 
 function loadSuggestedAccounts() {
     if (!firebaseReady || !USER_ID) return;
     if (_suggestedUnsub) { try { _suggestedUnsub(); } catch(e) {} _suggestedUnsub = null; }
-    try {
-        const { collection, onSnapshot } = window.fb;
-        const col = collection(db, 'users', USER_ID, 'suggested_accounts');
-        _suggestedUnsub = onSnapshot(col, snap => {
-            const items = [];
-            snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-            items.sort((a, b) => (a.first_seen || '').localeCompare(b.first_seen || ''));
-            renderSuggestedBanner(items);
-        }, err => console.warn('suggested_accounts listener:', err));
-    } catch (err) { console.warn('loadSuggestedAccounts failed:', err); }
+    // Load dismissed list first, then start listening
+    _loadDismissedAccounts().then(() => {
+        try {
+            const { collection, onSnapshot } = window.fb;
+            const col = collection(db, 'users', USER_ID, 'suggested_accounts');
+            _suggestedUnsub = onSnapshot(col, snap => {
+                const items = [];
+                snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+                items.sort((a, b) => (a.first_seen || '').localeCompare(b.first_seen || ''));
+                renderSuggestedBanner(items);
+            }, err => console.warn('suggested_accounts listener:', err));
+        } catch (err) { console.warn('loadSuggestedAccounts failed:', err); }
+    });
 }
 
 function renderSuggestedBanner(items) {
     const banner = document.getElementById('suggested-banner');
     const txt = document.getElementById('suggested-banner-txt');
     if (!banner || !txt) return;
-    // Filter out any that are already covered by an existing linked account
+    // Filter out any that are already linked OR previously dismissed
     const stillUnlinked = items.filter(s => {
         const tail = String(s.last4 || '').replace(/\D/g, '').slice(-4);
         if (!tail) return false;
+        if (_isDismissed(s.bank, tail)) return false;
         return !LINKED_ACCOUNTS.some(la => {
             const lt = String(la.last4 || '').replace(/\D/g, '').slice(-4);
             return lt && (lt === tail || lt.endsWith(tail) || tail.endsWith(lt));
@@ -7107,6 +7130,17 @@ async function acceptTopSuggestedAccount() {
     try {
         const { setDoc, doc, deleteDoc } = window.fb;
         await setDoc(doc(db, 'users', USER_ID, 'config', 'accounts'), { linked_accounts: LINKED_ACCOUNTS });
+        // Save the triggering transaction that was skipped when the account
+        // wasn't linked yet. Without this, the first SMS that caused the LLM
+        // to learn the new format would never appear in Recent/Uncategorized.
+        if (s.triggering_txn && s.triggering_txn.dedup_key) {
+            try {
+                const txnRef = doc(db, 'users', USER_ID, 'transactions', s.triggering_txn.dedup_key);
+                await setDoc(txnRef, s.triggering_txn, { merge: true });
+            } catch (txnErr) {
+                console.warn('Could not save triggering txn:', txnErr);
+            }
+        }
         await deleteDoc(doc(db, 'users', USER_ID, 'suggested_accounts', s.id));
         sndConfirm(); hapConfirm();
         showToast(name + ' linked');
@@ -7119,11 +7153,32 @@ async function acceptTopSuggestedAccount() {
     }
 }
 
-async function _dismissSuggestion(id) {
+async function _dismissSuggestion(id, bank, last4) {
     try {
-        const { deleteDoc, doc } = window.fb;
+        const { deleteDoc, doc, setDoc, arrayUnion } = window.fb;
+        // Persist dismissal so the backend never re-creates this suggestion
+        if (bank && last4) {
+            const entry = { bank: (bank || '').toLowerCase(), last4: String(last4) };
+            _dismissedAccounts.push(entry); // update in-memory list immediately
+            await setDoc(doc(db, 'users', USER_ID, 'config', 'dismissed_accounts'), {
+                list: arrayUnion(entry)
+            }, { merge: true });
+        }
         await deleteDoc(doc(db, 'users', USER_ID, 'suggested_accounts', id));
     } catch (_) {}
+}
+
+async function dismissTopSuggestedAccount(ev) {
+    if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+    if (!_suggestedTop) return;
+    sndCancel(); hapCancel();
+    const s = _suggestedTop;
+    // Hide banner immediately for responsive feel
+    const banner = document.getElementById('suggested-banner');
+    if (banner) banner.style.display = 'none';
+    _suggestedTop = null;
+    await _dismissSuggestion(s.id, s.bank, s.last4);
+    showToast('Dismissed');
 }
 
 /* ─── UNLINK ACCOUNT — removes a bank from Settings → Linked Accounts ─── */

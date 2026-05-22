@@ -240,23 +240,30 @@ function buildPatterns(acctToBank) {
     // ── CUB debit (NACH/auto-debit) ──
     {
       name: "cub_debit",
-      rx: /Savings No X+(\d+) debited with INR\s*([\d,]+\.?\d*) towards (.+?) on (\d{2}-\w{3}-\d{4})/i,
+      rx: /Savings No X+(\d+) debited with INR\s*([\d,]+\.?\d*) towards (.+?) on (\d{2}-\w{3}-\d{2,4})(?:\.?\s*Avl Bal\s*([\d,]+\.?\d*))?/i,
       parse: (m, sms) => {
         const recipientRaw = m[3].trim();
         const cleaned = cleanRecipient(recipientRaw);
-        const dt = parseDateAlphaLong(m[4]);
+        const rawDate = m[4];
+        const yrLen = rawDate.split("-")[2].length;
+        const dt = yrLen === 4 ? parseDateAlphaLong(rawDate) : parseDateAlpha(rawDate);
         const amt = parseFloat(m[2].replace(/,/g, ""));
+        const balRaw = m[5];
+        const bal = balRaw ? parseFloat(balRaw.replace(/,/g, "")) : null;
         const achMatch = recipientRaw.match(/ACH_DR::(\d+)/);
         const ciubMatch = recipientRaw.match(/CIUB(\d+)/);
-        const refTag = achMatch ? achMatch[1]
-                     : ciubMatch ? ciubMatch[1]
+        // NACH/ACH references are mandate-level (same every month for recurring
+        // SIPs), so the dedup key MUST include date+amount to avoid silently
+        // dropping month-2+ of recurring debits as duplicates.
+        const refTag = achMatch ? (dt + "_" + amt + "_" + achMatch[1])
+                     : ciubMatch ? (dt + "_" + amt + "_" + ciubMatch[1])
                      : (dt + "_" + amt + "_" + cleaned.slice(0, 20).replace(/\W/g, ""));
         return {
           raw_sms: sms, bank: "cub", account: m[1],
           amount: amt, date: dt,
           type: "debit", category: null, category_type: null,
           recipient: cleaned, source: "", source_account: "",
-          note: cleaned, upi_ref: "", balance_after: null,
+          note: cleaned, upi_ref: "", balance_after: bal,
           created_at: new Date().toISOString(),
           dedup_key: "cub_d_" + refTag,
         };
@@ -864,17 +871,35 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
       // Save the rejected SMS as a one-tap-link suggestion so the PWA can
       // pop a banner: "ICICI ••489 detected — Tap to link". Deduped by
       // bank+last4 so multiple SMS for the same unlinked account merge.
+      // BUT skip if the user previously dismissed this account.
       try {
-        const sugHash = crypto.createHash("sha1")
-          .update((parsed.bank || "?") + ":" + parsedTail)
-          .digest("hex").substring(0, 16);
-        await db.collection(`users/${effectiveUser}/suggested_accounts`).doc(sugHash).set({
-          bank: parsed.bank || "?",
-          last4: parsedTail,
-          first_seen: new Date().toISOString(),
-          sample_amount: parsed.amount || 0,
-          sample_recipient: parsed.recipient || parsed.source || "",
-        }, { merge: true });
+        let isDismissed = false;
+        const dismissedSnap = await db.doc(`users/${effectiveUser}/config/dismissed_accounts`).get();
+        if (dismissedSnap.exists) {
+          const list = dismissedSnap.data().list || [];
+          const bankLower = (parsed.bank || "?").toLowerCase();
+          isDismissed = list.some(d =>
+            (d.bank || "").toLowerCase() === bankLower && String(d.last4 || "") === parsedTail
+          );
+        }
+        if (!isDismissed) {
+          const sugHash = crypto.createHash("sha1")
+            .update((parsed.bank || "?") + ":" + parsedTail)
+            .digest("hex").substring(0, 16);
+          // Include the full triggering transaction so the PWA can save it
+          // when the user taps "Link". Without this the first txn that caused
+          // the LLM to learn a new format is lost (returned as "skipped").
+          const triggeringTxn = { ...parsed };
+          delete triggeringTxn.raw_sms; // don't store raw SMS in suggestion doc
+          await db.collection(`users/${effectiveUser}/suggested_accounts`).doc(sugHash).set({
+            bank: parsed.bank || "?",
+            last4: parsedTail,
+            first_seen: new Date().toISOString(),
+            sample_amount: parsed.amount || 0,
+            sample_recipient: parsed.recipient || parsed.source || "",
+            triggering_txn: triggeringTxn,
+          }, { merge: true });
+        }
       } catch (_) { /* non-critical */ }
       return res.status(200).json({
         status: "skipped",
