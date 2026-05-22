@@ -3294,7 +3294,7 @@ function switchView(name) {
         n.classList.toggle('active', n.dataset.view === name);
     });
     const fab = document.getElementById('fab-btn');
-    fab.style.display = (name === 'home' || name === 'uncat') ? '' : 'none';
+    fab.style.display = (name === 'home') ? '' : 'none';
     const dHome = document.getElementById('dot-home');
     const dStats = document.getElementById('dot-stats');
     if (dHome) dHome.classList.toggle('active', name === 'home' || name === 'uncat');
@@ -4312,8 +4312,15 @@ function _mountCatWheel(wrap, list, ctx) {
     // fires a scroll event which would otherwise immediately uncommit the
     // commit we just made. This flag suppresses one onScroll cycle.
     let suppressNextScroll = false;
+    let dwellTimer = null;           // auto-select after scroll settles
+    let scrollEndTimer = null;       // detects when scrolling has stopped
 
     requestAnimationFrame(() => _applyCatWheelTransforms(items, wheel));
+
+    const clearDwell = () => {
+        if (dwellTimer)    { clearTimeout(dwellTimer);    dwellTimer = null; }
+        if (scrollEndTimer){ clearTimeout(scrollEndTimer); scrollEndTimer = null; }
+    };
 
     const uncommit = () => {
         if (committedIdx === null) return;
@@ -4357,6 +4364,10 @@ function _mountCatWheel(wrap, list, ctx) {
             suppressNextScroll = false;
             return;
         }
+
+        // Any scroll clears pending dwell timers — user is still moving.
+        clearDwell();
+
         // User drag on the wheel. Uncommit if scrollTop has moved far
         // enough from the committed snap point to make a different item
         // the closest one. Rubber-band overscroll at the wheel's ends
@@ -4381,11 +4392,31 @@ function _mountCatWheel(wrap, list, ctx) {
                 }
             });
         }
+
+        // Dwell auto-select: once scrolling stops for 150ms (scroll-end
+        // detection), start a 1.8s dwell timer. If it fires without
+        // further scrolling, auto-commit the centered category.
+        scrollEndTimer = setTimeout(() => {
+            scrollEndTimer = null;
+            // Don't start dwell if already committed to this item.
+            if (committedIdx === lastIdx) return;
+            dwellTimer = setTimeout(() => {
+                dwellTimer = null;
+                // Re-check: still not committed and wheel hasn't moved.
+                if (committedIdx !== null) return;
+                const currentIdx = _applyCatWheelTransforms(items, wheel);
+                // Give same feedback as a manual tap so user knows it happened.
+                if (window._soundsEnabled !== false) sndTap();
+                hapTap();
+                commit(currentIdx);
+            }, 1800);
+        }, 150);
     };
     wheel.addEventListener('scroll', onScroll, { passive: true });
 
     items.forEach((el, idx) => {
         el.addEventListener('click', () => {
+            clearDwell();   // manual tap supersedes any pending dwell
             const target = idx * ITEM_H;
             // No-op if already committed to this exact item at exactly the
             // snap position (avoids redundant re-commit + re-render).
@@ -5088,7 +5119,7 @@ function renderUncatCards() {
         return '<div class="uncat-card" id="ucard-' + i + '">' +
             '<div class="uncat-header"><div class="uncat-top"><div>' +
             '<div class="uncat-name">' + esc(e.note || e.recipient || 'Unknown') + '</div>' +
-            '<div class="uncat-meta">' + fmtDate(e.date) + (e.upi_ref ? ' · UPI:' + e.upi_ref : '') + '</div>' +
+            '<div class="uncat-meta">' + fmtRelativeDate(e.date, e.created_at) + (e.upi_ref ? ' · UPI:' + e.upi_ref : '') + '</div>' +
             '</div><div>' +
             '<div class="uncat-amt ' + (isCredit ? 'cr' : 'dr') + '">' + (isCredit ? '+' : '-') + '₹' + fmt(e.amount || 0) + '</div>' +
             '<div class="uncat-type-label">' + (isCredit ? 'Credit' : 'Debit') + '</div>' +
@@ -5557,12 +5588,12 @@ function getEntriesForPeriod() {
     const now = new Date();
     if (_statsPeriod === 'daily') {
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 6); cutoff.setHours(0,0,0,0);
-        const cut = cutoff.toISOString().split('T')[0];
+        const cut = cutoff.getFullYear() + '-' + String(cutoff.getMonth()+1).padStart(2,'0') + '-' + String(cutoff.getDate()).padStart(2,'0');
         return _mergedEntries().filter(e => e.date >= cut);
     }
     if (_statsPeriod === 'weekly') {
         const cutoff = new Date(now); cutoff.setDate(now.getDate() - 27); cutoff.setHours(0,0,0,0);
-        const cut = cutoff.toISOString().split('T')[0];
+        const cut = cutoff.getFullYear() + '-' + String(cutoff.getMonth()+1).padStart(2,'0') + '-' + String(cutoff.getDate()).padStart(2,'0');
         return _mergedEntries().filter(e => e.date >= cut);
     }
     if (_statsPeriod === 'monthly') return currentEntries;
@@ -5617,11 +5648,11 @@ function buildHeatmap() {
     (window._allHistoryEntries || []).forEach(push);
     (currentEntries || []).forEach(push);
 
-    // Bucket by date
+    // Bucket by date (use _spendNet to subtract reimbursements)
     const byDate = {};
     all.forEach(e => {
         if (!e.date) return;
-        byDate[e.date] = (byDate[e.date] || 0) + (e.amount || 0);
+        byDate[e.date] = (byDate[e.date] || 0) + _spendNet(e);
     });
     const max = Math.max(1, ...Object.values(byDate));
 
@@ -5630,7 +5661,7 @@ function buildHeatmap() {
     const days = [];
     for (let i = 89; i >= 0; i--) {
         const d = new Date(today); d.setDate(today.getDate() - i);
-        const key = d.toISOString().split('T')[0];
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         days.push({ date: key, d, amount: byDate[key] || 0 });
     }
 
@@ -5735,7 +5766,7 @@ function buildChartForPeriod() {
         let maxVal = -1;
         for (let i = 6; i >= 0; i--) {
             const d = new Date(now); d.setDate(now.getDate()-i);
-            const key = d.toISOString().split('T')[0];
+            const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
             const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0,2);
             const total = merged.filter(e => e.date === key && e.category_type === 'spending').reduce((s,e)=>s+_spendNet(e),0);
             points.push(total);
@@ -5752,8 +5783,8 @@ function buildChartForPeriod() {
             // Rolling 7-day buckets (not calendar weeks) — week i ends i*7 days ago.
             const end = new Date(now); end.setDate(now.getDate() - i*7);
             const start = new Date(end); start.setDate(end.getDate() - 6);
-            const s = start.toISOString().split('T')[0];
-            const e2 = end.toISOString().split('T')[0];
+            const s = start.getFullYear() + '-' + String(start.getMonth()+1).padStart(2,'0') + '-' + String(start.getDate()).padStart(2,'0');
+            const e2 = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
             const total = merged.filter(e=>e.date>=s&&e.date<=e2&&e.category_type==='spending').reduce((sum,e)=>sum+_spendNet(e),0);
             const lbl = start.getDate() + ' ' + start.toLocaleDateString('en-IN',{month:'short'});
             labels.push(lbl);
@@ -6223,6 +6254,34 @@ function updateInvestTarget() {
 const _escDiv = document.createElement('div');
 function esc(s) { _escDiv.textContent = s; return _escDiv.innerHTML; }
 function fmt(n) { return n.toLocaleString('en-IN'); }
+function fmtRelativeDate(dateStr, createdAt) {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    const txDate = new Date(Number(y), Number(m) - 1, Number(d));
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((today - txDate) / 86400000);
+
+    // Extract time from created_at if available (ISO string)
+    let timePart = '';
+    if (createdAt) {
+        try {
+            const ca = new Date(createdAt);
+            if (!isNaN(ca)) {
+                const h = ca.getHours(), mi = ca.getMinutes();
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const h12 = h % 12 || 12;
+                timePart = ', ' + h12 + ':' + String(mi).padStart(2, '0') + ' ' + ampm;
+            }
+        } catch(_) {}
+    }
+
+    if (diffDays === 0) return 'Today' + timePart;
+    if (diffDays === 1) return 'Yesterday' + timePart;
+    if (diffDays < 7) return txDate.toLocaleDateString('en-IN', { weekday: 'long' }) + timePart;
+    if (diffDays < 30) return txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    return txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: txDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
 function fmtDate(s) {
     if (!s) return '';
     const [y, m, d] = s.split('-');
