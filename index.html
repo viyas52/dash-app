@@ -827,6 +827,47 @@
             color: var(--text-3); flex-shrink: 0;
         }
 
+        /* ─── HELP FAQ ACCORDION ─── */
+        .help-card details.help-q {
+            border-bottom: 1px solid var(--border-light);
+        }
+        .help-card details.help-q:last-child { border-bottom: none; }
+        .help-card details.help-q > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .help-card details.help-q > summary::-webkit-details-marker { display: none; }
+        .help-card details.help-q > summary::after {
+            content: '';
+            width: 8px; height: 8px;
+            border-right: 2px solid var(--text-3);
+            border-bottom: 2px solid var(--text-3);
+            transform: rotate(45deg);
+            transition: transform 0.15s ease;
+            margin-top: -3px;
+            flex-shrink: 0;
+        }
+        .help-card details.help-q[open] > summary::after {
+            transform: rotate(-135deg);
+            margin-top: 3px;
+        }
+        .help-card details.help-q .help-a {
+            padding: 0 16px 14px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--text-2);
+        }
+        .help-card details.help-q .help-a strong { color: var(--text-1); font-weight: 600; }
+
         /* ─── CAT EDIT BUTTON ─── */
         .cat-edit-btn {
             display: flex; align-items: center; gap: 10px;
@@ -2118,6 +2159,11 @@
                     <div class="row-text"><div class="row-name">Data</div><div class="row-desc">Export to CSV</div></div>
                     <svg class="row-chev" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 3l4 4-4 4"/></svg>
                 </div>
+                <div class="settings-page-row" onclick="settingsNav('help')">
+                    <div class="row-icon" style="background:#FBBF2418;color:#FBBF24"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M7.5 7.5a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5"/><circle cx="10" cy="14.5" r="0.6" fill="currentColor"/></svg></div>
+                    <div class="row-text"><div class="row-name">Help</div><div class="row-desc">FAQs · troubleshooting · contact</div></div>
+                    <svg class="row-chev" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 3l4 4-4 4"/></svg>
+                </div>
                 <div class="settings-page-row" onclick="settingsNav('about')">
                     <div class="row-icon" style="background:#E0DDD7;color:#444"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><line x1="10" y1="14" x2="10" y2="9"/><circle cx="10" cy="6.5" r="0.6" fill="currentColor"/></svg></div>
                     <div class="row-text"><div class="row-name">About</div><div class="row-desc">Version · open source</div></div>
@@ -2341,6 +2387,81 @@
                             <div class="setting-desc">Download as CSV file</div>
                         </div>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ SUB-PAGE: HELP ════ -->
+            <div class="settings-page" id="sp-help" style="display:none;">
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;">
+                        <div class="setting-label">Quick answers</div>
+                        <div class="setting-desc">Tap a question to expand</div>
+                    </div>
+                </div>
+                <div class="card help-card" style="margin-bottom:12px;">
+                    <details class="help-q">
+                        <summary>How do I add a transaction?</summary>
+                        <div class="help-a">Tap the <strong>+</strong> button on the home screen. Pick the type (Expense, Income, Invest, Self Transfer, Reimburse), enter the amount, choose a category, and save.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>How does SMS auto-import work?</summary>
+                        <div class="help-a">Install the Android companion app and grant notification access. Bank SMSes are read on your phone, sent securely to your private data, and appear here. See <strong>Settings → Companion App</strong>.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>I added a bank but nothing's appearing</summary>
+                        <div class="help-a">First check the companion app's <strong>Test</strong> button — it tells you whether credentials and the server connection are fine. If Test works but real SMSes still don't show, the SMS format isn't recognized yet — try sending ₹1 and checking the Uncategorized list, or open <strong>Settings → Privacy → Missed SMS</strong>.</div>
+                    </details>
+                </div>
+                <div class="card help-card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="border-bottom:1px solid var(--border-light);"><div><div class="setting-label" style="font-size:13px;">Categorizing</div></div></div>
+                    <details class="help-q">
+                        <summary>What does "Uncategorized" mean?</summary>
+                        <div class="help-a">A transaction was auto-imported but no rule matches it yet. Tap it in the Uncategorized list, pick a category, and optionally <strong>Save rule</strong> so future txns from the same merchant categorize automatically.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>How do rules work?</summary>
+                        <div class="help-a">Once you categorize a merchant and save it as a rule, every future SMS from that recipient is auto-categorized. Manage rules under <strong>Settings → Categories & Rules</strong>.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>An SMS got the wrong category</summary>
+                        <div class="help-a">Tap the txn on the home screen to edit it. Change the type or category and save. If a rule was the cause, also remove or update it in <strong>Categories & Rules</strong>.</div>
+                    </details>
+                </div>
+                <div class="card help-card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="border-bottom:1px solid var(--border-light);"><div><div class="setting-label" style="font-size:13px;">Reimbursements & transfers</div></div></div>
+                    <details class="help-q">
+                        <summary>How do reimbursements work?</summary>
+                        <div class="help-a">When someone pays you back for a shared expense, use <strong>Reimburse</strong> instead of Income. Link it to the original expense — the app subtracts the refund from that expense in totals and charts so your spending isn't inflated.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>Why don't self-transfers show in totals?</summary>
+                        <div class="help-a">Moving money between your own banks isn't real spending or income — it's just cash relocating. The app auto-detects self-transfers (by UPI ref or by your own name) and excludes them from Spent, Income, and charts.</div>
+                    </details>
+                </div>
+                <div class="card help-card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="border-bottom:1px solid var(--border-light);"><div><div class="setting-label" style="font-size:13px;">Data & privacy</div></div></div>
+                    <details class="help-q">
+                        <summary>Where is my data stored?</summary>
+                        <div class="help-a">In your own private Firestore subtree on Google Cloud. Strict per-user rules mean nobody else — not even the owner — can read your transactions.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>Can I export my data?</summary>
+                        <div class="help-a">Yes — <strong>Settings → Data → Export Transactions</strong> downloads a CSV.</div>
+                    </details>
+                    <details class="help-q">
+                        <summary>What does the smart parser do?</summary>
+                        <div class="help-a">When the app sees a bank SMS format it doesn't have a built-in rule for, it asks an AI to extract the txn AND derive a reusable regex. The regex is saved per-user so future SMSes of that format parse locally with no API call. Turn it off under <strong>Settings → Privacy</strong>.</div>
+                    </details>
+                </div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="setting-row" style="cursor:pointer;border-bottom:1px solid var(--border-light);" onclick="window.open('mailto:viyas.ventures@gmail.com?subject=My%20Finance%20bug%20report','_blank')">
+                        <div><div class="setting-label">Report a bug</div><div class="setting-desc">Email viyas.ventures@gmail.com</div></div>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M5 11l6-6m0 0H6m5 0v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="setting-row" style="cursor:pointer;border-bottom:none;" onclick="window.open('https://github.com/viyas52/dash-app/issues','_blank')">
+                        <div><div class="setting-label">Open a GitHub issue</div><div class="setting-desc">github.com/viyas52/dash-app/issues</div></div>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--text-3)"><path d="M5 11l6-6m0 0H6m5 0v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </div>
                 </div>
             </div>
@@ -3367,6 +3488,7 @@ const _settingsPageTitles = {
     companion: 'Companion App',
     privacy: 'Privacy',
     data: 'Data',
+    help: 'Help',
     about: 'About'
 };
 
