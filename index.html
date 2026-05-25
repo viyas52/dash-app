@@ -1669,7 +1669,7 @@
         <div class="auth-title">My Finance</div>
         <div class="auth-sub" id="auth-sub">Track your money, your way.</div>
 
-        <div class="auth-form">
+        <form class="auth-form" onsubmit="event.preventDefault(); authSubmit();">
             <!-- Sign Up extra fields -->
             <div id="auth-name-group" style="display:none;">
                 <label class="auth-label">Your Name</label>
@@ -1698,7 +1698,7 @@
 
             <div class="auth-error" id="auth-error"></div>
 
-            <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">Log In</button>
+            <button class="auth-btn" id="auth-submit-btn" type="submit">Log In</button>
 
             <div class="auth-divider"><span>or</span></div>
 
@@ -1712,7 +1712,7 @@
             <div class="auth-toggle" id="auth-toggle">
                 Don't have an account? <a onclick="toggleAuthMode()">Sign up</a>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -3646,11 +3646,18 @@ function updateMonthLabel() {
 }
 function prevMonth() { sndPage(); hapTap(); monthOffset++; updateMonthLabel(); loadMonth(); }
 function nextMonth() { if (monthOffset <= 0) return; sndPage(); hapTap(); monthOffset--; updateMonthLabel(); loadMonth(); }
+// Local-TZ "YYYY-MM-DD" — never use toISOString() for the add-modal default,
+// since UTC midnight crosses for IST users late evening / early morning and
+// silently dates the txn a day off.
+function todayLocalISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 function populateMonths() {
     monthOffset = 0;
     updateMonthLabel();
     updateFormCats();
-    document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('add-date').value = todayLocalISO();
 }
 
 /* ─── LOAD DATA ─── */
@@ -4695,7 +4702,7 @@ function openAddModal() {
     document.getElementById('modal-btn').textContent = 'Add transaction';
     document.getElementById('modal-btn').onclick = addEntry;
     document.getElementById('modal-delete-btn').style.display = 'none';
-    document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('add-date').value = todayLocalISO();
     document.getElementById('add-amount').value = '';
     document.getElementById('add-note').value = '';
     document.getElementById('add-bank').value = 'icici'; // ICICI is primary
@@ -6474,6 +6481,17 @@ async function authSubmit() {
     hideAuthError();
     const email = (document.getElementById('auth-email').value || '').trim();
     const pass  = document.getElementById('auth-password').value || '';
+    // Validate in visual top-to-bottom order so the error always points at
+    // the first empty field the user sees. In signup the Name/Username
+    // fields are above Email, so check those first; in login mode they
+    // don't exist.
+    if (_authMode === 'signup') {
+        const name = (document.getElementById('auth-name').value || '').trim();
+        if (!name) { document.getElementById('auth-name').focus(); return showAuthError('Enter your name'); }
+        const usernameRaw = (document.getElementById('auth-username').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        const username = usernameRaw || name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16);
+        if (!username || username.length < 2) { document.getElementById('auth-username').focus(); return showAuthError('Enter a valid username (2+ chars)'); }
+    }
     if (!email) { document.getElementById('auth-email').focus(); return showAuthError('Enter your email'); }
     if (pass.length < 6) { document.getElementById('auth-password').focus(); return showAuthError('Password must be at least 6 characters'); }
 
@@ -6484,11 +6502,11 @@ async function authSubmit() {
     try {
         await initFirebaseCore();
         if (_authMode === 'signup') {
+            // Already validated above; recompute the normalized username
+            // and proceed straight to account creation.
             const name = (document.getElementById('auth-name').value || '').trim();
-            if (!name) { document.getElementById('auth-name').focus(); btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Enter your name'); }
             const usernameRaw = (document.getElementById('auth-username').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
             const username = usernameRaw || name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 16);
-            if (!username || username.length < 2) { btn.disabled = false; btn.textContent = 'Create Account'; return showAuthError('Enter a valid username (2+ chars)'); }
 
             _signupInProgress = true;
             try {
