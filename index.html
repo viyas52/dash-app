@@ -3637,6 +3637,54 @@ async function exportData() {
     }
 }
 
+/* ─── FULL-FIDELITY EXPORT (loss-free migration payload) ───
+ * Unlike exportData()'s human CSV (which flattens to 7 columns and dropped
+ * notes/accounts/linkages), this captures EVERY financial doc with ALL fields
+ * and linkages intact (transfer pair_id, reimburses_id), as {path,data}
+ * records — the same shape the encrypted-backup store uses
+ * (assets/web/backup/store.js), so the bundle imports straight into local
+ * IndexedDB. Identity/runtime docs (config/profile, config/_rl) are excluded;
+ * they belong to the cloud account, not the user's financial data.
+ *
+ * Note: client SDK can't list subcollections, so the set is explicit. Keep this
+ * list in sync with firestore.rules / functions/_migrate.js if collections are
+ * added. */
+const FULL_EXPORT_SUBCOLLECTIONS = ['transactions', 'rules', 'suggested_accounts', 'deleted'];
+const FULL_EXPORT_CONFIG_DOCS = ['accounts', 'self_transfer'];
+
+async function exportFullBundle() {
+    const { getDocs, collection, doc, getDoc } = window.fb;
+    if (!USER_ID) throw new Error('not signed in');
+    const records = [];
+    for (const c of FULL_EXPORT_SUBCOLLECTIONS) {
+        const snap = await getDocs(collection(db, 'users', USER_ID, c));
+        snap.forEach(d => records.push({ path: 'users/' + USER_ID + '/' + c + '/' + d.id, data: d.data() }));
+    }
+    for (const cd of FULL_EXPORT_CONFIG_DOCS) {
+        const s = await getDoc(doc(db, 'users', USER_ID, 'config', cd));
+        if (s.exists()) records.push({ path: 'users/' + USER_ID + '/config/' + cd, data: s.data() });
+    }
+    return { v: 1, exportedAt: Date.now(), user: USER_ID, records };
+}
+
+// Download the full bundle as JSON (manual/complete export + migration debugging).
+async function downloadFullBundle() {
+    sndTap(); hapTap();
+    showToast('Preparing full export…');
+    try {
+        const bundle = await exportFullBundle();
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'my-finance-full-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        showToast('Exported ' + bundle.records.length + ' records (complete)');
+    } catch (err) {
+        console.error(err); showToast('Full export failed');
+    }
+}
+
 /* ─── DARK MODE (sheet toggle) ─── */
 function toggleDark() {
     sndToggle(document.documentElement.getAttribute('data-theme') !== 'dark'); hapTap();
