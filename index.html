@@ -1853,6 +1853,18 @@
         <div class="notif-count" id="suggested-banner-count" style="background:var(--blue);">+</div>
     </div>
 
+    <!-- "Get the Android app" — shown only to Android browser users (never inside
+         the native shell, where window.isCompanion is set). Moves cloud users to
+         the local-first native app. Dismissible. -->
+    <div id="getapp-banner" class="notif-strip"
+         style="display:none;background:linear-gradient(135deg, var(--bg-card), color-mix(in srgb, var(--blue) 9%, var(--bg-card)));border:1px solid color-mix(in srgb, var(--blue) 32%, var(--border));"
+         onclick="window.open('https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk','_blank')">
+        <div class="notif-dot" style="background:var(--blue);"></div>
+        <div class="notif-txt">📲 Get the Android app — your data stays private on your phone</div>
+        <button onclick="dismissGetAppBanner(event)" style="background:none;border:none;padding:6px 8px;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;flex-shrink:0;" aria-label="Dismiss">&times;</button>
+        <div class="notif-count" style="background:var(--blue);">→</div>
+    </div>
+
 
     <!-- Spending Breakdown -->
     <div id="spending-badges-section" style="display:none;" class="badge-section">
@@ -6845,6 +6857,7 @@ function enterApp() {
     initFirebase();
     initChartSwipe();
     maybeSyncCompanion();
+    maybeShowGetAppBanner();
     refreshCompanionCreds();
     // First-time onboarding wizard — runs only for users with no linked
     // accounts who haven't dismissed it. initFirebase loads LINKED_ACCOUNTS
@@ -6907,6 +6920,23 @@ function connectCompanionNow() {
 // Best-effort silent push + an unmissable one-tap connect strip shown only
 // while native still lacks creds (launcher reports ?hasCreds=1 once it has
 // them). Self-heals across app opens; re-runs after login / on refocus.
+// "Get the Android app" banner — only for Android browser users (never inside
+// the native shell, where window.isCompanion is set + the app is already the app).
+// Dismissible; the choice persists in localStorage.
+function maybeShowGetAppBanner() {
+    if (window.isCompanion) return;                          // already in the native app
+    if (!/Android/i.test(navigator.userAgent || '')) return; // the APK only installs on Android
+    try { if (localStorage.getItem('getapp_banner_dismissed') === '1') return; } catch (_) {}
+    const b = document.getElementById('getapp-banner');
+    if (b) b.style.display = 'flex';
+}
+function dismissGetAppBanner(e) {
+    if (e) e.stopPropagation();
+    try { localStorage.setItem('getapp_banner_dismissed', '1'); } catch (_) {}
+    const b = document.getElementById('getapp-banner');
+    if (b) b.style.display = 'none';
+}
+
 function maybeSyncCompanion() {
     if (!window.isCompanion) return;
 
