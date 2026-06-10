@@ -9,3 +9,7 @@ Thumbs.db
 index-dev.html
 # One-off function helper/maintenance scripts (analytics, migration) — never deploy/commit
 functions/_*.js
+# One-off admin/maintenance probes + data snapshots (contain user financial data) — never commit
+_admin_*.cjs
+viyas-cloud-snapshot-*.json
+_snapshot-*.json
