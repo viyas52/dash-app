@@ -1860,7 +1860,7 @@
          style="display:none;background:linear-gradient(135deg, var(--bg-card), color-mix(in srgb, var(--blue) 9%, var(--bg-card)));border:1px solid color-mix(in srgb, var(--blue) 32%, var(--border));"
          onclick="openGetAppModal()">
         <div class="notif-dot" style="background:var(--blue);"></div>
-        <div class="notif-txt">📲 Get the Android app — your data stays private on your phone</div>
+        <div class="notif-txt" id="getapp-banner-txt">📲 Get the Android app — your data stays private on your phone</div>
         <button onclick="dismissGetAppBanner(event)" style="background:none;border:none;padding:6px 8px;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;flex-shrink:0;" aria-label="Dismiss">&times;</button>
         <div class="notif-count" style="background:var(--blue);">→</div>
     </div>
@@ -2042,20 +2042,18 @@
 <div class="modal-overlay" id="getapp-modal" onclick="closeGetAppModal(event)">
     <div class="modal" onclick="event.stopPropagation()" style="max-width:360px;">
         <div class="modal-head">
-            <h2>Before you download</h2>
+            <h2 id="getapp-modal-title">Before you download</h2>
             <button class="modal-close" onclick="closeGetAppModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
         </div>
-        <p style="font-size:14px;color:var(--text-2);line-height:1.6;margin:0 0 6px;">
-            You'll sign in to the Android app with your <strong>email and password</strong>. Make sure you know your password before switching — you can't use Google sign-in on the app.
-        </p>
+        <p id="getapp-modal-body" style="font-size:14px;color:var(--text-2);line-height:1.6;margin:0 0 6px;"></p>
         <p id="getapp-modal-email" style="font-size:13px;color:var(--text-3);margin:0 0 20px;"></p>
         <p id="getapp-modal-msg" style="display:none;font-size:13px;margin:0 0 14px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 12%,var(--bg-card));color:var(--green);"></p>
         <button id="getapp-reset-btn" onclick="getAppSendReset()" style="width:100%;padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text-1);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;">
             Forgot my password — send reset email
         </button>
-        <button onclick="getAppProceed()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+        <button id="getapp-proceed-btn" onclick="getAppProceed()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
             I know my password — download app
         </button>
     </div>
@@ -6947,29 +6945,44 @@ function connectCompanionNow() {
 // the native shell, where window.isCompanion is set + the app is already the app).
 // Dismissible; the choice persists in localStorage.
 function maybeShowGetAppBanner() {
-    if (window.isCompanion) return;                          // already in the native app
     if (!/Android/i.test(navigator.userAgent || '')) return; // the APK only installs on Android
-    try { if (localStorage.getItem('getapp_banner_dismissed') === '1') return; } catch (_) {}
+    const key = window.isCompanion ? 'updateapp_banner_dismissed' : 'getapp_banner_dismissed';
+    try { if (localStorage.getItem(key) === '1') return; } catch (_) {}
+    const txt = document.getElementById('getapp-banner-txt');
+    if (txt) txt.textContent = window.isCompanion
+        ? '⬆ Update available — install the latest version'
+        : '📲 Get the Android app — your data stays private on your phone';
     const b = document.getElementById('getapp-banner');
     if (b) b.style.display = 'flex';
 }
 function dismissGetAppBanner(e) {
     if (e) e.stopPropagation();
-    try { localStorage.setItem('getapp_banner_dismissed', '1'); } catch (_) {}
+    const key = window.isCompanion ? 'updateapp_banner_dismissed' : 'getapp_banner_dismissed';
+    try { localStorage.setItem(key, '1'); } catch (_) {}
     const b = document.getElementById('getapp-banner');
     if (b) b.style.display = 'none';
 }
 function openGetAppModal() {
     const ov = document.getElementById('getapp-modal');
     if (!ov) return;
-    // Show signed-in email so user knows which account to expect
+    const isUpdate = !!window.isCompanion;
+    // Context-specific copy
+    const titleEl = document.getElementById('getapp-modal-title');
+    const bodyEl  = document.getElementById('getapp-modal-body');
+    const proceedBtn = document.getElementById('getapp-proceed-btn');
+    if (titleEl) titleEl.textContent = isUpdate ? 'Before you update' : 'Before you download';
+    if (bodyEl) bodyEl.innerHTML = isUpdate
+        ? 'The latest version has new fixes and features. It installs over your existing app — <strong>no data is lost</strong>. Make sure you remember your <strong>email and password</strong> in case Android asks you to sign in again after updating.'
+        : 'You\'ll sign in to the Android app with your <strong>email and password</strong>. Make sure you know your password before switching — you can\'t use Google sign-in on the app.';
+    if (proceedBtn) proceedBtn.textContent = isUpdate ? 'I know my password — update now' : 'I know my password — download app';
+    // Show signed-in email
     const email = firebaseAuth && firebaseAuth.currentUser && firebaseAuth.currentUser.email;
     const emailEl = document.getElementById('getapp-modal-email');
     if (emailEl) emailEl.textContent = email ? 'Signed in as ' + email : '';
     // Reset state
     const msg = document.getElementById('getapp-modal-msg');
     const btn = document.getElementById('getapp-reset-btn');
-    if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+    if (msg) { msg.style.display = 'none'; msg.textContent = ''; msg.style.background = ''; msg.style.color = ''; }
     if (btn) { btn.disabled = false; btn.textContent = 'Forgot my password — send reset email'; }
     ov.classList.add('active');
     document.body.style.overflow = 'hidden';
