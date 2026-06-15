@@ -1858,7 +1858,7 @@
          the local-first native app. Dismissible. -->
     <div id="getapp-banner" class="notif-strip"
          style="display:none;background:linear-gradient(135deg, var(--bg-card), color-mix(in srgb, var(--blue) 9%, var(--bg-card)));border:1px solid color-mix(in srgb, var(--blue) 32%, var(--border));"
-         onclick="window.open('https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk','_blank')">
+         onclick="openGetAppModal()">
         <div class="notif-dot" style="background:var(--blue);"></div>
         <div class="notif-txt">📲 Get the Android app — your data stays private on your phone</div>
         <button onclick="dismissGetAppBanner(event)" style="background:none;border:none;padding:6px 8px;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;flex-shrink:0;" aria-label="Dismiss">&times;</button>
@@ -2037,6 +2037,29 @@
 <button class="fab" id="fab-btn" onclick="openAddModal()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
 </button>
+
+<!-- ═══ GET ANDROID APP MODAL ═══ -->
+<div class="modal-overlay" id="getapp-modal" onclick="closeGetAppModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:360px;">
+        <div class="modal-head">
+            <h2>Before you download</h2>
+            <button class="modal-close" onclick="closeGetAppModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <p style="font-size:14px;color:var(--text-2);line-height:1.6;margin:0 0 6px;">
+            You'll sign in to the Android app with your <strong>email and password</strong>. Make sure you know your password before switching — you can't use Google sign-in on the app.
+        </p>
+        <p id="getapp-modal-email" style="font-size:13px;color:var(--text-3);margin:0 0 20px;"></p>
+        <p id="getapp-modal-msg" style="display:none;font-size:13px;margin:0 0 14px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 12%,var(--bg-card));color:var(--green);"></p>
+        <button id="getapp-reset-btn" onclick="getAppSendReset()" style="width:100%;padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text-1);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;">
+            Forgot my password — send reset email
+        </button>
+        <button onclick="getAppProceed()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+            I know my password — download app
+        </button>
+    </div>
+</div>
 
 <!-- ═══ ADD/EDIT MODAL ═══ -->
 <div class="modal-overlay" id="add-modal" onclick="closeAddModal(event)">
@@ -6935,6 +6958,48 @@ function dismissGetAppBanner(e) {
     try { localStorage.setItem('getapp_banner_dismissed', '1'); } catch (_) {}
     const b = document.getElementById('getapp-banner');
     if (b) b.style.display = 'none';
+}
+function openGetAppModal() {
+    const ov = document.getElementById('getapp-modal');
+    if (!ov) return;
+    // Show signed-in email so user knows which account to expect
+    const email = firebaseAuth && firebaseAuth.currentUser && firebaseAuth.currentUser.email;
+    const emailEl = document.getElementById('getapp-modal-email');
+    if (emailEl) emailEl.textContent = email ? 'Signed in as ' + email : '';
+    // Reset state
+    const msg = document.getElementById('getapp-modal-msg');
+    const btn = document.getElementById('getapp-reset-btn');
+    if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Forgot my password — send reset email'; }
+    ov.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('shown')));
+}
+function closeGetAppModal(e) {
+    if (e && e.target !== document.getElementById('getapp-modal')) return;
+    const ov = document.getElementById('getapp-modal');
+    if (!ov) return;
+    ov.classList.remove('shown');
+    setTimeout(() => { ov.classList.remove('active'); document.body.style.overflow = ''; }, 260);
+}
+async function getAppSendReset() {
+    const email = firebaseAuth && firebaseAuth.currentUser && firebaseAuth.currentUser.email;
+    const btn = document.getElementById('getapp-reset-btn');
+    const msg = document.getElementById('getapp-modal-msg');
+    if (!email) { if (msg) { msg.textContent = 'Could not find your email — try from Settings → Account.'; msg.style.display = 'block'; } return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+        await window.fbAuth.sendPasswordResetEmail(firebaseAuth, email);
+        if (msg) { msg.textContent = '✓ Reset link sent to ' + email + ' — check your inbox (and spam), then come back to download.'; msg.style.display = 'block'; }
+        if (btn) btn.textContent = 'Email sent';
+    } catch (err) {
+        if (msg) { msg.textContent = err.message || 'Failed to send reset link.'; msg.style.background = 'color-mix(in srgb,var(--red,#ef4444) 12%,var(--bg-card))'; msg.style.color = 'var(--red,#ef4444)'; msg.style.display = 'block'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Forgot my password — send reset email'; }
+    }
+}
+function getAppProceed() {
+    closeGetAppModal();
+    window.open('https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk', '_blank');
 }
 
 function maybeSyncCompanion() {
