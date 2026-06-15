@@ -1832,7 +1832,7 @@
     </div>
 
     <!-- Companion App Banner -->
-    <div id="companion-banner" style="display:none;" class="notif-strip" onclick="enableCompanionListener()">
+    <div id="companion-banner" style="display:none;" class="notif-strip" onclick="openSmsModal()">
         <div class="notif-dot" style="background:#22C55E;"></div>
         <div class="notif-txt" id="companion-banner-txt">📱 Enable SMS forwarding</div>
         <div class="notif-count" id="companion-banner-count" style="background:#22C55E;">→</div>
@@ -2037,6 +2037,36 @@
 <button class="fab" id="fab-btn" onclick="openAddModal()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
 </button>
+
+<!-- ═══ SMS FORWARDING STEPS MODAL ═══ -->
+<div class="modal-overlay" id="sms-fwd-modal" onclick="closeSmsModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:380px;">
+        <div class="modal-head">
+            <h2>Enable SMS forwarding</h2>
+            <button class="modal-close" onclick="closeSmsModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <p style="font-size:14px;color:var(--text-2);line-height:1.6;margin:0 0 16px;">Your bank SMSes won't reach the app until notification access is granted. Follow these steps:</p>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>
+                <div style="font-size:13px;color:var(--text-2);line-height:1.55;"><strong>Android Settings → Apps → My Finance</strong><br>Tap ⋮ (3 dots, top-right) → <strong>"Allow restricted settings"</strong><br><span style="color:var(--text-3);font-size:12px;">Android 13+ only — skip if you don't see it</span></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
+                <div style="font-size:13px;color:var(--text-2);line-height:1.55;"><strong>Android Settings → Apps → Special access → Notification access</strong><br>Find <strong>My Finance</strong> → toggle <strong>ON</strong> → confirm "Allow"</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="min-width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">3</div>
+                <div style="font-size:13px;color:var(--text-2);line-height:1.55;">Come back here and tap <strong>Enable now</strong> — the banner will disappear once it's active</div>
+            </div>
+        </div>
+        <button onclick="doEnableCompanionListener()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+            Enable now
+        </button>
+    </div>
+</div>
 
 <!-- ═══ GET ANDROID APP MODAL ═══ -->
 <div class="modal-overlay" id="getapp-modal" onclick="closeGetAppModal(event)">
@@ -3758,6 +3788,7 @@ async function initFirebase() {
         // Load per-user config (linked accounts)
         await loadUserConfig();
         renderAcctFilterChips();
+        maybeShowSmsBanner(); // re-evaluate now that LINKED_ACCOUNTS is populated
 
         populateMonths();
         loadRules();
@@ -3978,6 +4009,11 @@ function updateDashboard(entries) {
             totalExpense += Math.max(0, (e.amount || 0) - refunded);
         }
         // 'transfer' is intentionally excluded from all totals — it's just money moving between own accounts.
+    });
+
+    uncatEntries.sort((a, b) => {
+        const d = (b.date || '').localeCompare(a.date || '');
+        return d !== 0 ? d : (b.created_at || '').localeCompare(a.created_at || '');
     });
 
     const netSaved = totalIncome - totalExpense - totalInvest;
@@ -7015,12 +7051,21 @@ function getAppProceed() {
     window.open('https://github.com/viyas52/dash-app/releases/download/android-latest/app-debug.apk', '_blank');
 }
 
+function maybeShowSmsBanner() {
+    if (!window.isCompanion) return;
+    // Only relevant once the user has at least one linked account —
+    // no account = no SMSes to forward = banner is noise.
+    if (!LINKED_ACCOUNTS || LINKED_ACCOUNTS.length === 0) return;
+    if (lsGet('companion_listener_done') === '1') return;
+    const lb = document.getElementById('companion-banner');
+    if (lb) lb.style.display = 'flex';
+}
 function maybeSyncCompanion() {
     if (!window.isCompanion) return;
 
-    // Notification-access banner — a separate concern from credential sync.
-    const lb = document.getElementById('companion-banner');
-    if (lb && lsGet('companion_listener_done') !== '1') lb.style.display = 'flex';
+    // Banner is evaluated here at init (LINKED_ACCOUNTS may still be empty)
+    // and again after loadUserConfig() populates LINKED_ACCOUNTS.
+    maybeShowSmsBanner();
 
     if (window.companionHasCreds) { hideCompanionConnect(); return; }
     if (!USER_ID || !USER_API_KEY) return; // retried after login / on refocus
@@ -7034,11 +7079,26 @@ function maybeSyncCompanion() {
     const el = document.getElementById('companion-connect');
     if (el) el.style.display = 'flex';
 }
-
+function openSmsModal() {
+    const ov = document.getElementById('sms-fwd-modal');
+    if (!ov) return;
+    ov.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('shown')));
+}
+function closeSmsModal(e) {
+    if (e && e.target !== document.getElementById('sms-fwd-modal')) return;
+    const ov = document.getElementById('sms-fwd-modal');
+    if (!ov) return;
+    ov.classList.remove('shown');
+    setTimeout(() => { ov.classList.remove('active'); document.body.style.overflow = ''; }, 260);
+}
+function doEnableCompanionListener() {
+    closeSmsModal();
+    enableCompanionListener();
+}
 function enableCompanionListener() {
     fireCompanionDeepLink('financecompanion://enable_notifications');
-    // Mark as done so the banner stops nagging. If forwarding doesn't work,
-    // user can re-enable via the "Re-enable SMS forwarding" button in settings.
     lsSet('companion_listener_done', '1');
     const banner = document.getElementById('companion-banner');
     if (banner) banner.style.display = 'none';
