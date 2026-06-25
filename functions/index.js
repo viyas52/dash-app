@@ -755,7 +755,7 @@ async function learnViaLLM(sms, apiKey) {
 }
 
 // ── HTTPS Cloud Function ──
-exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asia-south1", secrets: [ANTHROPIC_API_KEY] }, async (req, res) => {
+exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asia-south1", secrets: [ANTHROPIC_API_KEY], minInstances: 1 }, async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   // ── User ID (required for multi-user routing) ──

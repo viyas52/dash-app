@@ -7116,8 +7116,20 @@ function resyncCompanion() {
 
 // Re-attempt the sync when the app regains focus — covers the user logging in
 // after opening the companion, or returning from the connect handoff.
+let _lastHiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && window.isCompanion) maybeSyncCompanion();
+    if (document.hidden) {
+        _lastHiddenAt = Date.now();
+        return;
+    }
+    // App came to foreground
+    if (window.isCompanion) maybeSyncCompanion();
+    // If the app was backgrounded for >30 s, re-attach the Firestore listener
+    // so any transactions that arrived while it was closed appear immediately
+    // rather than waiting for the stale WebSocket to resync.
+    if (firebaseReady && USER_ID && (Date.now() - _lastHiddenAt) > 30000) {
+        loadMonth();
+    }
 });
 
 // Populate the Settings → Companion credentials card. API key is masked on
