@@ -56,7 +56,8 @@ object UncatNotifier {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(pi)
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
             .build()
 
         try {
@@ -101,9 +102,10 @@ object UncatNotifier {
             val mgr = ctx.getSystemService(NotificationManager::class.java) ?: return
             if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
                 val ch = NotificationChannel(
-                    CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT
+                    CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     description = "Pings when a new bank transaction needs a category"
+                    enableVibration(true)
                 }
                 mgr.createNotificationChannel(ch)
             }
