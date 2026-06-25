@@ -705,17 +705,22 @@ function matchLearnedTemplates(sms, templateDocs) {
 // teaching SMS, and re-extract the SAME amount the model reported. This
 // proves the regex targets the right field rather than just "matching".
 function validateLearnedTemplate(tpl, sms, txn) {
-  if (!tpl || !tpl.regex || !isSafeRegex(tpl.regex)) return false;
+  if (!tpl || !tpl.regex) { console.warn("validateTemplate: no regex"); return false; }
+  if (!isSafeRegex(tpl.regex)) { console.warn("validateTemplate: unsafe regex", tpl.regex.substring(0, 80)); return false; }
   const g = tpl.groups || {};
-  if (!g.amount) return false;
+  if (!g.amount) { console.warn("validateTemplate: no amount group"); return false; }
   let re, m;
-  try { re = new RegExp(tpl.regex, "i"); } catch (_) { return false; }
-  try { m = sms.match(re); } catch (_) { return false; }
-  if (!m || m[g.amount] == null) return false;
+  try { re = new RegExp(tpl.regex, "i"); } catch (e) { console.warn("validateTemplate: compile failed", e.message); return false; }
+  try { m = sms.match(re); } catch (e) { console.warn("validateTemplate: match threw", e.message); return false; }
+  if (!m) { console.warn("validateTemplate: regex did not match SMS. regex:", tpl.regex.substring(0, 120)); return false; }
+  if (m[g.amount] == null) { console.warn("validateTemplate: amount group", g.amount, "not captured"); return false; }
   const capAmt = parseFloat(String(m[g.amount]).replace(/,/g, ""));
-  if (!isFinite(capAmt)) return false;
-  if (Math.abs(capAmt - Number(txn.amount)) > 0.01) return false;
-  if (g.date && m[g.date] == null) return false;
+  if (!isFinite(capAmt)) { console.warn("validateTemplate: captured amount not finite:", m[g.amount]); return false; }
+  if (Math.abs(capAmt - Number(txn.amount)) > 0.01) {
+    console.warn("validateTemplate: amount mismatch — regex captured", capAmt, "but LLM said", txn.amount);
+    return false;
+  }
+  if (g.date && m[g.date] == null) { console.warn("validateTemplate: date group", g.date, "not captured"); return false; }
   return true;
 }
 
@@ -813,10 +818,16 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
                last_used: new Date().toISOString() }, { merge: true })
         .catch(() => {});
     } else if (userConfig.llmEnabled) {
+      console.log("LLM learn: calling learnViaLLM for SMS prefix:", sms.substring(0, 60));
       const learned = await learnViaLLM(sms, ANTHROPIC_API_KEY.value());
-      if (learned && learned.transaction) {
+      if (!learned) {
+        console.warn("LLM learn: learnViaLLM returned null (API error or parse failure)");
+      } else if (learned.notTransaction) {
+        console.log("LLM learn: model says not a transaction");
+      } else if (learned && learned.transaction) {
         const txn = learned.transaction;
         const amt = Number(txn.amount);
+        console.log("LLM learn: extracted txn amount=" + amt + " type=" + txn.type + " bank=" + txn.bank + " hasTemplate=" + !!learned.template);
         if (isFinite(amt) && amt > 0 && (txn.type === "debit" || txn.type === "credit")) {
           parsed = buildParsedFromExtraction(txn, sms, "llm");
           // Persist the induced template only if it provably re-extracts the
@@ -827,6 +838,7 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
             const tplId = crypto.createHash("sha1")
               .update((tpl.bank || "other") + "|" + tpl.regex)
               .digest("hex").substring(0, 24);
+            console.log("LLM learn: saving template id=" + tplId + " bank=" + tpl.bank + " regex=" + tpl.regex.substring(0, 80));
             db.doc(`users/${effectiveUser}/parser_templates/${tplId}`).set({
               regex: tpl.regex,
               groups: tpl.groups || {},
@@ -838,6 +850,10 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
               source: "llm",
               hit_count: 0,
             }, { merge: true }).catch((e) => console.error("template save failed:", (e && e.message) || e));
+          } else if (learned.template) {
+            console.warn("LLM learn: template returned but failed validation — transaction saved without caching template");
+          } else {
+            console.warn("LLM learn: no template returned by model — transaction saved but no template cached");
           }
         }
       }
@@ -856,17 +872,28 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
   // that match one of those accounts. This way a user can opt in to tracking
   // just specific accounts (e.g. only HDFC, ignore the other banks they get
   // SMS from). If no accounts are linked yet, accept all parsed SMS.
-  if (userConfig.linkedAccounts && userConfig.linkedAccounts.length > 0 && parsed.account) {
-    const parsedDigits = String(parsed.account).replace(/\D/g, "");
+  if (userConfig.linkedAccounts && userConfig.linkedAccounts.length > 0) {
+    const parsedDigits = String(parsed.account || "").replace(/\D/g, "");
     const parsedTail = parsedDigits.slice(-4);
-    const matches = userConfig.linkedAccounts.some(la => {
-      if (!la || !la.last4) return false;
-      const linkedTail = String(la.last4).replace(/\D/g, "").slice(-4);
-      if (!linkedTail || !parsedTail) return false;
-      return parsedTail === linkedTail
-          || parsedTail.endsWith(linkedTail)
-          || linkedTail.endsWith(parsedTail);
-    });
+    const bankLower = (parsed.bank || "?").toLowerCase();
+    // When the SMS exposes an account number, match by last4.
+    // When it doesn't (LLM-learned templates sometimes don't capture one),
+    // fall back to bank-name matching so dismissed accounts are still blocked.
+    let matches;
+    if (parsedTail) {
+      matches = userConfig.linkedAccounts.some(la => {
+        if (!la || !la.last4) return false;
+        const linkedTail = String(la.last4).replace(/\D/g, "").slice(-4);
+        if (!linkedTail) return false;
+        return parsedTail === linkedTail
+            || parsedTail.endsWith(linkedTail)
+            || linkedTail.endsWith(parsedTail);
+      });
+    } else {
+      matches = userConfig.linkedAccounts.some(la =>
+        la && (la.bank || "").toLowerCase() === bankLower
+      );
+    }
     if (!matches) {
       // Save the rejected SMS as a one-tap-link suggestion so the PWA can
       // pop a banner: "ICICI ••489 detected — Tap to link". Deduped by
@@ -877,10 +904,13 @@ exports.parseSms = onRequest({ cors: ["https://viyas52.github.io"], region: "asi
         const dismissedSnap = await db.doc(`users/${effectiveUser}/config/dismissed_accounts`).get();
         if (dismissedSnap.exists) {
           const list = dismissedSnap.data().list || [];
-          const bankLower = (parsed.bank || "?").toLowerCase();
-          isDismissed = list.some(d =>
-            (d.bank || "").toLowerCase() === bankLower && String(d.last4 || "") === parsedTail
-          );
+          isDismissed = list.some(d => {
+            if ((d.bank || "").toLowerCase() !== bankLower) return false;
+            // If we have a parsedTail, require last4 match; if not (no account
+            // number in SMS), bank name alone is enough to honour the dismissal.
+            if (parsedTail) return String(d.last4 || "").replace(/\D/g, "").slice(-4) === parsedTail;
+            return true;
+          });
         }
         if (!isDismissed) {
           const sugHash = crypto.createHash("sha1")
