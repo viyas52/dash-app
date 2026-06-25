@@ -6939,7 +6939,10 @@ function enterApp() {
 window.isCompanion = new URLSearchParams(location.search).get('companion') === '1';
 // CompanionLauncherActivity appends &hasCreds=1 once the native app already
 // has user+key saved — our cross-launch "already synced" acknowledgement.
+// &companionUser= carries the UID those creds belong to so we can detect
+// when a different user logs in and force a re-sync.
 window.companionHasCreds = new URLSearchParams(location.search).get('hasCreds') === '1';
+window.companionUser     = new URLSearchParams(location.search).get('companionUser') || '';
 
 function fireCompanionDeepLink(url) {
     // Hidden iframe is the reliable way to trigger custom URL schemes without
@@ -7067,7 +7070,12 @@ function maybeSyncCompanion() {
     // and again after loadUserConfig() populates LINKED_ACCOUNTS.
     maybeShowSmsBanner();
 
-    if (window.companionHasCreds) { hideCompanionConnect(); return; }
+    // If the companion app has creds but they belong to a DIFFERENT user
+    // (e.g. someone else logged into this phone), treat it as no-creds so
+    // the new user's credentials get pushed immediately.
+    const credsMatchCurrentUser = window.companionHasCreds &&
+        (!window.companionUser || window.companionUser === USER_ID);
+    if (credsMatchCurrentUser) { hideCompanionConnect(); return; }
     if (!USER_ID || !USER_API_KEY) return; // retried after login / on refocus
 
     // Silent attempt once per session (helps where it works) — but only
