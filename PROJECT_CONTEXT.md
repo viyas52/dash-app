@@ -2,7 +2,7 @@
 
 **Owner:** Veda Viyas P (Viyas)
 **Created:** 2026-04-29
-**Status:** Planning phase — architecture drafted, no code yet
+**Status:** Live and in active use
 
 ---
 
@@ -12,9 +12,9 @@ A personal finance tracker that auto-captures UPI transactions from bank SMSes i
 
 ### Core Flow
 1. Bank SMS arrives after a UPI transaction
-2. App parses it automatically (amount, date, merchant/recipient)
-3. User gets a notification → one-tap category assignment
-4. Dashboard shows spending vs investments with separate pie charts
+2. Android companion app reads it via BroadcastReceiver → forwards to Firebase Cloud Function
+3. Cloud Function parses SMS with regex → stores transaction in Firestore
+4. PWA dashboard shows transaction, user one-tap categorizes it
 
 ---
 
@@ -23,28 +23,42 @@ A personal finance tracker that auto-captures UPI transactions from bank SMSes i
 | Decision | Choice | Reasoning |
 |----------|--------|-----------|
 | Scope | Personal tool first, product later | Build for self, validate, then consider scaling |
-| Bank | ICICI (account XX472) | Primary salary account |
+| Primary bank | ICICI (account XX472) | Primary salary account |
+| Additional banks | HDFC, CUB | SIP/investment accounts |
 | SMS format | Regex-parseable, consistent | No AI needed for parsing |
-| Framework Phase 1 | Tasker + Firebase + PWA | Quick prototype, no mobile dev needed |
-| Framework Phase 2 | React Native | Viyas knows JS, lowest learning curve |
-| Frontend | New separate PWA | Don't touch the Home Expense Tracker (that's for Amma) |
-| Tracking | Income + Expenses + Investments | Full financial picture, not just expenses |
+| SMS capture | Android companion APK (BroadcastReceiver) | Bypasses Truecaller + notification redaction |
+| Frontend | Vanilla JS PWA | Hosted on GitHub Pages |
+| Backend | Firebase Firestore + Cloud Functions | Same project as Home Expense Tracker |
+| Auth | Firebase Auth (email + password) | Single user; no Google sign-in in companion app |
+| App name | My Finance | Unified branding |
 
 ---
 
-## SMS Formats (ICICI)
+## SMS Formats
 
-### Credit (salary, refunds)
+### ICICI Credit (salary, refunds)
 ```
 ICICI Bank Account XX472 credited:Rs. 51,764.00 on 28-Apr-26. Info NEFT-HDFCH00958770854-BA CON. Available Balance is Rs. 1,28,055.18.
 ```
-**Fields:** amount, date, source (Info field), available balance
 
-### Debit (UPI)
+### ICICI Debit (UPI)
 ```
 ICICI Bank Acct XX472 debited for Rs 260.00 on 26-Apr-26; MR KATHIRAVAN R credited. UPI:648210939989. Call 18002662 for dispute. SMS BLOCK 472 to 9215676766.
 ```
-**Fields:** amount, date, recipient name, UPI reference
+
+### HDFC Debit (UPI)
+```
+JX-HDFCBK-C: Rs.500.00 debited from A/c XX0003 on 14/05/26. Info: UPI-...
+```
+
+### HDFC Credit (Money Received — multiline)
+```
+JX-HDFCBK-C: Money Received!
+Rs.1.00 credited to your A/c XX0003
+On 14/05/26
+From PRANAV
+UPI Ref: 650065174116
+```
 
 ---
 
@@ -52,7 +66,7 @@ ICICI Bank Acct XX472 debited for Rs 260.00 on 26-Apr-26; MR KATHIRAVAN R credit
 
 ### Spending Categories
 | Category | Emoji | Examples |
-|----------|-------|----------|
+|----------|-------|---------|
 | Food | 🍔 | Swiggy, Zomato, restaurants, Wow China |
 | Bill | 📱 | Phone recharge, electricity, subscriptions |
 | Transport | 🚗 | Fuel, Ola/Uber, metro |
@@ -67,16 +81,16 @@ ICICI Bank Acct XX472 debited for Rs 260.00 on 26-Apr-26; MR KATHIRAVAN R credit
 
 ### Investment Categories
 | Category | Emoji | Examples |
-|----------|-------|----------|
+|----------|-------|---------|
 | Mutual Fund | 📈 | SIP, lump sum MF purchases |
-| PPF | 🏛️ | Modi scheme / Public Provident Fund |
+| PPF | 🏛️ | Public Provident Fund |
 | SIP Transfer | 🔄 | Self transfers to HDFC, CUB for SIP |
 | Fixed Deposit | 🏦 | FD, RD |
-| Stocks | 📊 | Direct equity (if any) |
+| Stocks | 📊 | Direct equity |
 
 ### Income Categories
 | Category | Emoji | Examples |
-|----------|-------|----------|
+|----------|-------|---------|
 | Salary | 💰 | Bank of America monthly (~₹51k typical) |
 | Refund | ↩️ | Returns, cashbacks |
 | Other Income | 💵 | Freelance, interest, etc. |
@@ -92,124 +106,106 @@ ICICI Bank Acct XX472 debited for Rs 260.00 on 26-Apr-26; MR KATHIRAVAN R credit
 
 ---
 
-## Architecture
-
-### Phase 1 — Tasker Prototype (No Mobile Dev)
+## Architecture (Current — Live)
 
 ```
-[Bank SMS] → [Tasker on Android]
-                  ↓
-            [HTTP POST to Firebase Cloud Function]
-                  ↓
-            [Firebase Firestore: transactions collection]
-                  ↓
-            [PWA Dashboard — categorize + visualize]
+[Bank SMS]
+    ↓
+[My Finance Android APK — BroadcastReceiver]
+    ↓  (notification listener, bypasses Truecaller)
+[Firebase Cloud Function — parseSms]
+    ↓  (regex parser per bank format)
+[Firestore: users/{uid}/transactions]
+    ↓
+[PWA Dashboard — categorize + visualize]
 ```
 
 **Components:**
-1. **Tasker automation** — Intercepts SMSes from ICICI (sender filter), extracts text, sends HTTP POST to a webhook
-2. **Firebase Cloud Function (or direct Firestore write)** — Receives SMS text, runs regex parser, stores parsed transaction
-3. **PWA frontend** — Dashboard with:
-   - Uncategorized transactions queue (swipe/tap to categorize)
-   - Two pie charts: Spending breakdown + Investment breakdown
-   - Top summary cards: Income | Expenses | Investments | Net Savings
-   - Monthly history with download/print
-   - Dark mode
-
-### Phase 2 — React Native App
-
-- Native SMS reading (no Tasker dependency)
-- Push notifications on each transaction for quick categorization
-- Background SMS listener service
-- Same Firebase backend + PWA dashboard (or embed in-app)
-- Offline support + local SQLite cache
+1. **Android companion APK** — `android-companion/` in repo. BroadcastReceiver reads bank SMS notifications (bypasses Truecaller redaction). Forwards via HTTP POST to Cloud Function. User grants notification access once via Settings → Companion App.
+2. **Firebase Cloud Function** — `functions/` in repo. Regex-parses raw SMS per bank. Stores structured transaction in Firestore.
+3. **PWA frontend** — `index.html` (single-file app). Hosted on GitHub Pages.
 
 ---
 
 ## Firebase Schema
 
-### Collection: `transactions`
+### Collection: `users/{uid}/transactions`
 ```json
 {
   "id": "auto",
   "raw_sms": "ICICI Bank Acct XX472 debited for Rs 260.00...",
   "amount": 260.00,
   "date": "2026-04-26",
-  "type": "debit",           // "debit" | "credit"
-  "category": "Food",        // null until user categorizes
-  "category_type": "spending", // "spending" | "investment" | "income"
+  "type": "debit",
+  "bank": "icici",
+  "category": "Food",
+  "category_type": "spending",
   "recipient": "MR KATHIRAVAN R",
   "upi_ref": "648210939989",
-  "source": "",              // for credits: NEFT info, etc.
-  "balance_after": null,     // if available in SMS
-  "categorized": false,
+  "note": "",
+  "reimburses_id": null,
   "created_at": "2026-04-26T14:30:00Z"
 }
 ```
 
-### Collection: `settings`
+### Collection: `users/{uid}/config/accounts`
 ```json
 {
-  "monthly_budget": 25000,
-  "investment_target": 22000,
-  "bank_filter": "ICICI",
-  "account_suffix": "472"
+  "linked_accounts": [
+    { "id": "icici", "name": "ICICI Bank", "last4": "472", "color": "#F97316" }
+  ]
 }
 ```
 
 ---
 
-## Regex Patterns for ICICI SMS
+## Features Completed
 
-### Debit
-```regex
-ICICI Bank Acct XX\d+ debited for Rs ([\d,]+\.?\d*) on (\d{2}-\w{3}-\d{2}); (.+?) credited\. UPI:(\d+)
-```
-**Captures:** amount, date, recipient, UPI ref
+### PWA Dashboard
+- [x] 4 metric cards: Income, Spent, Invested, Net Saved
+- [x] Monthly navigator (◄ Month ►)
+- [x] Budget progress bar
+- [x] Spending breakdown chart
+- [x] Investment split chart
+- [x] Uncategorized transaction queue (newest first) with one-tap categorize
+- [x] Recent transactions list grouped by date
+- [x] FAB (+) to add transactions manually
+- [x] Analytics view (heatmap, charts, trends)
+- [x] Reimbursements — netted out of spending totals and charts
+- [x] Self-transfers excluded from all totals
+- [x] Auto-categorization rules (learn from user choices)
+- [x] Multiple bank accounts support (ICICI, HDFC, CUB)
 
-### Credit
-```regex
-ICICI Bank Account XX\d+ credited:Rs\. ([\d,]+\.\d{2}) on (\d{2}-\w{3}-\d{2})\. Info (.+?)\. Available Balance is Rs\. ([\d,]+\.\d{2})
-```
-**Captures:** amount, date, info/source, balance
+### Auth
+- [x] Email + password login / signup
+- [x] Forgot password (sends reset email)
+- [x] Change password in Settings
 
----
+### Android Companion App
+- [x] BroadcastReceiver — reads bank SMS notifications, bypasses Truecaller
+- [x] Real app logo (budget-donut + wallet)
+- [x] No URL bar (TWA wrapper)
+- [x] Auto-sync credentials via deep link
+- [x] "Update available" banner (in-app) with steps to re-enable notification access
+- [x] SMS forwarding diagnostics in Settings
 
-## Dashboard Layout (PWA)
+### PWA (browser users)
+- [x] "Get the Android app" banner for Android browser users
+- [x] Download confirmation modal: shows signed-in email, inline password reset before APK download
 
-```
-┌─────────────────────────────────┐
-│  Header: "My Finance"    [☰]   │
-├─────────────────────────────────┤
-│  ◄ April 2026 ►                │
-├─────────────────────────────────┤
-│  💰 Income    💸 Spent          │
-│  ₹51,764     ₹15,420           │
-│                                 │
-│  📈 Invested  💵 Net Saved      │
-│  ₹21,500     ₹14,844           │
-├─────────────────────────────────┤
-│  ▓▓▓▓▓▓▓▓░░░ 70% budget used  │
-├─────────────────────────────────┤
-│  [Spending Breakdown 🍕]       │
-│      (pie chart)                │
-│  Food 35% | Bill 20% | ...     │
-├─────────────────────────────────┤
-│  [Investment Split 📈]         │
-│      (pie chart)                │
-│  MF 33% | SIP 33% | PPF 34%   │
-├─────────────────────────────────┤
-│  ⚡ Uncategorized (3)           │
-│  ┌─ ₹260 → Kathiravan R [tap] │
-│  ┌─ ₹68  → Vignesh Raja [tap] │
-│  ┌─ ₹337 → Wow China    [tap] │
-├─────────────────────────────────┤
-│  Recent Transactions            │
-│  ... (list with categories)     │
-├─────────────────────────────────┤
-│                          [+]   │
-└─────────────────────────────────┘
-```
+### Settings
+- [x] Linked Accounts (add/remove banks)
+- [x] Companion App (diagnostics, re-enable forwarding, update APK)
+- [x] Missed SMS log (privacy)
+- [x] Help page (FAQs)
+- [x] About / version info
+- [x] Dark mode
+
+### SMS Forwarding Banner (companion app)
+- [x] Only shows when ≥1 linked account exists
+- [x] Re-evaluates after accounts load from Firestore
+- [x] Tapping opens step-by-step setup modal (not a blind deep link)
+- [x] Dismissed state persists; doesn't re-nag after setup complete
 
 ---
 
@@ -217,38 +213,24 @@ ICICI Bank Account XX\d+ credited:Rs\. ([\d,]+\.\d{2}) on (\d{2}-\w{3}-\d{2})\. 
 
 | Layer | Tech | Notes |
 |-------|------|-------|
-| SMS Capture (Phase 1) | Tasker | Android automation, filter ICICI sender |
-| SMS Capture (Phase 2) | React Native + react-native-get-sms-android | Native SMS permission |
-| Backend | Firebase Firestore | Same stack as Home Expense Tracker |
-| Auth | Firebase Auth (optional) | Single user for now |
-| Frontend | Vanilla JS PWA | Same approach as Home Expense Tracker |
-| Hosting | GitHub Pages | Free, same as current setup |
-| Charts | Chart.js | Already familiar with it |
+| SMS Capture | Android APK (BroadcastReceiver) | `android-companion/` |
+| Backend | Firebase Cloud Functions | `functions/` |
+| Database | Firebase Firestore | Per-user collections |
+| Auth | Firebase Auth | Email + password |
+| Frontend | Vanilla JS PWA | Single `index.html` |
+| Hosting | GitHub Pages | Auto-deploy via push to main |
+| Charts | Chart.js | Pie, line, heatmap |
+| Service Worker | `sw.js` | Offline support, current: `finance-v20.8` |
 
 ---
 
-## Roadmap
+## Roadmap — Remaining / Future
 
-### Phase 1 — Tasker Prototype (Target: 2-3 weekends)
-- [ ] Set up new Firebase project (or reuse existing, separate collection)
-- [ ] Build Tasker profile: intercept ICICI SMS → HTTP POST
-- [ ] Build SMS regex parser (Cloud Function or client-side)
-- [ ] Build PWA: dashboard with 4 metric cards
-- [ ] Build PWA: uncategorized transaction queue with one-tap categorize
-- [ ] Build PWA: two pie charts (spending + investments)
-- [ ] Build PWA: transaction history list
-- [ ] Build PWA: monthly history in menu panel
-- [ ] Deploy to GitHub Pages
-- [ ] Test with live SMS data for 1 week
-
-### Phase 2 — React Native App (Later)
-- [ ] Set up React Native project
-- [ ] Implement SMS reader with permissions
-- [ ] Background SMS listener service
-- [ ] Push notifications for categorization
-- [ ] In-app dashboard (or webview to PWA)
-- [ ] Auto-categorization based on merchant name patterns
-- [ ] Export and analytics features
+- [ ] HDFC UPI credit parser (PR #1 open — "Money Received" multiline format)
+- [ ] Auto-categorization improvements (merchant name → category ML/rules)
+- [ ] Export to CSV / PDF monthly report
+- [ ] Widgets / push notifications for new transactions
+- [ ] iOS support (currently Android-only for SMS capture)
 
 ---
 
@@ -256,11 +238,3 @@ ICICI Bank Account XX\d+ credited:Rs\. ([\d,]+\.\d{2}) on (\d{2}-\w{3}-\d{2})\. 
 - **Home Expense Tracker** — `D:\Projects\Claude Projects\Household Expense Tracker\` (for Amma, DO NOT TOUCH)
 - Uses same Firebase project: `home-expense-tracker-8a5c9`
 - Same GitHub account: `viyas52`
-
----
-
-## Open Items
-- Decide: reuse existing Firebase project with a new collection, or create a separate Firebase project?
-- Tasker setup: need to test HTTP POST from Tasker to Firebase
-- Consider auto-categorization rules: "Swiggy" → Food, "Jio" → Bill, etc.
-- Design the notification UX for Phase 2
