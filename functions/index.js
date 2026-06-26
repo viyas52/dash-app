@@ -502,7 +502,7 @@ STEP 2 — Extract the transaction:
 - bank: short lowercase id of the user's bank from the sender/text (e.g. "icici","hdfc","sbi","axis","kotak","bob"). Best guess; "other" if unclear.
 
 STEP 3 — Induce a template regex that matches THIS sms and every future sms of the same format:
-- JavaScript regex (will run case-insensitively). Escape all literal punctuation. Use [\\\\d,]+ for money, [\\\\s\\\\S] (not .) to cross newlines, \\\\d for digits, \\\\S+ for tokens. Anchor with surrounding literal words from the template so it can't match unrelated SMS.
+- JavaScript regex (will run case-insensitively). Escape all literal punctuation. Use [\\\\d,]+\\\\.?\\\\d* for money amounts (always include the optional decimal part so amounts like 1234.50 are captured correctly), [\\\\s\\\\S] (not .) to cross newlines, \\\\d for digits, \\\\S+ for tokens. Anchor with surrounding literal words from the template so it can't match unrelated SMS.
 - Put each variable field in its own ( ) capture group. Report 1-based group indices in "groups" (the index into a JS String.match array). Use null for any field this format does not contain.
 - Keep it LINEAR — no nested or adjacent unbounded quantifiers (no (a+)+, .*.*, (.*)* ), no backreferences. Prefer specific character classes over .* .
 - date_format: one of "DD-MM-YY","DD-MM-YYYY","DD/MM/YY","DD/MM/YYYY","DD.MM.YY","DD.MM.YYYY","DD-MON-YY","DD-MON-YYYY","YYYY-MM-DD","YYYYMMDD" describing the captured date group, or null if no date group. MON = 3-letter month name.
@@ -716,7 +716,11 @@ function validateLearnedTemplate(tpl, sms, txn) {
   if (m[g.amount] == null) { console.warn("validateTemplate: amount group", g.amount, "not captured"); return false; }
   const capAmt = parseFloat(String(m[g.amount]).replace(/,/g, ""));
   if (!isFinite(capAmt)) { console.warn("validateTemplate: captured amount not finite:", m[g.amount]); return false; }
-  if (Math.abs(capAmt - Number(txn.amount)) > 0.01) {
+  // Allow up to 1-unit tolerance: the regex may capture only the integer part
+  // (e.g. "1234" for "1234.50") if it uses [\d,]+ without the optional decimal.
+  // We still accept the template — it correctly identifies the right token —
+  // and the prompt now instructs the model to always include \.?\d* going forward.
+  if (Math.abs(capAmt - Number(txn.amount)) > Math.max(1.0, Number(txn.amount) * 0.001)) {
     console.warn("validateTemplate: amount mismatch — regex captured", capAmt, "but LLM said", txn.amount);
     return false;
   }
