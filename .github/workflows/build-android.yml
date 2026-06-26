@@ -6,6 +6,9 @@ on:
     paths:
       - 'android-companion/**'
       - '.github/workflows/build-android.yml'
+  pull_request:
+    types: [closed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -13,20 +16,51 @@ permissions:
 
 jobs:
   build:
+    # For push/workflow_dispatch: always run.
+    # For pull_request closed: only run if the PR was actually merged.
+    # (API-triggered squash merges don't fire the push event, so this
+    # pull_request trigger is the reliable fallback for bot-merged PRs.)
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # GitHub doesn't support paths: filtering on pull_request events, so
+      # we replicate it here: diff PR base vs head to see if android files changed.
+      - name: Check android-companion changes (PR events only)
+        id: check_android
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- android-companion/ .github/workflows/build-android.yml)
+          if [ -z "$CHANGED" ]; then
+            echo "No android-companion files changed in this PR — skipping build."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Changed android files:"
+            echo "$CHANGED"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up JDK 17
+        if: steps.check_android.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Android SDK
+        if: steps.check_android.outputs.skip != 'true'
         uses: android-actions/setup-android@v3
 
       - name: Set up Gradle
+        if: steps.check_android.outputs.skip != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
@@ -35,6 +69,7 @@ jobs:
       # the repo. From then on every build signs with the same key, so app
       # updates install over the old version without "App not installed".
       - name: Ensure stable debug keystore
+        if: steps.check_android.outputs.skip != 'true'
         working-directory: android-companion/app
         run: |
           if [ ! -f debug.keystore ]; then
@@ -53,10 +88,12 @@ jobs:
           fi
 
       - name: Build debug APK
+        if: steps.check_android.outputs.skip != 'true'
         working-directory: android-companion
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK artifact
+        if: steps.check_android.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: finance-companion-debug
@@ -64,6 +101,7 @@ jobs:
           retention-days: 90
 
       - name: Publish to "android-latest" release
+        if: steps.check_android.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
