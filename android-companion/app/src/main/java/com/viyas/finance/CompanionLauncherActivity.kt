@@ -32,7 +32,10 @@ class CompanionLauncherActivity : LauncherActivity() {
         return base.buildUpon()
             .appendQueryParameter("companion", "1")
             .apply {
-                if (hasCreds) appendQueryParameter("hasCreds", "1")
+                if (hasCreds) {
+                    appendQueryParameter("hasCreds", "1")
+                    appendQueryParameter("companionUser", prefs.user) // PWA uses this to detect user mismatch
+                }
                 if (openUncat) appendQueryParameter("openuncat", "1")
             }
             .build()
