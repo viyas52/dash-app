@@ -31,6 +31,10 @@ jobs:
         working-directory: functions
 
       - name: Deploy to Firebase
-        run: firebase deploy --only functions
+        # --force is required in CI: parseSms sets minInstances: 1 (kept warm to
+        # avoid cold-start latency), which raises the minimum bill. Firebase
+        # refuses to deploy that without an interactive confirm, so --force
+        # supplies the non-interactive "yes, I accept the cost" answer.
+        run: firebase deploy --only functions --force
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
