@@ -503,6 +503,7 @@ STEP 2 — Extract the transaction:
 
 STEP 3 — Induce a template regex that matches THIS sms and every future sms of the same format:
 - JavaScript regex (will run case-insensitively). Escape all literal punctuation. Use [\\\\d,]+ for money, [\\\\s\\\\S] (not .) to cross newlines, \\\\d for digits, \\\\S+ for tokens. Anchor with surrounding literal words from the template so it can't match unrelated SMS.
+- The SMS may contain MASKED PLACEHOLDERS where PII was removed before you saw it: a long run of x's is a masked name/handle/email local-part, a long run of 9's ending in 4 real digits is a masked account/card/reference number. These are VARIABLE — NEVER copy a masked run into the regex as a literal. Capture it with a group or a character class (e.g. \\\\S+ for a masked handle, ([\\\\d,]+) for a masked number), so the template still matches the real unmasked SMS on the device.
 - Put each variable field in its own ( ) capture group. Report 1-based group indices in "groups" (the index into a JS String.match array). Use null for any field this format does not contain.
 - Keep it LINEAR — no nested or adjacent unbounded quantifiers (no (a+)+, .*.*, (.*)* ), no backreferences. Prefer specific character classes over .* .
 - date_format: one of "DD-MM-YY","DD-MM-YYYY","DD/MM/YY","DD/MM/YYYY","DD.MM.YY","DD.MM.YYYY","DD-MON-YY","DD-MON-YYYY","YYYY-MM-DD","YYYYMMDD" describing the captured date group, or null if no date group. MON = 3-letter month name.
@@ -704,19 +705,31 @@ function matchLearnedTemplates(sms, templateDocs) {
 // Gate before persisting an induced template: it must compile, match the
 // teaching SMS, and re-extract the SAME amount the model reported. This
 // proves the regex targets the right field rather than just "matching".
-function validateLearnedTemplate(tpl, sms, txn) {
-  if (!tpl || !tpl.regex || !isSafeRegex(tpl.regex)) return false;
+// Why a template fails validation, as a sentence the model can act on in the
+// corrective retry ([retryTemplateViaLLM]); null = valid.
+function templateFailureReason(tpl, sms, txn) {
+  if (!tpl || !tpl.regex) return "no template was returned";
+  if (!isSafeRegex(tpl.regex)) {
+    return "the regex failed the safety check (length 8-600, no nested or adjacent unbounded quantifiers, no backreferences)";
+  }
   const g = tpl.groups || {};
-  if (!g.amount) return false;
+  if (!g.amount) return "groups.amount is missing — the 1-based index of the amount capture group is required";
   let re, m;
-  try { re = new RegExp(tpl.regex, "i"); } catch (_) { return false; }
-  try { m = sms.match(re); } catch (_) { return false; }
-  if (!m || m[g.amount] == null) return false;
+  try { re = new RegExp(tpl.regex, "i"); } catch (e) { return "the regex does not compile: " + e.message; }
+  try { m = sms.match(re); } catch (e) { return "running the regex failed: " + e.message; }
+  if (!m) return "the regex did not match the SMS at all";
+  if (m[g.amount] == null) return `capture group ${g.amount} (amount) captured nothing`;
   const capAmt = parseFloat(String(m[g.amount]).replace(/,/g, ""));
-  if (!isFinite(capAmt)) return false;
-  if (Math.abs(capAmt - Number(txn.amount)) > 0.01) return false;
-  if (g.date && m[g.date] == null) return false;
-  return true;
+  if (!isFinite(capAmt)) return `the amount group captured "${m[g.amount]}", which is not a number`;
+  if (Math.abs(capAmt - Number(txn.amount)) > 0.01) {
+    return `the amount group captured ${capAmt} but the transaction amount is ${txn.amount}`;
+  }
+  if (g.date && m[g.date] == null) return `capture group ${g.date} (date) captured nothing`;
+  return null;
+}
+
+function validateLearnedTemplate(tpl, sms, txn) {
+  return templateFailureReason(tpl, sms, txn) === null;
 }
 
 // One-time teacher call. Returns {transaction, template} on success,
@@ -752,6 +765,57 @@ async function learnViaLLM(sms, apiKey) {
     return { notTransaction: true };
   }
   return { transaction: data.transaction, template: data.template || null };
+}
+
+// One corrective round-trip when the first template fails validation: replay
+// the exchange, tell the model exactly WHY the template was rejected, and let
+// it repair it. The transaction extraction is kept from the first pass — only
+// the template is taken from the retry. Returns the new template or null.
+async function retryTemplateViaLLM(sms, apiKey, prev, reason) {
+  if (!apiKey) return null;
+  const client = new Anthropic({ apiKey });
+  const prevJson = JSON.stringify({
+    is_transaction: true,
+    transaction: prev.transaction,
+    template: prev.template,
+  });
+  const amt = prev.transaction && prev.transaction.amount;
+  let resp;
+  try {
+    resp = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 1024,
+      system: [{ type: "text", text: LEARN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [
+        { role: "user", content: "Bank SMS:\n```\n" + sms + "\n```" },
+        { role: "assistant", content: prevJson },
+        { role: "user", content:
+          "Your template failed validation: " + reason + ".\n" +
+          "Return the complete JSON again — keep is_transaction and transaction exactly as before, and fix ONLY the template. " +
+          "The regex runs case-insensitively and MUST match the exact SMS above" +
+          (amt != null ? ", with the amount group capturing " + amt : "") +
+          ". Escape literal punctuation (parentheses, dots, slashes). " +
+          "A field that can contain spaces (a person or merchant name, a remark) must NOT be captured with \\S+ — " +
+          "use a lazy [\\s\\S]+? up to the literal text that follows it. " +
+          "A date may be followed by a time with seconds/milliseconds — allow a tolerant [\\d:.\\s]* run between the date and the next literal." },
+      ],
+      output_config: { format: { type: "json_schema", schema: EXTRACTION_SCHEMA } },
+    });
+  } catch (err) {
+    console.error("LLM retry call failed:", (err && err.message) || err);
+    return null;
+  }
+  let txt = "";
+  for (const b of (resp.content || [])) if (b.type === "text") txt += b.text;
+  let data;
+  try {
+    data = JSON.parse(txt);
+  } catch (_) {
+    const mm = txt.match(/\{[\s\S]*\}/);
+    if (!mm) return null;
+    try { data = JSON.parse(mm[0]); } catch (_) { return null; }
+  }
+  return (data && data.template) || null;
 }
 
 // ── HTTPS Cloud Function ──
@@ -1198,9 +1262,27 @@ exports.learnFormat = onRequest(
     }
 
     const txn = learned.transaction;
-    const tpl = learned.template;
-    if (!tpl || !validateLearnedTemplate(tpl, sms, txn)) {
-      // Extracted a txn but couldn't induce a reliably-reusable template.
+    let tpl = learned.template;
+    let reason = templateFailureReason(tpl, sms, txn);
+    if (reason) {
+      // First template failed — give the model one corrective round-trip with
+      // the exact reason, then re-validate its repair.
+      try {
+        const repaired = await retryTemplateViaLLM(sms, ANTHROPIC_API_KEY.value(), learned, reason);
+        const repairedReason = templateFailureReason(repaired, sms, txn);
+        if (!repairedReason) {
+          tpl = repaired;
+          reason = null;
+        } else {
+          console.info("learnFormat retry still invalid:", repairedReason);
+        }
+      } catch (e) {
+        console.error("learnFormat retry error:", (e && e.message) || e);
+      }
+    }
+    if (reason) {
+      // Extracted a txn but couldn't induce a reliably-reusable template even
+      // after the corrective retry. The app ingests txn as a one-off.
       return res.status(200).json({ status: "no_template", txn });
     }
     return res.status(200).json({
