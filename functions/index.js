@@ -1156,3 +1156,89 @@ exports.adminStats = onRequest({ cors: ["https://viyas52.github.io"], region: "a
     res.status(500).json({ error: e.message });
   }
 });
+
+// ════════════════════════════════════════════════════════════════════════
+//  LOCAL-FIRST FORMAT LEARNER — stateless Claude "teacher" for the native app.
+//
+//  The native app parses bank SMS on-device. When it hits a format it can't
+//  parse, it sends a SCRUBBED copy here; we ask Claude (Haiku) ONCE to induce a
+//  reusable regex template and return ONLY that template. We persist NOTHING
+//  (no transactions, no SMS) — the only write is an anonymous per-device
+//  rate-limit counter to cap Claude spend. The app stores the template locally
+//  and re-parses the ORIGINAL sms on-device, so real financial values never
+//  need to be trusted to (or stored by) the server.
+// ════════════════════════════════════════════════════════════════════════
+exports.learnFormat = onRequest(
+  { cors: true, region: "asia-south1", secrets: [ANTHROPIC_API_KEY] },
+  async (req, res) => {
+    if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+
+    const sms = (req.body && (req.body.sms || req.body.message)) || "";
+    const deviceId = (req.body && req.body.device) || req.headers["x-device-id"] || "";
+    if (!sms || typeof sms !== "string") return res.status(400).json({ error: "No SMS text" });
+    if (sms.length > 2048) return res.status(413).json({ error: "SMS too large" });
+    if (!deviceId || typeof deviceId !== "string" || deviceId.length > 80) {
+      return res.status(400).json({ error: "Missing device id" });
+    }
+
+    // Coarse abuse cap (Claude costs money). Anonymous device id, fail-open.
+    if (!(await checkLearnRateLimit(deviceId))) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+
+    let learned;
+    try {
+      learned = await learnViaLLM(sms, ANTHROPIC_API_KEY.value());
+    } catch (e) {
+      console.error("learnFormat LLM error:", (e && e.message) || e);
+      return res.status(200).json({ status: "error" });
+    }
+    if (!learned || learned.notTransaction || !learned.transaction) {
+      return res.status(200).json({ status: "not_recognized" });
+    }
+
+    const txn = learned.transaction;
+    const tpl = learned.template;
+    if (!tpl || !validateLearnedTemplate(tpl, sms, txn)) {
+      // Extracted a txn but couldn't induce a reliably-reusable template.
+      return res.status(200).json({ status: "no_template", txn });
+    }
+    return res.status(200).json({
+      status: "ok",
+      template: {
+        regex: tpl.regex,
+        groups: tpl.groups || {},
+        date_format: tpl.date_format || null,
+        type: tpl.type === "credit" ? "credit" : "debit",
+        bank: (tpl.bank || "other").toString().toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 24) || "other",
+      },
+      // Parsed from the SCRUBBED sms — for the app's sanity-check only; the app
+      // re-parses the ORIGINAL locally with `template.regex` for real values.
+      txn,
+    });
+  },
+);
+
+// Per-device daily rate limit for the learner. The ONLY thing learnFormat
+// writes — an anonymous counter at _learn_rl/{deviceId} (no user/financial
+// data). Default-deny rules keep clients out; only this Admin SDK fn touches it.
+async function checkLearnRateLimit(deviceId) {
+  const ref = db.doc(`_learn_rl/${deviceId.replace(/[^A-Za-z0-9_-]/g, "_").substring(0, 80)}`);
+  const now = Date.now();
+  const DAY = 86400000;
+  const MAX = 30; // a real user rarely meets >30 brand-new formats in a day
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const d = snap.exists ? snap.data() : {};
+      let windowStart = d.windowStart || 0;
+      let count = d.count || 0;
+      if (now - windowStart >= DAY) { windowStart = now; count = 0; }
+      count += 1;
+      tx.set(ref, { windowStart, count }, { merge: true });
+      return count <= MAX;
+    });
+  } catch (_) {
+    return true; // never block legitimate learning on a limiter glitch
+  }
+}
