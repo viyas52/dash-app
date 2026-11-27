@@ -733,9 +733,16 @@ function validateLearnedTemplate(tpl, sms, txn) {
 }
 
 // One-time teacher call. Returns {transaction, template} on success,
-// {notTransaction:true} for non-txn SMS, or null on any error (→ skip).
+// {notTransaction:true} for non-txn SMS, {error} when the model call itself
+// failed (no key, out of credit, model unavailable), or null when the reply
+// couldn't be read.
+//
+// {error} must stay distinct from "not a transaction": the native app retries
+// an SMS the teacher couldn't REACH, but gives up on one the teacher looked at
+// and rejected. When this account ran out of credit (Sep–Nov 2026) every call
+// came back "not_recognized", and the app quietly dropped real transactions.
 async function learnViaLLM(sms, apiKey) {
-  if (!apiKey) return null;
+  if (!apiKey) return { error: "no API key configured" };
   const client = new Anthropic({ apiKey });
   let resp;
   try {
@@ -748,7 +755,7 @@ async function learnViaLLM(sms, apiKey) {
     });
   } catch (err) {
     console.error("LLM learn call failed:", (err && err.message) || err);
-    return null;
+    return { error: (err && err.message) || String(err) };
   }
   if (resp.stop_reason === "refusal") return { notTransaction: true };
   let txt = "";
@@ -1257,6 +1264,9 @@ exports.learnFormat = onRequest(
       console.error("learnFormat LLM error:", (e && e.message) || e);
       return res.status(200).json({ status: "error" });
     }
+    // The model never answered — the app must keep the SMS and retry later,
+    // not treat it as "not a transaction" (see learnViaLLM).
+    if (learned && learned.error) return res.status(200).json({ status: "error" });
     if (!learned || learned.notTransaction || !learned.transaction) {
       return res.status(200).json({ status: "not_recognized" });
     }
