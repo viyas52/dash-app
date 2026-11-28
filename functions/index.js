@@ -1,7 +1,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const crypto = require("crypto");
 const Anthropic = require("@anthropic-ai/sdk");
@@ -741,7 +741,8 @@ function validateLearnedTemplate(tpl, sms, txn) {
 // an SMS the teacher couldn't REACH, but gives up on one the teacher looked at
 // and rejected. When this account ran out of credit (Sep–Nov 2026) every call
 // came back "not_recognized", and the app quietly dropped real transactions.
-async function learnViaLLM(sms, apiKey) {
+// [meter], when given, is told about every model call (see newUsageMeter).
+async function learnViaLLM(sms, apiKey, meter) {
   if (!apiKey) return { error: "no API key configured" };
   const client = new Anthropic({ apiKey });
   let resp;
@@ -755,8 +756,10 @@ async function learnViaLLM(sms, apiKey) {
     });
   } catch (err) {
     console.error("LLM learn call failed:", (err && err.message) || err);
+    if (meter) meter.failed();
     return { error: (err && err.message) || String(err) };
   }
+  if (meter) meter.add(resp.usage);
   if (resp.stop_reason === "refusal") return { notTransaction: true };
   let txt = "";
   for (const b of (resp.content || [])) if (b.type === "text") txt += b.text;
@@ -778,7 +781,7 @@ async function learnViaLLM(sms, apiKey) {
 // the exchange, tell the model exactly WHY the template was rejected, and let
 // it repair it. The transaction extraction is kept from the first pass — only
 // the template is taken from the retry. Returns the new template or null.
-async function retryTemplateViaLLM(sms, apiKey, prev, reason) {
+async function retryTemplateViaLLM(sms, apiKey, prev, reason, meter) {
   if (!apiKey) return null;
   const client = new Anthropic({ apiKey });
   const prevJson = JSON.stringify({
@@ -810,8 +813,10 @@ async function retryTemplateViaLLM(sms, apiKey, prev, reason) {
     });
   } catch (err) {
     console.error("LLM retry call failed:", (err && err.message) || err);
+    if (meter) meter.failed();
     return null;
   }
+  if (meter) meter.add(resp.usage);
   let txt = "";
   for (const b of (resp.content || [])) if (b.type === "text") txt += b.text;
   let data;
@@ -1234,8 +1239,9 @@ exports.adminStats = onRequest({ cors: ["https://viyas52.github.io"], region: "a
 //  The native app parses bank SMS on-device. When it hits a format it can't
 //  parse, it sends a SCRUBBED copy here; we ask Claude (Haiku) ONCE to induce a
 //  reusable regex template and return ONLY that template. We persist NOTHING
-//  (no transactions, no SMS) — the only write is an anonymous per-device
-//  rate-limit counter to cap Claude spend. The app stores the template locally
+//  (no transactions, no SMS) — the only writes are an anonymous per-device
+//  rate-limit counter to cap Claude spend and per-device token totals to
+//  attribute it (recordLearnUsage). The app stores the template locally
 //  and re-parses the ORIGINAL sms on-device, so real financial values never
 //  need to be trusted to (or stored by) the server.
 // ════════════════════════════════════════════════════════════════════════
@@ -1257,18 +1263,26 @@ exports.learnFormat = onRequest(
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
 
+    // Every reply below goes out through send(), which first books this
+    // request's Claude tokens against the device (fail-open, see recordLearnUsage).
+    const meter = newUsageMeter();
+    const send = async (body) => {
+      await recordLearnUsage(deviceId, meter, body.status);
+      return res.status(200).json(body);
+    };
+
     let learned;
     try {
-      learned = await learnViaLLM(sms, ANTHROPIC_API_KEY.value());
+      learned = await learnViaLLM(sms, ANTHROPIC_API_KEY.value(), meter);
     } catch (e) {
       console.error("learnFormat LLM error:", (e && e.message) || e);
-      return res.status(200).json({ status: "error" });
+      return send({ status: "error" });
     }
     // The model never answered — the app must keep the SMS and retry later,
     // not treat it as "not a transaction" (see learnViaLLM).
-    if (learned && learned.error) return res.status(200).json({ status: "error" });
+    if (learned && learned.error) return send({ status: "error" });
     if (!learned || learned.notTransaction || !learned.transaction) {
-      return res.status(200).json({ status: "not_recognized" });
+      return send({ status: "not_recognized" });
     }
 
     const txn = learned.transaction;
@@ -1278,7 +1292,7 @@ exports.learnFormat = onRequest(
       // First template failed — give the model one corrective round-trip with
       // the exact reason, then re-validate its repair.
       try {
-        const repaired = await retryTemplateViaLLM(sms, ANTHROPIC_API_KEY.value(), learned, reason);
+        const repaired = await retryTemplateViaLLM(sms, ANTHROPIC_API_KEY.value(), learned, reason, meter);
         const repairedReason = templateFailureReason(repaired, sms, txn);
         if (!repairedReason) {
           tpl = repaired;
@@ -1293,9 +1307,9 @@ exports.learnFormat = onRequest(
     if (reason) {
       // Extracted a txn but couldn't induce a reliably-reusable template even
       // after the corrective retry. The app ingests txn as a one-off.
-      return res.status(200).json({ status: "no_template", txn });
+      return send({ status: "no_template", txn });
     }
-    return res.status(200).json({
+    return send({
       status: "ok",
       template: {
         regex: tpl.regex,
@@ -1311,9 +1325,72 @@ exports.learnFormat = onRequest(
   },
 );
 
-// Per-device daily rate limit for the learner. The ONLY thing learnFormat
-// writes — an anonymous counter at _learn_rl/{deviceId} (no user/financial
-// data). Default-deny rules keep clients out; only this Admin SDK fn touches it.
+// ── Per-device Claude spend for the learner ──
+// Every phone shares one Anthropic key, so the Console can't say which phone
+// spent what. learnFormat books each request's tokens at
+// _learn_usage/{deviceId}/days/{YYYY-MM-DD} (UTC day, matching the Console's
+// usage export): counts and token totals only — no SMS, no user, no amounts.
+// Read it with _admin_learn-usage.cjs. A device id is a random UUID made at
+// install, so a reinstall starts a new one.
+const HAIKU_45_USD_PER_MTOK = { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 };
+
+function newUsageMeter() {
+  const m = { calls: 0, failed_calls: 0, input_tokens: 0, output_tokens: 0,
+    cache_write_tokens: 0, cache_read_tokens: 0 };
+  return {
+    m,
+    add(u) {
+      m.calls += 1;
+      if (!u) return;
+      m.input_tokens += u.input_tokens || 0;
+      m.output_tokens += u.output_tokens || 0;
+      m.cache_write_tokens += u.cache_creation_input_tokens || 0;
+      m.cache_read_tokens += u.cache_read_input_tokens || 0;
+    },
+    failed() { m.failed_calls += 1; },
+  };
+}
+
+async function recordLearnUsage(deviceId, meter, status) {
+  const m = meter.m;
+  if (!m.calls && !m.failed_calls) return;
+  const p = HAIKU_45_USD_PER_MTOK;
+  const usd = (m.input_tokens * p.input + m.output_tokens * p.output +
+    m.cache_write_tokens * p.cacheWrite + m.cache_read_tokens * p.cacheRead) / 1e6;
+  const dev = deviceId.replace(/[^A-Za-z0-9_-]/g, "_").substring(0, 80);
+  const day = new Date().toISOString().slice(0, 10);
+  const inc = FieldValue.increment;
+  const statusKey = "status_" + String(status || "unknown").replace(/[^a-z_]/g, "").substring(0, 20);
+  try {
+    const batch = db.batch();
+    batch.set(db.doc(`_learn_usage/${dev}/days/${day}`), {
+      day,
+      requests: inc(1),
+      [statusKey]: inc(1),
+      calls: inc(m.calls),
+      failed_calls: inc(m.failed_calls),
+      input_tokens: inc(m.input_tokens),
+      output_tokens: inc(m.output_tokens),
+      cache_write_tokens: inc(m.cache_write_tokens),
+      cache_read_tokens: inc(m.cache_read_tokens),
+      usd: inc(usd),
+    }, { merge: true });
+    batch.set(db.doc(`_learn_usage/${dev}`), {
+      last_seen: new Date().toISOString(),
+      total_requests: inc(1),
+      total_usd: inc(usd),
+    }, { merge: true });
+    await batch.commit();
+  } catch (e) {
+    // Bookkeeping must never cost the phone its answer.
+    console.warn("learn usage record failed:", (e && e.message) || e);
+  }
+}
+
+// Per-device daily rate limit for the learner — an anonymous counter at
+// _learn_rl/{deviceId} (no user/financial data). It and _learn_usage are the
+// only things learnFormat writes. Default-deny rules keep clients out; only
+// this Admin SDK fn touches them.
 async function checkLearnRateLimit(deviceId) {
   const ref = db.doc(`_learn_rl/${deviceId.replace(/[^A-Za-z0-9_-]/g, "_").substring(0, 80)}`);
   const now = Date.now();
