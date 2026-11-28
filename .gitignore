@@ -13,3 +13,4 @@ functions/_*.js
 _admin_*.cjs
 viyas-cloud-snapshot-*.json
 _snapshot-*.json
+_admin_*.json
