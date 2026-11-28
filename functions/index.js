@@ -741,18 +741,34 @@ function validateLearnedTemplate(tpl, sms, txn) {
 // an SMS the teacher couldn't REACH, but gives up on one the teacher looked at
 // and rejected. When this account ran out of credit (Sep–Nov 2026) every call
 // came back "not_recognized", and the app quietly dropped real transactions.
+// The learner's model. Switch only after `node _admin_eval-learn-models.cjs`
+// shows the candidate learns templates as well as this one. Changing it also
+// starts a fresh answer cache (the cache key includes it; see learnCacheKey).
+// LEARN_MODEL in the environment overrides it (the comparison script; or a
+// `LEARN_MODEL=claude-haiku-5-5` line in functions/.env to switch on deploy).
+const LEARN_MODEL = process.env.LEARN_MODEL || "claude-haiku-4-5";
+
+// Per-model request settings. Haiku 5.5 thinks by default; on this short,
+// well-specified extraction "low" effort keeps the (billed) thinking small.
+function learnModelParams(model) {
+  const format = { type: "json_schema", schema: EXTRACTION_SCHEMA };
+  if (model === "claude-haiku-5-5") {
+    return { model, max_tokens: 4096, output_config: { format, effort: "low" } };
+  }
+  return { model, max_tokens: 1024, output_config: { format } };
+}
+
 // [meter], when given, is told about every model call (see newUsageMeter).
-async function learnViaLLM(sms, apiKey, meter) {
+// [model] overrides LEARN_MODEL (the model comparison script uses it).
+async function learnViaLLM(sms, apiKey, meter, model) {
   if (!apiKey) return { error: "no API key configured" };
   const client = new Anthropic({ apiKey });
   let resp;
   try {
     resp = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 1024,
+      ...learnModelParams(model || LEARN_MODEL),
       system: [{ type: "text", text: LEARN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: "Bank SMS:\n```\n" + sms + "\n```" }],
-      output_config: { format: { type: "json_schema", schema: EXTRACTION_SCHEMA } },
     });
   } catch (err) {
     console.error("LLM learn call failed:", (err && err.message) || err);
@@ -760,7 +776,9 @@ async function learnViaLLM(sms, apiKey, meter) {
     return { error: (err && err.message) || String(err) };
   }
   if (meter) meter.add(resp.usage);
-  if (resp.stop_reason === "refusal") return { notTransaction: true };
+  // A safety refusal says nothing about the message's FORMAT, so it is not
+  // cached as "not a transaction" (see learnFormat).
+  if (resp.stop_reason === "refusal") return { notTransaction: true, refused: true };
   let txt = "";
   for (const b of (resp.content || [])) if (b.type === "text") txt += b.text;
   let data;
@@ -781,7 +799,7 @@ async function learnViaLLM(sms, apiKey, meter) {
 // the exchange, tell the model exactly WHY the template was rejected, and let
 // it repair it. The transaction extraction is kept from the first pass — only
 // the template is taken from the retry. Returns the new template or null.
-async function retryTemplateViaLLM(sms, apiKey, prev, reason, meter) {
+async function retryTemplateViaLLM(sms, apiKey, prev, reason, meter, model) {
   if (!apiKey) return null;
   const client = new Anthropic({ apiKey });
   const prevJson = JSON.stringify({
@@ -793,8 +811,7 @@ async function retryTemplateViaLLM(sms, apiKey, prev, reason, meter) {
   let resp;
   try {
     resp = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 1024,
+      ...learnModelParams(model || LEARN_MODEL),
       system: [{ type: "text", text: LEARN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: [
         { role: "user", content: "Bank SMS:\n```\n" + sms + "\n```" },
@@ -809,7 +826,6 @@ async function retryTemplateViaLLM(sms, apiKey, prev, reason, meter) {
           "use a lazy [\\s\\S]+? up to the literal text that follows it. " +
           "A date may be followed by a time with seconds/milliseconds — allow a tolerant [\\d:.\\s]* run between the date and the next literal." },
       ],
-      output_config: { format: { type: "json_schema", schema: EXTRACTION_SCHEMA } },
     });
   } catch (err) {
     console.error("LLM retry call failed:", (err && err.message) || err);
@@ -1240,8 +1256,9 @@ exports.adminStats = onRequest({ cors: ["https://viyas52.github.io"], region: "a
 //  parse, it sends a SCRUBBED copy here; we ask Claude (Haiku) ONCE to induce a
 //  reusable regex template and return ONLY that template. We persist NOTHING
 //  (no transactions, no SMS) — the only writes are an anonymous per-device
-//  rate-limit counter to cap Claude spend and per-device token totals to
-//  attribute it (recordLearnUsage). The app stores the template locally
+//  rate-limit counter to cap Claude spend, per-device token totals to
+//  attribute it (recordLearnUsage), and the shared answer cache that avoids
+//  most of it (learnCacheKey: shape hash -> verdict/template, no SMS). The app stores the template locally
 //  and re-parses the ORIGINAL sms on-device, so real financial values never
 //  need to be trusted to (or stored by) the server.
 // ════════════════════════════════════════════════════════════════════════
@@ -1258,11 +1275,6 @@ exports.learnFormat = onRequest(
       return res.status(400).json({ error: "Missing device id" });
     }
 
-    // Coarse abuse cap (Claude costs money). Anonymous device id, fail-open.
-    if (!(await checkLearnRateLimit(deviceId))) {
-      return res.status(429).json({ error: "Rate limit exceeded" });
-    }
-
     // Every reply below goes out through send(), which first books this
     // request's Claude tokens against the device (fail-open, see recordLearnUsage).
     const meter = newUsageMeter();
@@ -1270,6 +1282,29 @@ exports.learnFormat = onRequest(
       await recordLearnUsage(deviceId, meter, body.status);
       return res.status(200).json(body);
     };
+
+    // Shared answer cache: a message with the same shape as one Claude has
+    // already answered — from ANY phone — gets that answer free. "nocache"
+    // is the app asking for a fresh read (a cached template that didn't fit
+    // its original message, which needs the extraction a hit can't give).
+    const cacheKey = learnCacheKey(sms);
+    const nocache = !!(req.body && req.body.nocache);
+    if (!nocache) {
+      const hit = await readLearnCache(cacheKey);
+      if (hit && hit.verdict === "not_recognized") {
+        meter.cacheHit();
+        return send({ status: "not_recognized", cached: true });
+      }
+      if (hit && hit.verdict === "ok" && cachedTemplateFits(hit.template, sms)) {
+        meter.cacheHit();
+        return send({ status: "ok", template: hit.template, cached: true });
+      }
+    }
+
+    // Coarse abuse cap (Claude costs money). Anonymous device id, fail-open.
+    if (!(await checkLearnRateLimit(deviceId))) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
 
     let learned;
     try {
@@ -1282,6 +1317,11 @@ exports.learnFormat = onRequest(
     // not treat it as "not a transaction" (see learnViaLLM).
     if (learned && learned.error) return send({ status: "error" });
     if (!learned || learned.notTransaction || !learned.transaction) {
+      // Only Claude's own "this is not a transaction" is reused; an unreadable
+      // reply or a safety refusal is not a verdict on the format.
+      if (learned && learned.notTransaction && !learned.refused) {
+        await writeLearnCache(cacheKey, { verdict: "not_recognized" });
+      }
       return send({ status: "not_recognized" });
     }
 
@@ -1309,15 +1349,17 @@ exports.learnFormat = onRequest(
       // after the corrective retry. The app ingests txn as a one-off.
       return send({ status: "no_template", txn });
     }
+    const template = {
+      regex: tpl.regex,
+      groups: tpl.groups || {},
+      date_format: tpl.date_format || null,
+      type: tpl.type === "credit" ? "credit" : "debit",
+      bank: (tpl.bank || "other").toString().toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 24) || "other",
+    };
+    await writeLearnCache(cacheKey, { verdict: "ok", template });
     return send({
       status: "ok",
-      template: {
-        regex: tpl.regex,
-        groups: tpl.groups || {},
-        date_format: tpl.date_format || null,
-        type: tpl.type === "credit" ? "credit" : "debit",
-        bank: (tpl.bank || "other").toString().toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 24) || "other",
-      },
+      template,
       // Parsed from the SCRUBBED sms — for the app's sanity-check only; the app
       // re-parses the ORIGINAL locally with `template.regex` for real values.
       txn,
@@ -1332,7 +1374,11 @@ exports.learnFormat = onRequest(
 // usage export): counts and token totals only — no SMS, no user, no amounts.
 // Read it with _admin_learn-usage.cjs. A device id is a random UUID made at
 // install, so a reinstall starts a new one.
-const HAIKU_45_USD_PER_MTOK = { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 };
+// USD per million tokens (prompts are far under Haiku 5.5's 100K-token tier).
+const LEARN_PRICES = {
+  "claude-haiku-4-5": { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+  "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheWrite: 0.125, cacheRead: 0.01 },
+};
 
 function newUsageMeter() {
   const m = { calls: 0, failed_calls: 0, input_tokens: 0, output_tokens: 0,
@@ -1348,13 +1394,89 @@ function newUsageMeter() {
       m.cache_read_tokens += u.cache_read_input_tokens || 0;
     },
     failed() { m.failed_calls += 1; },
+    cacheHit() { m.cache_hits = (m.cache_hits || 0) + 1; },
   };
+}
+
+// ── Shared answer cache for the learner ──
+// Most of the old spend was Claude being asked the same question again: the
+// same "not a transaction" message from many phones (and from one phone many
+// times), and every phone learning the same bank format separately. Answers
+// are now kept by the message's SHAPE — lower-cased, every number turned
+// into "#", spacing collapsed — so a different amount, date, balance or
+// account tail still hits. Stored: a hash of the shape, the verdict, and for
+// "ok" the template (regex + group map, induced from an already-scrubbed
+// SMS). Never the SMS itself. A template only ever goes back to a phone whose
+// own message has the very same shape, so it holds nothing that phone's
+// message doesn't already say.
+const LEARN_CACHE_DAYS = { ok: 180, not_recognized: 60 };
+const LEARN_PROMPT_VERSION = crypto.createHash("sha1").update(LEARN_SYSTEM_PROMPT).digest("hex").substring(0, 12);
+
+function smsShape(sms) {
+  return String(sms).toLowerCase()
+    .replace(/\d[\d,]*(?:\.\d+)?/g, "#")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Includes the model and the prompt, so changing either starts a fresh cache
+// rather than reusing answers the new setup might give differently.
+function learnCacheKey(sms) {
+  return crypto.createHash("sha256")
+    .update(LEARN_MODEL + "|" + LEARN_PROMPT_VERSION + "|" + smsShape(sms))
+    .digest("hex").substring(0, 40);
+}
+
+async function readLearnCache(key) {
+  try {
+    const snap = await db.doc(`_learn_cache/${key}`).get();
+    if (!snap.exists) return null;
+    const d = snap.data();
+    if (!d.expires_at || d.expires_at < Date.now()) return null;
+    db.doc(`_learn_cache/${key}`).set({ hits: FieldValue.increment(1),
+      last_hit: new Date().toISOString() }, { merge: true }).catch(() => {});
+    return d;
+  } catch (e) {
+    console.warn("learn cache read failed:", (e && e.message) || e);
+    return null; // a cache glitch just means asking Claude as before
+  }
+}
+
+async function writeLearnCache(key, entry) {
+  const days = LEARN_CACHE_DAYS[entry.verdict] || 30;
+  try {
+    await db.doc(`_learn_cache/${key}`).set({
+      ...entry,
+      model: LEARN_MODEL,
+      created_at: new Date().toISOString(),
+      expires_at: Date.now() + days * 86400000,
+      hits: 0,
+    });
+  } catch (e) {
+    console.warn("learn cache write failed:", (e && e.message) || e);
+  }
+}
+
+// A cached template is reused only if it still matches THIS message and its
+// amount group still captures a positive number — the same bar the app sets.
+function cachedTemplateFits(tpl, sms) {
+  if (!tpl || !tpl.regex || !isSafeRegex(tpl.regex)) return false;
+  const g = tpl.groups || {};
+  if (!g.amount) return false;
+  try {
+    const m = sms.match(new RegExp(tpl.regex, "i"));
+    if (!m || m[g.amount] == null) return false;
+    const amt = parseFloat(String(m[g.amount]).replace(/,/g, ""));
+    return isFinite(amt) && amt > 0;
+  } catch (_) {
+    return false;
+  }
 }
 
 async function recordLearnUsage(deviceId, meter, status) {
   const m = meter.m;
-  if (!m.calls && !m.failed_calls) return;
-  const p = HAIKU_45_USD_PER_MTOK;
+  if (!m.calls && !m.failed_calls && !m.cache_hits) return;
+  const p = LEARN_PRICES[LEARN_MODEL] || LEARN_PRICES["claude-haiku-4-5"];
   const usd = (m.input_tokens * p.input + m.output_tokens * p.output +
     m.cache_write_tokens * p.cacheWrite + m.cache_read_tokens * p.cacheRead) / 1e6;
   const dev = deviceId.replace(/[^A-Za-z0-9_-]/g, "_").substring(0, 80);
@@ -1369,6 +1491,7 @@ async function recordLearnUsage(deviceId, meter, status) {
       [statusKey]: inc(1),
       calls: inc(m.calls),
       failed_calls: inc(m.failed_calls),
+      cache_hits: inc(m.cache_hits || 0),
       input_tokens: inc(m.input_tokens),
       output_tokens: inc(m.output_tokens),
       cache_write_tokens: inc(m.cache_write_tokens),
