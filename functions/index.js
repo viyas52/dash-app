@@ -744,9 +744,12 @@ function validateLearnedTemplate(tpl, sms, txn) {
 // The learner's model. Switch only after `node _admin_eval-learn-models.cjs`
 // shows the candidate learns templates as well as this one. Changing it also
 // starts a fresh answer cache (the cache key includes it; see learnCacheKey).
-// LEARN_MODEL in the environment overrides it (the comparison script; or a
-// `LEARN_MODEL=claude-haiku-5-5` line in functions/.env to switch on deploy).
-const LEARN_MODEL = process.env.LEARN_MODEL || "claude-haiku-4-5";
+// LEARN_MODEL in the environment overrides it (the comparison script).
+//
+// 2026-11-28, 18 sample SMS from the app's tests: Haiku 4.5 17/18 correct,
+// 11/13 reusable templates, $0.072; Haiku 5.5 17/18 correct (same miss),
+// 12/13 reusable, $0.004 — about 17x cheaper, its prompt cache included.
+const LEARN_MODEL = process.env.LEARN_MODEL || "claude-haiku-5-5";
 
 // Per-model request settings. Haiku 5.5 thinks by default; on this short,
 // well-specified extraction "low" effort keeps the (billed) thinking small.
@@ -1279,6 +1282,11 @@ exports.learnFormat = onRequest(
     // request's Claude tokens against the device (fail-open, see recordLearnUsage).
     const meter = newUsageMeter();
     const send = async (body) => {
+      // Claude never answered (out of credit, down): the request cost nothing,
+      // so it shouldn't use up the device's daily allowance. Without this, a
+      // credit outage left every phone locked out for a day after the top-up,
+      // its backlog retries having burned the cap on failures.
+      if (body.status === "error" && meter.m.calls === 0) await refundLearnRateLimit(deviceId);
       await recordLearnUsage(deviceId, meter, body.status);
       return res.status(200).json(body);
     };
@@ -1514,8 +1522,18 @@ async function recordLearnUsage(deviceId, meter, status) {
 // _learn_rl/{deviceId} (no user/financial data). It and _learn_usage are the
 // only things learnFormat writes. Default-deny rules keep clients out; only
 // this Admin SDK fn touches them.
+function learnRateLimitRef(deviceId) {
+  return db.doc(`_learn_rl/${deviceId.replace(/[^A-Za-z0-9_-]/g, "_").substring(0, 80)}`);
+}
+
+async function refundLearnRateLimit(deviceId) {
+  try {
+    await learnRateLimitRef(deviceId).set({ count: FieldValue.increment(-1) }, { merge: true });
+  } catch (_) { /* best effort */ }
+}
+
 async function checkLearnRateLimit(deviceId) {
-  const ref = db.doc(`_learn_rl/${deviceId.replace(/[^A-Za-z0-9_-]/g, "_").substring(0, 80)}`);
+  const ref = learnRateLimitRef(deviceId);
   const now = Date.now();
   const DAY = 86400000;
   const MAX = 30; // a real user rarely meets >30 brand-new formats in a day
